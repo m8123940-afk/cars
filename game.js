@@ -13,6 +13,7 @@ const defSave = () => ({ v: 2, name: 'Гонщик', coins: 0, cur: 'rust', cars
 let save;
 try { save = Object.assign(defSave(), JSON.parse(localStorage.getItem('tr_save') || '{}')); } catch (e) { save = defSave(); }
 save.set = Object.assign(defSave().set, save.set); save.char = Object.assign(defSave().char, save.char);
+if (!save.set.server || !/onrender\.com/.test(save.set.server)) save.set.server = SERVER_URL;
 if (!save.cars[save.cur]) save.cur = 'rust';
 if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && save.name === 'Гонщик') save.name = String(tg.initDataUnsafe.user.first_name || 'Гонщик').slice(0, 14);
 const store = () => { try { localStorage.setItem('tr_save', JSON.stringify(save)); } catch (e) {} };
