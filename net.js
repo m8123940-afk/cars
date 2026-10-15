@@ -1,6 +1,6 @@
 // Клиент онлайн-гонок (WebSocket). Адрес сервера: впишите свой ниже или укажите в Настройках игры.
 // Пример: const SERVER_URL = 'wss://turbo-rivals.onrender.com';
-const SERVER_URL = '';
+const SERVER_URL = 'wws://cars-y7s9.onrender.com';
 
 const Net = (() => {
   let ws = null, open = false; const h = {};
