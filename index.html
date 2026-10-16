@@ -17,6 +17,7 @@
   <div class="stat"><b id="rc">0</b><span>монеты</span></div>
   <div class="stat right"><b id="spd">0</b><span>км/ч</span></div>
   <div id="nitroBar"><i id="nitro"></i></div>
+  <div id="environmentTag" aria-live="polite">☀ Ясно · День</div>
   <div id="bossTag" hidden></div>
   <button id="quitBtn" title="Выйти">✕</button>
 </div>
@@ -26,14 +27,14 @@
 
 <div id="touch" hidden>
   <div class="grp l">
-    <button class="tb" data-k="left">◀</button>
-    <button class="tb" data-k="right">▶</button>
+    <button class="tb" data-button="left" data-k="left">◀</button>
+    <button class="tb" data-button="right" data-k="right">▶</button>
   </div>
   <div class="grp r">
-    <button class="tb nit" data-k="nitro">N</button>
-    <button class="tb brk" data-k="brake">▼</button>
-    <button class="tb drift" data-k="drift">DRIFT</button>
-    <button class="tb gas" data-k="gas">▲</button>
+    <button class="tb nit" data-button="nitro" data-k="nitro">N</button>
+    <button class="tb brk" data-button="brake" data-k="brake">▼</button>
+    <button class="tb drift" data-button="drift" data-k="drift">DRIFT</button>
+    <button class="tb gas" data-button="gas" data-k="gas">▲</button>
   </div>
 </div>
 
@@ -75,6 +76,7 @@
       <button id="gNext" class="btn sq">▶</button>
     </div>
     <div id="gStats"></div>
+    <div class="tuning"><h3>Тюнинг кузова</h3><p class="sub">Покраска и стиль машины</p><div id="paintOptions" class="paint-options"></div><div class="row tuning-actions"><button id="gStyleBtn" class="btn">Кузов: стандарт</button><button id="gNeonBtn" class="btn">Неон: выкл.</button><button id="gRimBtn" class="btn">Диски: Серебро</button><button id="gWingBtn" class="btn">Спойлер: Заводской</button></div></div>
     <div class="row">
       <button id="gMain" class="big sm"></button>
       <button id="gRepair" class="btn"></button>
@@ -109,9 +111,13 @@
 
 <div id="online" class="overlay" hidden>
   <h2>Онлайн</h2>
-  <p class="sub" id="onStatus"></p><div id="onlinePlayers" class="col onlinePlayers"></div>
-  <div class="row"><button id="onFind" class="big sm">Найти гонку</button><button id="onCancel" class="btn">Отмена</button></div>
-  <p class="sub">Нужен собственный сервер (папка server/). Рейтинг и монеты хранятся только на вашем устройстве.</p>
+  <p class="sub" id="onStatus"></p>
+  <div class="online-columns">
+    <section class="online-box"><h3>Быстрая гонка</h3><p class="sub">Подбор соперников автоматически</p><div class="row"><button id="onFind" class="big sm">Найти гонку</button><button id="onCancel" class="btn">Отмена</button></div></section>
+    <section class="online-box"><h3>Комнаты с друзьями</h3><label class="set">Размер комнаты <select id="roomSize"><option value="2">2 игрока</option><option value="3">3 игрока</option><option value="4" selected>4 игрока</option><option value="5">5 игроков</option><option value="6">6 игроков</option></select></label><div class="row"><button id="roomCreate" class="btn">Создать комнату</button><button id="roomJoin" class="btn">Войти по коду</button></div><label class="set">Код комнаты <input id="roomCode" maxlength="24" placeholder="Код из ссылки"></label><div id="roomLobby" class="room-lobby" hidden><h3 id="roomTitle">Комната</h3><p class="sub" id="roomMembers"></p><label class="set">Ссылка-приглашение <input id="roomInvite" readonly></label><div class="row"><button id="copyInvite" class="btn">Копировать ссылку</button><button id="roomStart" class="big sm">Начать гонку</button><button id="roomLeave" class="btn">Выйти</button></div></div></section>
+  </div>
+  <h3>Игроки онлайн</h3><div id="onlinePlayers" class="col onlinePlayers"></div>
+  <p class="sub">В комнату можно пригласить друзей по ссылке. Создатель выбирает размер и запускает гонку, когда все готовы.</p>
   <button class="btn" data-back>Назад</button>
 </div>
 
@@ -122,6 +128,10 @@
   <label class="set">Музыка <button id="musBtn" class="btn"></button></label>
   <label class="set">Графика <button id="gfxBtn" class="btn"></button></label>
   <label class="set">Тема меню <button id="themeBtn" class="btn"></button></label>
+  <label class="set">Кнопки телефона <button id="touchLayoutBtn" class="btn"></button></label>
+  <label class="set">Размер кнопок <button id="touchSizeBtn" class="btn"></button></label>
+  <div class="key-settings"><h3>Клавиатура</h3><p class="sub">Нажмите кнопку, затем новую клавишу</p><div id="keyBindings" class="key-bindings"></div><h3 style="margin-top:14px">Сенсорные кнопки</h3><p class="sub">Выберите действие для каждой кнопки телефона</p><div id="touchBindings" class="touch-bindings"></div></div>
+  <div class="account-settings"><h3>Аккаунт</h3><p class="sub" id="settingsAccountName">Вход не выполнен</p><div class="row account-actions"><button id="copyAccountNameBtn" class="btn">Копировать имя</button></div><p class="sub">Этот браузер входит автоматически. Для нового устройства нужны имя и пароль, заданные при регистрации. Пароль нельзя посмотреть здесь: сервер хранит только его защищённый хэш. При необходимости задайте новый ниже.</p><label class="set">Текущий пароль <input id="currentPass" type="password" autocomplete="current-password" placeholder="Для смены пароля"></label><label class="set">Новый пароль <input id="newPass" type="password" autocomplete="new-password" minlength="6" placeholder="Не менее 6 символов"></label><button id="changePassBtn" class="btn">Сменить пароль</button><button id="logoutAccountBtn" class="btn">Выйти из аккаунта</button></div>
   <label class="set">Сервер <input id="srvIn" placeholder="wss://….onrender.com" autocomplete="off"></label>
   <button id="resetBtn" class="btn danger">Сбросить прогресс</button>
   <button id="setBack" class="big sm">Готово</button>

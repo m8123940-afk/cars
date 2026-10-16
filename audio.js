@@ -1,6 +1,6 @@
 // Звук: двигатель, ветер, визг шин, ambience по локациям, музыка и эффекты. Всё синтезируется, внешних файлов нет.
 const Snd = (() => {
-  let ctx, master, sfx, mus, amb, eng, eng2, engF, engG, turboO, turboG, wind, sq, am, cr, nbuf, cT = 0, timer = null, step = 0, mode = 'off', theme = 0, evT = 6, tAcc = 0;
+  let ctx, master, sfx, mus, amb, eng, eng2, engF, engG, turboO, turboG, wind, sq, am, nbuf, timer = null, step = 0, mode = 'off', theme = 0, evT = 6, tAcc = 0;
   const cfg = { snd: 1, mus: 1 };
 
   const noiseBuf = sec => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; };
@@ -27,7 +27,6 @@ const Snd = (() => {
     wind = loopNoise('bandpass', 700, 0.6); wind.g.connect(sfx);
     sq = loopNoise('bandpass', 1900, 4); sq.g.connect(sfx);
     am = loopNoise('lowpass', 400); am.g.connect(amb);
-    cr = loopNoise('bandpass', 1100, 0.5); cr.g.connect(amb);
     apply(); setTheme(theme);
     const m0 = mode; mode = 'off'; music(m0);
   }
@@ -79,15 +78,6 @@ const Snd = (() => {
   const lose = () => [392, 349, 311, 262].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'triangle', 0.08), i * 160));
   const lap = () => { beep(880, 0.1, 'sine', 0.08); setTimeout(() => beep(1175, 0.2, 'sine', 0.08), 100); };
 
-  // ---- толпа: гул, свист, крики ----
-  const whistle = v => { sweep(2600, 3400, 0.35, 'sine', v || 0.03); setTimeout(() => sweep(3300, 2800, 0.25, 'sine', (v || 0.03) * 0.7), 380); };
-  const cheer = () => { noise(0.16, 2600, 1.1); sweep(300, 520, 0.8, 'sawtooth', 0.02); setTimeout(() => noise(0.1, 3200, 0.7), 300); };
-  function crowd(level, dt) {
-    if (!ctx) return; smooth(cr.g.gain, level * 0.14, 0.2); smooth(cr.f.frequency, 900 + level * 500, 0.3);
-    cT -= dt || 0.016;
-    if (level > 0.3 && cT <= 0) { cT = 2 + Math.random() * 4; if (Math.random() < 0.5) whistle(0.03 * level); else cheer(); }
-  }
-
   // ---- ambience ----
   function setTheme(t) {
     theme = t; if (!ctx) return;
@@ -136,5 +126,5 @@ const Snd = (() => {
     timer = setInterval(mtick, 60000 / (m === 'race' ? 138 : 92) / 4);
   }
 
-  return { init, setCfg, update, idle, beep, bump, crash, coin, pickup, oil, jump, land, nitro, click, countdown, fanfare, lose, lap, setTheme, ambTick, music, crowd, cheer, whistle };
+  return { init, setCfg, update, idle, beep, bump, crash, coin, pickup, oil, jump, land, nitro, click, countdown, fanfare, lose, lap, setTheme, ambTick, music };
 })();

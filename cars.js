@@ -16,19 +16,27 @@ const SHAPES = {
 
 const CARS = [
   { id: 'rust',    name: 'Ржавый Волк 72', price: 0,      col: 0xc9a227, shape: 'retro',  s: [3, 3, 3, 3, 3, 3] },
-  { id: 'bulldog', name: 'Бульдог 74',     price: 700,    col: 0x8a3b2b, shape: 'muscle', s: [4, 5, 3, 3, 3, 4] , stripe: 0xf2f2f2 },
+  { id: 'bulldog', name: 'Бульдог 74',     price: 700,    col: 0x8a3b2b, shape: 'muscle', s: [4, 5, 3, 3, 3, 4] },
   { id: 'topol',   name: 'Тополь Т4',      price: 1600,   col: 0x3b6ea5, shape: 'sedan',  s: [5, 4, 4, 4, 4, 4] },
   { id: 'kolibri', name: 'Колибри GT',     price: 3200,   col: 0x3aa56a, shape: 'coupe',  s: [5, 5, 5, 6, 5, 4] },
-  { id: 'skat',    name: 'Скат Р1',        price: 5600,   col: 0xd8d8d0, shape: 'wedge',  s: [6, 6, 5, 6, 5, 5] , stripe: 0x1d5fb0 },
+  { id: 'skat',    name: 'Скат Р1',        price: 5600,   col: 0xd8d8d0, shape: 'wedge',  s: [6, 6, 5, 6, 5, 5] },
   { id: 'yastreb', name: 'Ястреб ЛС',      price: 9000,   col: 0xe0562a, shape: 'coupe',  s: [7, 6, 6, 7, 6, 5] },
-  { id: 'mamba',   name: 'Мамба V8',       price: 14000,  col: 0x1d1d22, shape: 'muscle', s: [8, 7, 6, 6, 6, 6] , stripe: 0xd8a020 },
+  { id: 'mamba',   name: 'Мамба V8',       price: 14000,  col: 0x1d1d22, shape: 'muscle', s: [8, 7, 6, 6, 6, 6] },
   { id: 'phantom', name: 'Фантом Z',       price: 21000,  col: 0x6a3fd0, shape: 'wedge',  s: [8, 8, 7, 7, 7, 7] },
   { id: 'corsar',  name: 'Корсар S',       price: 30000,  col: 0xd6b13a, shape: 'super',  s: [9, 8, 8, 8, 7, 7] },
   { id: 'eclipse', name: 'Эклипс 900',     price: 42000,  col: 0x2fb7c9, shape: 'super',  s: [9, 9, 8, 9, 8, 8] },
-  { id: 'viper',   name: 'Вайпер Эво',     price: 58000,  col: 0xc42b2b, shape: 'super',  s: [10, 9, 9, 9, 9, 8] , stripe: 0xf2f2f2 },
-  { id: 'nova',    name: 'Нова Хайпер',    price: 80000,  col: 0xf2f2f2, shape: 'hyper',  s: [10, 10, 9, 9, 9, 9] , stripe: 0x2a2a30 },
-  { id: 'titan',   name: 'Титан X',        price: 110000, col: 0xff8a1a, shape: 'hyper',  s: [11, 10, 10, 10, 9, 10] , stripe: 0x151515 },
-  { id: 'aurora',  name: 'Аврора ∞',       price: 150000, col: 0xe030a0, shape: 'hyper',  s: [12, 11, 10, 11, 10, 11] }
+  { id: 'viper',   name: 'Вайпер Эво',     price: 58000,  col: 0xc42b2b, shape: 'super',  s: [10, 9, 9, 9, 9, 8] },
+  { id: 'nova',    name: 'Нова Хайпер',    price: 80000,  col: 0xf2f2f2, shape: 'hyper',  s: [10, 10, 9, 9, 9, 9] },
+  { id: 'titan',   name: 'Титан X',        price: 110000, col: 0xff8a1a, shape: 'hyper',  s: [11, 10, 10, 10, 9, 10] },
+  { id: 'aurora',  name: 'Аврора ∞',       price: 150000, col: 0xe030a0, shape: 'hyper',  s: [12, 11, 10, 11, 10, 11] },
+  { id: 'raven',   name: 'Рэйвен R',         price: 185000, col: 0x242633, shape: 'coupe',  s: [11, 12, 10, 12, 11, 10] },
+  { id: 'comet',   name: 'Комета XR',        price: 225000, col: 0x43d3e8, shape: 'super',  s: [13, 12, 11, 11, 10, 12] },
+  { id: 'inferno', name: 'Инферно GT',       price: 275000, col: 0xff481e, shape: 'muscle', s: [13, 13, 12, 10, 11, 12] },
+  { id: 'spectre', name: 'Спектр V12',       price: 330000, col: 0x8de6c8, shape: 'hyper',  s: [14, 12, 12, 13, 12, 13] },
+  { id: 'falcon',  name: 'Сокол RS',         price: 395000, col: 0xffc62e, shape: 'wedge',  s: [14, 14, 12, 13, 12, 13] },
+  { id: 'tempest', name: 'Темпест 7',        price: 470000, col: 0x5b68ff, shape: 'super',  s: [15, 14, 13, 13, 13, 14] },
+  { id: 'phantomx',name: 'Фантом X Black',   price: 560000, col: 0x10141e, shape: 'hyper',  s: [15, 15, 14, 14, 13, 14] },
+  { id: 'zenith',  name: 'Зенит Hyperion',   price: 680000, col: 0xf0f3ff, shape: 'hyper',  s: [16, 15, 14, 15, 14, 15] }
 ];
 
 const SKINS = [0xf1c8a0, 0xd9a577, 0x8d5a3b];
@@ -49,11 +57,6 @@ function _cv(w, h, f) { const c = document.createElement('canvas'); c.width = w;
 const _grilleTex = _cv(64, 32, (x, w, h) => { x.fillStyle = '#0a0a0a'; x.fillRect(0, 0, w, h); x.fillStyle = '#888'; for (let y = 4; y < h; y += 6) x.fillRect(2, y, w - 4, 2); });
 const _plateFn = bg => (x, w, h) => { x.fillStyle = bg; x.fillRect(0, 0, w, h); x.strokeStyle = '#222'; x.lineWidth = 3; x.strokeRect(2, 2, w - 4, h - 4); x.fillStyle = '#111'; x.font = 'bold 22px monospace'; x.textAlign = 'center'; x.fillText('TR 777', w / 2, h * 0.72); };
 const _plateTex = _cv(128, 32, _plateFn('#f4f4f0')), _plateTexY = _cv(128, 32, _plateFn('#e8c030'));
-const _numTex = {};
-function _numberTex(n) { return _numTex[n] || (_numTex[n] = _cv(64, 64, (x, w, h) => { x.fillStyle = '#f4f4f0'; x.beginPath(); x.arc(32, 32, 29, 0, 7); x.fill(); x.strokeStyle = '#111'; x.lineWidth = 3; x.stroke(); x.fillStyle = '#111'; x.font = 'bold 34px Arial'; x.textAlign = 'center'; x.fillText(String(n), 32, 44); })); }
-const _M2 = {
-  orange: new THREE.MeshBasicMaterial({ color: 0xff9020 }), red: new THREE.MeshBasicMaterial({ color: 0xff2020 }), white: new THREE.MeshBasicMaterial({ color: 0xf4f8ff })
-};
 const _glowTex = (() => {
   const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d');
   const g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)');
@@ -69,8 +72,10 @@ function _sideGeo(shape, width, bs, bt) {
 }
 function _poly(pts) { const s = new THREE.Shape(); pts.forEach(([a, b], i) => i ? s.lineTo(a, b) : s.moveTo(a, b)); s.closePath(); return s; }
 
-function makeCarModel(def, colOverride) {
-  const S = SHAPES[def.shape], g = new THREE.Group(), h = S.l / 2, y0 = 0.22;
+function makeCarModel(def, colOverride, options = {}) {
+  const S = Object.assign({}, SHAPES[def.shape]), g = new THREE.Group();
+  if (options.wing !== undefined && options.wing !== null && Number.isFinite(Number(options.wing))) S.sp = Math.max(0, Math.min(3, Number(options.wing) | 0));
+  const h = S.l / 2, y0 = 0.22;
   const body = new THREE.MeshPhysicalMaterial({ color: colOverride || def.col, roughness: 0.32, metalness: 0.55, clearcoat: 1, clearcoatRoughness: 0.08 });
   const add = (geo, mat, x, y, z, sh) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = !!sh; g.add(m); return m; };
 
@@ -100,19 +105,21 @@ function makeCarModel(def, colOverride) {
 
   // колёса, арки
   const wheels = [], R = S.R;
+  const rimStyles = [{color:0xc9ced4,spokes:5},{color:0xd47745,spokes:6},{color:0x202630,spokes:8},{color:0x52e0e8,spokes:10},{color:0xffc52e,spokes:5}];
+  const rimCfg = rimStyles[Math.max(0, Math.min(rimStyles.length - 1, Number(options.rimStyle) | 0))];
+  const rimMat = new THREE.MeshStandardMaterial({ color: rimCfg.color, roughness: 0.25, metalness: 0.95 });
   const tireG = new THREE.CylinderGeometry(R, R, 0.32, 20), rimG = new THREE.CylinderGeometry(R * 0.66, R * 0.66, 0.34, 16), hubG = new THREE.CylinderGeometry(0.06, 0.06, 0.36, 8);
-  const nutG = new THREE.CylinderGeometry(0.018, 0.018, 0.03, 6), archG = new THREE.CylinderGeometry(R + 0.1, R + 0.1, 0.05, 20), discG = new THREE.CylinderGeometry(R * 0.52, R * 0.52, 0.03, 16);
+  const archG = new THREE.CylinderGeometry(R + 0.1, R + 0.1, 0.05, 20), discG = new THREE.CylinderGeometry(R * 0.52, R * 0.52, 0.03, 16);
   [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sz]) => {
     const wz = sz * (h - 0.95), wx = sx * (S.w / 2 - 0.14);
     const arch = add(archG, _M.dark, sx * (S.w / 2 + 0.01), R, wz, false); arch.rotation.z = Math.PI / 2;
     const piv = new THREE.Group(); piv.position.set(wx, R, wz);
     const t = new THREE.Mesh(tireG, _M.tire); t.rotation.z = Math.PI / 2; t.castShadow = true; piv.add(t);
-    const r = new THREE.Mesh(rimG, _M.rim); r.rotation.z = Math.PI / 2; piv.add(r);
+    const r = new THREE.Mesh(rimG, rimMat); r.rotation.z = Math.PI / 2; piv.add(r);
     const hb = new THREE.Mesh(hubG, _M.dark); hb.rotation.z = Math.PI / 2; piv.add(hb);
     const disc = new THREE.Mesh(discG, _M.disc); disc.rotation.z = Math.PI / 2; disc.position.x = -sx * 0.09; piv.add(disc);
-    for (let k = 0; k < 5; k++) { const a = k * Math.PI * 2 / 5, nut = new THREE.Mesh(nutG, _M.chrome); nut.rotation.z = Math.PI / 2; nut.position.set(sx * 0.17, Math.cos(a) * 0.09, Math.sin(a) * 0.09); piv.add(nut); }
-    for (let k = 0; k < 5; k++) { // спицы
-      const sp = new THREE.Mesh(new THREE.BoxGeometry(0.36, R * 1.1, 0.05), _M.dark); sp.rotation.x = k * Math.PI * 2 / 5; piv.add(sp);
+    for (let k = 0; k < rimCfg.spokes; k++) { // спицы выбранного дизайна
+      const sp = new THREE.Mesh(new THREE.BoxGeometry(rimCfg.spokes >= 8 ? 0.24 : 0.32, R * 1.08, 0.05), _M.dark); sp.rotation.x = k * Math.PI * 2 / rimCfg.spokes; piv.add(sp);
     }
     g.add(piv); wheels.push(piv);
   });
@@ -133,37 +140,11 @@ function makeCarModel(def, colOverride) {
   if (S.sp >= 2) [-1, 1].forEach(sx => [1, -1].forEach(sz => add(new THREE.BoxGeometry(0.12, 0.1, R * 2.3), body, sx * (S.w / 2 + 0.01), R * 2 + 0.03, sz * (h - 0.95), true)));
   [-1, 1].forEach(sx => [1, -1].forEach(sz => add(new THREE.BoxGeometry(0.05, 0.16, 0.1), _M.caliper, sx * (S.w / 2 - 0.2), R + R * 0.4, sz * (h - 0.95), false)));
   const glowCol = colOverride || def.col;
-  const ug = new THREE.Mesh(new THREE.PlaneGeometry(S.w * 1.25, S.l * 1.1), new THREE.MeshBasicMaterial({ color: glowCol, transparent: true, opacity: S.sp >= 1 ? 0.35 : 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
-  ug.rotation.x = -Math.PI / 2; ug.position.y = 0.06; g.add(ug);
-  if (S.sp >= 3) [-0.3, -0.15, 0.15, 0.3].forEach(x => { const e = add(new THREE.CylinderGeometry(0.05, 0.05, 0.2, 10), _M.chrome, x, y0 + 0.16, -h - 0.06, false); e.rotation.x = Math.PI / 2; });
-
-  // ---- дополнительная детализация ----
-  const cIdx = Math.max(0, CARS.indexOf(def));
-  if (def.shape !== 'retro') [-1, 1].forEach(sx => {
-    const hx = sx * S.w * 0.3;
-    add(new THREE.BoxGeometry(0.58, 0.12, 0.04), _M.dark, hx, S.nose - 0.02, h + 0.07, false);                       // рамка фары
-    const lens = add(new THREE.CylinderGeometry(0.045, 0.045, 0.03, 14), _M2.white, hx + sx * 0.12, S.nose - 0.02, h + 0.1, false); lens.rotation.x = Math.PI / 2; // линза-проектор
-    add(new THREE.BoxGeometry(0.5, 0.018, 0.03), _M2.white, hx, S.nose + 0.045, h + 0.095, false);                   // дневные огни
-    add(new THREE.BoxGeometry(0.14, 0.06, 0.03), _M.head, sx * S.w * 0.37, y0 + 0.17, h + 0.06, false);              // противотуманка
-  });
-  [-1, 1].forEach(sx => add(new THREE.BoxGeometry(0.02, 0.04, 0.12), _M2.orange, sx * (S.w / 2 + 0.012), S.belt - 0.12, h - 0.65, false)); // повторители
-  add(new THREE.BoxGeometry(0.4, 0.03, 0.03), _M2.red, 0, S.tail + 0.075, -h + 0.5, false);                          // третий стоп-сигнал
-  [-1, 1].forEach(sx => add(new THREE.BoxGeometry(0.22, 0.05, 0.03), _M2.red, sx * S.w * 0.38, S.tail - 0.02, -h - 0.075, false)); // блоки стопов
-  [-0.3, 0.3].forEach(x => { const wp = add(new THREE.BoxGeometry(0.5, 0.012, 0.015), _M.dark, x, S.belt + 0.04, S.wb - 0.04, false); wp.rotation.z = 0.08 * Math.sign(x); }); // дворники
-  if (def.shape === 'sedan' || def.shape === 'coupe' || def.shape === 'wedge') add(new THREE.BoxGeometry(cw * 0.55, 0.012, 0.55), _M.glass, 0, S.roof + 0.035, (S.wt + S.rt) / 2, false); // люк
-  if (S.sp >= 1) add(new THREE.BoxGeometry(0.04, 0.1, 0.16), _M.dark, 0, S.roof + 0.08, S.rt + 0.2, false);          // антенна-плавник
-  const fc = add(new THREE.CylinderGeometry(0.07, 0.07, 0.012, 12), _M.chrome, -(S.w / 2 + 0.014), S.belt - 0.2, S.rb + 0.1, false); fc.rotation.z = Math.PI / 2; // лючок бака
-  if (S.sp >= 1) [-1, 1].forEach(sx => { const dn = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.42), new THREE.MeshBasicMaterial({ map: _numberTex(cIdx + 1), transparent: true })); dn.position.set(sx * (S.w / 2 + 0.016), S.belt - 0.3, (S.wb + S.rb) / 2 + 0.1); dn.rotation.y = sx * Math.PI / 2; g.add(dn); });
-  if (S.sp >= 2) [-1, 1].forEach(sx => add(new THREE.BoxGeometry(0.03, 0.3, 0.5), _M.dark, sx * (S.w * 0.46), S.tail + 0.32, -h + 0.4, false)); // торцевые пластины
-  if (S.sp >= 3) [-1, 1].forEach(sx => add(new THREE.BoxGeometry(0.2, 0.025, 0.14), _M.dark, sx * S.w * 0.42, y0 + 0.07, h - 0.1, false));   // канарды
-  if (def.stripe) {
-    const sm = new THREE.MeshStandardMaterial({ color: def.stripe, roughness: 0.35, metalness: 0.2 }), SW = 0.34;
-    const bz = t => { const u = 1 - t; return [u * u * u * h + 3 * u * u * t * (h - 0.1) + 3 * u * t * t * (S.wb + (h - S.wb) * 0.6) + t * t * t * S.wb, u * u * u * S.nose + 3 * u * u * t * (S.nose + (S.belt - S.nose) * 0.35) + 3 * u * t * t * (S.belt - 0.04) + t * t * t * S.belt]; };
-    const top = [], bot = []; for (let k = 1; k <= 8; k++) { const q = bz(0.1 + k * 0.9 / 8); top.push([q[0], q[1] + 0.096]); bot.push([q[0], q[1] + 0.074]); }
-    add(_sideGeo(_poly(top.concat(bot.reverse())), SW, 0, 0), sm, 0, 0, 0, false);                                                                       // капот
-    add(_sideGeo(_poly([[S.wt - 0.08, S.roof + 0.034], [S.rt + 0.12, S.roof + 0.034], [S.rt + 0.12, S.roof + 0.056], [S.wt - 0.08, S.roof + 0.056]]), SW, 0, 0), sm, 0, 0, 0, false); // крыша
-    add(_sideGeo(_poly([[S.rb, S.belt + 0.074], [-h + 0.4, S.tail + 0.074], [-h + 0.4, S.tail + 0.096], [S.rb, S.belt + 0.096]]), SW, 0, 0), sm, 0, 0, 0, false);       // багажник
+  if (options.neon !== false) {
+    const ug = new THREE.Mesh(new THREE.PlaneGeometry(S.w * 1.25, S.l * 1.1), new THREE.MeshBasicMaterial({ color: glowCol, transparent: true, opacity: S.sp >= 1 ? 0.35 : 0.18, blending: THREE.AdditiveBlending, depthWrite: false }));
+    ug.rotation.x = -Math.PI / 2; ug.position.y = 0.06; g.add(ug);
   }
+  if (S.sp >= 3) [-0.3, -0.15, 0.15, 0.3].forEach(x => { const e = add(new THREE.CylinderGeometry(0.05, 0.05, 0.2, 10), _M.chrome, x, y0 + 0.16, -h - 0.06, false); e.rotation.x = Math.PI / 2; });
 
   // свет
   const tailMat = new THREE.MeshBasicMaterial({ color: 0xaa1010 });
@@ -279,7 +260,14 @@ function makeCharacter(gender, outfit, skinIdx, bust) {
   return g;
 }
 function makeDriver(gender, outfit, skinIdx) {
-  const d = makeCharacter(gender, outfit, skinIdx, true); d.scale.setScalar(0.62); return d;
+  const d = makeCharacter(gender, outfit, skinIdx, true); d.scale.setScalar(0.62);
+  // Racing helmet and tinted visor make the driver read more clearly through the windshield.
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.192 * 0.62, 16, 12), new THREE.MeshPhysicalMaterial({ color: OUTFITS[outfit] || 0xe04a3a, roughness: 0.26, metalness: 0.2, clearcoat: 0.8 }));
+  helmet.position.set(0, 1.72 * 0.62, -0.025);
+  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.19 * 0.62, 0.052 * 0.62, 0.025 * 0.62), new THREE.MeshPhysicalMaterial({ color: 0x142433, roughness: 0.12, metalness: 0.7, transparent: true, opacity: 0.9, clearcoat: 1 }));
+  visor.position.set(0, 1.69 * 0.62, 0.105 * 0.62); d.add(helmet, visor);
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(0.018, 0.27, 0.012), new THREE.MeshStandardMaterial({ color: 0xf5c542, roughness: 0.6 })); belt.position.set(0.03, 0.91 * 0.62, 0.055 * 0.62); belt.rotation.z = -0.18; d.add(belt);
+  return d;
 }
 // посадить водителя в машину (виден через стёкла)
 function seatDriver(car, gender, outfit, skinIdx) {

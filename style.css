@@ -105,3 +105,39 @@ button.big:active{transform:skewX(-8deg) translateY(2px)}
 .onlinePlayers .card{padding:7px 10px}
 .tb.drift{font-size:13px;border-color:#ffcf54;background:#5a330099}
 @media(max-width:600px){.account{padding:18px}.account .set{width:100%}.account .set input{min-width:0;flex:1}}
+
+/* Turbo Rivals: modern garage / responsive panels */
+:root{--bg:#080d18;--bgA:#0c1423ed;--sign:#ff8b24;--chalk:#f4f7fc;--line:#52e0e8;--card:#ffffff0d;--bd:#b8c8df30}
+body.light{--bg:#e9eff7;--bgA:#edf3f9f4;--chalk:#142033;--card:#1420330b;--bd:#14203325;--sign:#ff8b24;--line:#008caa}
+body{font-family:Inter,"Segoe UI",Arial,sans-serif;background:radial-gradient(ellipse at 76% 15%,#233653 0,transparent 42%),var(--bg)}
+.overlay{background:linear-gradient(135deg,#0a1222f5,#101a2be8 60%,#080d18f8);backdrop-filter:blur(14px)}
+.overlay.side{background:linear-gradient(90deg,#08101ff5 0%,#0c1728e8 70%,#101a2850 100%);padding-top:max(24px,env(safe-area-inset-top));padding-bottom:max(20px,env(safe-area-inset-bottom));gap:13px}
+h1{font-weight:1000;font-size:clamp(42px,8vw,76px);line-height:.9;letter-spacing:1px;color:#fff;text-shadow:0 6px 30px #ff872c35;border-bottom:4px solid var(--line);transform:skewX(-6deg)}
+h2{font-size:clamp(26px,5vw,42px);letter-spacing:.2px;font-weight:900;text-shadow:0 4px 24px #0007}
+h3{font-weight:850;letter-spacing:.1px}
+.btn,button.big{border-radius:12px;border:1px solid #ffffff24;background:linear-gradient(145deg,#ffffff12,#ffffff06);box-shadow:0 5px 16px #0002;transition:transform .12s,border-color .12s,background .12s;min-height:42px}
+.btn:hover{border-color:#52e0e888;background:#ffffff18;transform:translateY(-1px)}
+.btn:active{transform:translateY(1px)}
+button.big{background:linear-gradient(110deg,#ffb12f,#ff7726);color:#17131a;box-shadow:0 9px 25px #ff772633;font-weight:900;border-radius:13px;transform:none}
+button.big:active{transform:translateY(2px)}
+button.big.sm{padding:11px 21px}
+.grid{width:min(390px,100%);gap:10px}.grid .btn{min-height:46px}
+.card,.online-box,.tuning,.key-settings,.account-settings{border:1px solid var(--bd);background:linear-gradient(145deg,#ffffff0e,#ffffff04);border-radius:16px;box-shadow:0 12px 28px #0002}
+.card{padding:12px 14px}.panel{background:linear-gradient(0deg,#080d18 0%,#0b1424f2 72%,transparent);backdrop-filter:blur(6px)}
+.set{font-size:14px;gap:10px}.set input,.set select{width:190px;min-width:0;padding:11px 12px;border-radius:10px;border:1px solid #a7bdd52c;background:#111d2f;color:var(--chalk);font:600 14px "Segoe UI",sans-serif;outline:none}
+.set input:focus,.set select:focus{border-color:#52e0e8;box-shadow:0 0 0 3px #52e0e81c}
+#environmentTag{position:fixed;top:calc(78px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);padding:6px 12px;border-radius:20px;background:#07111dc9;border:1px solid #ffffff26;color:#f3f8ff;font:700 12px/1.2 "Segoe UI",sans-serif;letter-spacing:.3px;white-space:nowrap;text-shadow:0 2px 8px #000;pointer-events:none}
+#nitroBar{top:calc(57px + env(safe-area-inset-top));height:8px;border:1px solid #ffffff2e;border-radius:8px}
+#touch{padding-bottom:calc(20px + env(safe-area-inset-bottom));gap:12px}.grp{gap:9px}.tb{border:1px solid #ffffff4d;background:linear-gradient(145deg,#0b1728d9,#101725b8);backdrop-filter:blur(8px);box-shadow:0 5px 18px #0004;font-weight:900}.tb.gas{background:linear-gradient(145deg,#ffb22eeb,#ff7322ed);color:#161821;border-color:#ffdf8c}.tb.on{background:#52e0e8;color:#07111a}.tb.drift{font-weight:900}
+#touch.swap{flex-direction:row-reverse}#touch.small-controls .tb{width:clamp(50px,13vw,72px);height:clamp(50px,13vw,72px)}#touch.small-controls .tb.gas{width:clamp(64px,16vw,88px);height:clamp(64px,16vw,88px)}#touch.large-controls .tb{width:clamp(72px,19vw,108px);height:clamp(72px,19vw,108px)}#touch.large-controls .tb.gas{width:clamp(90px,24vw,130px);height:clamp(90px,24vw,130px)}
+.online-columns{width:min(740px,100%);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;text-align:left}.online-box{padding:14px;display:flex;flex-direction:column;gap:10px}.online-box .set{width:100%}.online-box .set input,.online-box .set select{flex:1;width:auto}.room-lobby{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--bd);padding-top:12px}.room-lobby .set{width:100%}.room-lobby .set input{flex:1;width:100%;font-size:12px}.onlinePlayers{width:min(740px,100%);max-height:140px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px}.onlinePlayers .card{padding:8px 12px;border-radius:10px}
+.tuning{margin:14px 0;padding:13px}.tuning h3{margin:0 0 4px}.paint-options{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}.paint-swatch{width:34px;height:34px;min-height:34px;border-radius:50%;border:3px solid #ffffff45;padding:0;box-shadow:0 3px 9px #0003}.paint-swatch.sel{outline:2px solid var(--line);outline-offset:3px}.tuning-actions{justify-content:flex-start}.key-settings,.account-settings{width:min(420px,100%);padding:14px;margin:4px 0}.key-settings h3,.account-settings h3{margin:0 0 5px}.key-bindings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px}.key-bindings .btn{font-size:12px;padding:7px 8px}.account-settings .set{width:100%;margin:8px 0}.account-settings .set input{flex:1;width:150px}
+#settings{justify-content:flex-start;padding-top:max(20px,env(safe-area-inset-top));padding-bottom:max(20px,env(safe-area-inset-bottom))}#settings h2{margin:0 0 6px}
+@media(max-width:680px){.online-columns{grid-template-columns:1fr}.online-box{padding:12px}.overlay{padding:16px}.overlay.side{background:linear-gradient(90deg,#08101ff5 0%,#0c1728e8 100%)}#environmentTag{top:calc(75px + env(safe-area-inset-top));font-size:11px}.onlinePlayers{max-height:120px}.row{gap:7px}}
+@media(max-height:600px){#settings{gap:8px}.account-settings,.key-settings{padding:10px}.key-bindings{grid-template-columns:repeat(3,minmax(0,1fr))}.online-columns{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Low-graphics mode: reduce extra compositor work on older phones and integrated GPUs. */
+.low-gpu #c{filter:none!important}
+.low-gpu .overlay,.low-gpu .panel,.low-gpu .tb{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.account-actions{width:min(330px,100%);justify-content:flex-start;margin:2px 0 6px}
+.account-actions .btn{min-height:36px;padding:7px 12px;font-size:12px}
