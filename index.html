@@ -21,7 +21,10 @@
   <div id="bossTag" hidden></div>
   <button id="quitBtn" title="Выйти">✕</button>
 </div>
+<canvas id="minimap" width="180" height="180" hidden aria-label="Мини-карта трассы"></canvas>
 <button id="fixBtn" hidden>↺ Поправить (R)</button>
+<button id="touchEditDone" hidden>Сохранить расположение</button>
+<div id="touchEditPanel" hidden><label>Кнопка <select id="touchEditTarget"><option value="left">Поворот влево</option><option value="right">Поворот вправо</option><option value="nitro">Нитро</option><option value="brake">Тормоз</option><option value="drift">Дрифт</option><option value="gas">Газ</option></select></label><label>Размер <input id="touchEditRange" type="range" min="60" max="160" step="5" value="100"><b id="touchEditValue">100%</b></label><button id="touchEditReset" type="button">Сбросить</button></div>
 <div id="count" hidden></div>
 <div id="toast" hidden></div>
 
@@ -59,6 +62,7 @@
     <button id="charBtn" class="btn">Персонаж</button>
     <button id="setBtn" class="btn">Настройки</button>
     <button id="helpBtn" class="btn">Как играть</button>
+    <button id="worldBtn" class="btn world-entry">Открытый мир (бета)</button>
     <button id="adminBtn" class="btn">Админ-панель</button>
   </div>
   <p class="coins">Монеты: <b id="coins">0</b></p>
@@ -127,15 +131,31 @@
   <label class="set">Звук <button id="sndBtn" class="btn"></button></label>
   <label class="set">Музыка <button id="musBtn" class="btn"></button></label>
   <label class="set">Графика <button id="gfxBtn" class="btn"></button></label>
+  <p class="sub settings-note">«Трассировка лучей» — расширенные экранные эффекты и отражения; настоящая аппаратная RT зависит от поддержки браузера и видеокарты.</p>
   <label class="set">Тема меню <button id="themeBtn" class="btn"></button></label>
   <label class="set">Кнопки телефона <button id="touchLayoutBtn" class="btn"></button></label>
   <label class="set">Размер кнопок <button id="touchSizeBtn" class="btn"></button></label>
+  <label class="set">Управление → Экран <button id="editTouchBtn" class="btn">Переместить кнопки</button></label>
+  <div class="screen-control-size"><label>Размер кнопки <select id="touchScaleTarget"><option value="left">Поворот влево</option><option value="right">Поворот вправо</option><option value="nitro">Нитро</option><option value="brake">Тормоз</option><option value="drift">Дрифт</option><option value="gas">Газ</option></select></label><label class="screen-slider"><input id="touchScaleRange" type="range" min="60" max="160" step="5" value="100"><b id="touchScaleValue">100%</b></label><button id="touchResetBtn" class="btn">Сбросить экран</button></div>
+  <p id="touchEditHint" class="sub" hidden>Перетаскивай кнопки пальцем/мышью. Выбери размер каждой кнопки ниже. Нажми «Сохранить расположение», чтобы закончить.</p>
   <div class="key-settings"><h3>Клавиатура</h3><p class="sub">Нажмите кнопку, затем новую клавишу</p><div id="keyBindings" class="key-bindings"></div><h3 style="margin-top:14px">Сенсорные кнопки</h3><p class="sub">Выберите действие для каждой кнопки телефона</p><div id="touchBindings" class="touch-bindings"></div></div>
   <div class="account-settings"><h3>Аккаунт</h3><p class="sub" id="settingsAccountName">Вход не выполнен</p><div class="row account-actions"><button id="copyAccountNameBtn" class="btn">Копировать имя</button></div><p class="sub">Этот браузер входит автоматически. Для нового устройства нужны имя и пароль, заданные при регистрации. Пароль нельзя посмотреть здесь: сервер хранит только его защищённый хэш. При необходимости задайте новый ниже.</p><label class="set">Текущий пароль <input id="currentPass" type="password" autocomplete="current-password" placeholder="Для смены пароля"></label><label class="set">Новый пароль <input id="newPass" type="password" autocomplete="new-password" minlength="6" placeholder="Не менее 6 символов"></label><button id="changePassBtn" class="btn">Сменить пароль</button><button id="logoutAccountBtn" class="btn">Выйти из аккаунта</button></div>
   <label class="set">Сервер <input id="srvIn" placeholder="wss://….onrender.com" autocomplete="off"></label>
   <button id="resetBtn" class="btn danger">Сбросить прогресс</button>
   <button id="setBack" class="big sm">Готово</button>
 </div>
+
+<div id="worldHud" hidden>
+  <div class="world-location"><b id="worldLocation">Центр города</b><span id="worldWeatherTag">☀ День · Ясно</span><span id="worldActionHint">WASD — движение · E — взаимодействие · V — камера</span></div>
+  <div class="world-actions"><button id="worldPhoneBtn" class="world-action">📱 Телефон</button><button id="worldCamBtn" class="world-action">Камера: 3-е лицо</button><button id="worldInteractBtn" class="world-action">E · Осмотреться</button><button id="worldExitBtn" class="world-action">В меню</button></div>
+</div>
+<div id="worldPhone" class="overlay world-phone" hidden>
+  <div class="phone-shell"><div class="phone-notch"></div><div class="phone-head"><span>TR MOBILE</span><button id="worldPhoneClose" class="btn">✕</button></div>
+    <div id="worldPhoneContent" class="phone-content"><h2>Добро пожаловать</h2><p class="sub">Город живёт своей жизнью.</p></div>
+    <div class="phone-dock"><button class="btn" data-phone-tab="home">Главная</button><button class="btn" data-phone-tab="map">Карта</button><button class="btn" data-phone-tab="services">Сервисы</button><button class="btn" data-phone-tab="events">События</button></div>
+  </div>
+</div>
+<div id="worldShop" class="overlay" hidden><h2 id="worldShopTitle">Магазин</h2><p class="sub" id="worldShopDesc">Городской сервис</p><div id="worldShopItems" class="col"></div><button id="worldShopClose" class="btn">Закрыть</button></div>
 
 <div id="help" class="overlay" hidden>
   <h2>Как играть</h2>

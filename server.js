@@ -93,7 +93,8 @@ function adminState() {
   return {
     online: clients.size, maintenance, queue: queue.length, banned: [...banned],
     players: [...clients.values()].map(c => ({ id: c.id, name: c.name, car: c.carId, room: c.room ? c.room.id : null, inQueue: queue.includes(c) })),
-    rooms: [...rooms.values()].map(r => ({ id: r.id, L: r.L, started: r.started, players: r.players.map(p => p.name), finished: r.finished }))
+    rooms: [...rooms.values()].map(r => ({ id: r.id, L: r.L, started: r.started, players: r.players.map(p => p.name), finished: r.finished })),
+    accounts: Object.values(accounts).map(a => ({ name: String(a.name || ''), coins: Math.max(0, Number(a.profile && a.profile.coins) || 0), level: Math.max(1, Number(a.profile && a.profile.level) || 1) })).sort((a,b) => a.name.localeCompare(b.name))
   };
 }
 function kick(c, reason) { send(c, { t: 'kick', reason: reason || '' }); try { c.ws.close(); } catch (e) {} }
@@ -145,6 +146,17 @@ const server = http.createServer(async (req, res) => {
     if (url === '/admin/api/state') return json(200, adminState());
     if (req.method !== 'POST') return json(405, { error: 'POST only' });
     const b = await readBody(req);
+    if (url === '/admin/api/grantCoins') {
+      const name = String(b.name || '').trim(); const key = name.toLowerCase(); const account = accounts[key];
+      if (!account) return json(404, { error: 'Аккаунт не найден. Сначала игрок должен зарегистрироваться.' });
+      const amount = Number(b.amount); if (!Number.isFinite(amount) || amount < 0) return json(400, { error: 'Введите неотрицательную сумму.' });
+      const limit = 1000000000000000; const value = Math.min(limit, Math.floor(amount));
+      account.profile = account.profile && typeof account.profile === 'object' && !Array.isArray(account.profile) ? account.profile : {};
+      const previous = Math.max(0, Number(account.profile.coins) || 0);
+      account.profile.coins = b.mode === 'set' ? value : Math.min(limit, previous + value);
+      account.profileUpdated = Date.now(); saveAccounts();
+      return json(200, { ok: true, name: account.name, previous, coins: account.profile.coins });
+    }
     if (url === '/admin/api/kick') { const c = clients.get(+b.id); if (c) kick(c, 'Отключён администратором'); return json(200, { ok: !!c }); }
     if (url === '/admin/api/ban') {
       const n = clean(b.name).toLowerCase(); if (!n) return json(400, { error: 'name' });

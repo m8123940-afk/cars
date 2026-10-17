@@ -141,3 +141,50 @@ button.big.sm{padding:11px 21px}
 .low-gpu .overlay,.low-gpu .panel,.low-gpu .tb{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 .account-actions{width:min(330px,100%);justify-content:flex-start;margin:2px 0 6px}
 .account-actions .btn{min-height:36px;padding:7px 12px;font-size:12px}
+
+/* Turbo Rivals — immersive city beta, minimap and editable touch HUD */
+#minimap{position:fixed;right:calc(14px + env(safe-area-inset-right));top:calc(114px + env(safe-area-inset-top));width:clamp(105px,21vw,164px);height:clamp(105px,21vw,164px);border:1px solid #ffffff55;border-radius:18px;background:#07101dcc;box-shadow:0 10px 30px #0007;pointer-events:none;z-index:4}
+.world-entry{grid-column:1/-1;border-color:#52e0e866!important;background:linear-gradient(110deg,#173a43d9,#11202fe0)!important;color:#cfffff!important}
+.settings-note{max-width:440px;text-align:left;font-size:12px}
+#worldHud{position:fixed;inset:0;z-index:9;pointer-events:none;color:#fff;text-shadow:0 2px 9px #000c;font-family:Inter,"Segoe UI",sans-serif}
+.world-location{position:absolute;left:16px;top:calc(16px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:3px;max-width:min(60vw,440px);padding:10px 14px;background:#07111dcc;border:1px solid #ffffff2b;border-radius:14px;backdrop-filter:blur(8px)}
+.world-location b{font-size:16px;letter-spacing:.4px}.world-location span{font-size:11px;opacity:.85}
+.world-actions{position:absolute;right:14px;top:calc(14px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:7px;align-items:flex-end;pointer-events:auto}
+.world-action{min-height:40px;padding:9px 13px;border:1px solid #ffffff40;border-radius:12px;background:#07111ddd;color:#f4f8ff;font:700 12px "Segoe UI",sans-serif;box-shadow:0 5px 15px #0004;backdrop-filter:blur(8px)}
+.world-action:first-child{border-color:#53dce7aa;color:#affaff}
+.world-phone{z-index:40;background:#0009;backdrop-filter:blur(6px)}
+.phone-shell{position:relative;width:min(360px,94vw);height:min(690px,88vh);border:7px solid #252b35;border-radius:36px;background:linear-gradient(160deg,#e6f2fa,#f3f6fa 70%,#d7e4ec);color:#132132;box-shadow:0 30px 100px #000b;overflow:hidden;display:flex;flex-direction:column;padding:21px 14px 14px;gap:12px}
+.phone-notch{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:94px;height:15px;border-radius:0 0 11px 11px;background:#252b35}
+.phone-head{display:flex;align-items:center;justify-content:space-between;padding-top:8px;font:900 12px Inter,"Segoe UI",sans-serif;letter-spacing:2px;color:#172b44}
+.phone-head .btn{color:#18263a;border-color:#18263a22;min-height:32px}
+.phone-content{flex:1;overflow:auto;text-align:left;padding:8px 3px;font-family:Inter,"Segoe UI",sans-serif}
+.phone-content h2{font-size:24px;color:#12233b;text-shadow:none;margin-bottom:8px}.phone-content p{color:#526277}.phone-content .card{background:#fff;border-color:#d5e0ec;color:#16293f;box-shadow:0 3px 12px #17304d0b;margin:8px 0}.phone-content .btn{color:#17304c;background:#eff6fd;border-color:#ccdbea}.phone-content .phone-metric{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.phone-content .phone-metric div{background:#fff;padding:12px;border-radius:13px;border:1px solid #d9e6f2}.phone-content .phone-metric b{display:block;font-size:20px;color:#142c49}.phone-content .phone-metric span{font-size:11px;color:#65778c}
+.phone-dock{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}.phone-dock .btn{min-width:0;padding:8px 2px;font-size:10px;min-height:35px;background:#ffffff;color:#19324f;border-color:#d3deea}
+#worldShop .card{width:min(420px,100%)}#worldShop .col{max-height:46vh;overflow:auto}
+#touch.editing{pointer-events:auto;background:linear-gradient(#10192720,#10192720);outline:1px dashed #52e0e888;outline-offset:-8px}
+#touch.editing .tb{position:fixed;z-index:60;touch-action:none;box-shadow:0 0 0 3px #52e0e855,0 8px 24px #0008;cursor:move}
+#touch.editing::before{content:'ПЕРЕТАСКИВАЙ КНОПКИ';position:fixed;top:24%;left:50%;transform:translateX(-50%);padding:8px 12px;border-radius:9px;background:#07111de8;border:1px solid #52e0e8;color:#aefaff;font:800 12px "Segoe UI",sans-serif;z-index:59}
+.crash-dark{filter:saturate(.82) contrast(1.15)}
+@media(max-width:600px){#minimap{top:calc(110px + env(safe-area-inset-top));right:8px;width:105px;height:105px;border-radius:12px}.world-location{left:8px;top:calc(8px + env(safe-area-inset-top));padding:8px 10px;max-width:57vw}.world-location b{font-size:13px}.world-location span{font-size:10px}.world-actions{right:8px;top:calc(8px + env(safe-area-inset-top));gap:5px}.world-action{min-height:35px;padding:7px 9px;font-size:11px}.phone-shell{height:90vh;padding-left:12px;padding-right:12px}}
+/* Ultra and RT-look tiers use denser effects; automatic mode can still reduce render scale. */
+body.gfx-verylow #c{filter:none!important}body.gfx-low #c{filter:saturate(1.02)}body.gfx-high #c{filter:saturate(1.18) contrast(1.05)}body.gfx-veryhigh #c{filter:saturate(1.23) contrast(1.07)}body.gfx-ultra #c,body.gfx-rt #c{filter:saturate(1.28) contrast(1.08)}body.gfx-rt #fx{mix-blend-mode:screen}
+
+/* Персональная раскладка сенсорного экрана и новые настройки */
+#touch.has-custom-positions .grp{display:contents}
+#touch .tb[style*="position: fixed"]{z-index:24}
+#touch.editing .tb{z-index:62!important;touch-action:none;cursor:grab}
+#touchEditDone{position:fixed;z-index:90;top:calc(14px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);border:1px solid #52e0e8;background:#071827f2;color:#eafcff;padding:11px 16px;border-radius:12px;font:800 13px system-ui;box-shadow:0 8px 28px #0009}
+.screen-control-size{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;padding:10px;border:1px solid var(--bd);border-radius:12px;background:#0a172255;margin:8px 0 12px}
+.screen-control-size label{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:13px}
+.screen-control-size select{max-width:100%;padding:8px;border-radius:8px;background:#101a27;color:inherit;border:1px solid var(--bd)}
+.screen-slider{display:grid!important;grid-template-columns:1fr auto;gap:12px!important}.screen-slider input{width:100%;accent-color:var(--sign)}
+.world-entry{grid-column:1/-1;background:linear-gradient(110deg,#123148,#1f645e);border-color:#65e0cc;font-weight:900;letter-spacing:.2px}
+
+.world-location #worldWeatherTag{color:#9ee9ef;font-weight:800;font-size:12px;letter-spacing:.2px}
+
+#touchEditPanel{position:fixed;z-index:88;left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));max-width:470px;margin:auto;padding:10px 12px;border:1px solid #52e0e8;border-radius:13px;background:#071521ed;box-shadow:0 10px 35px #0009;color:#f2fbff;font:700 12px system-ui;display:grid;grid-template-columns:1fr;gap:7px}
+#touchEditPanel label{display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center}
+#touchEditPanel select{min-width:0;padding:7px;background:#142333;color:#fff;border:1px solid #526a7b;border-radius:7px}
+#touchEditPanel input{width:100%;accent-color:#52e0e8;grid-column:2}
+#touchEditPanel button{justify-self:end;padding:5px 10px;border-radius:7px;border:1px solid #ffffff4a;background:#182b3b;color:white}
+@media (hover:hover) and (pointer:fine){#touch.editing{display:flex!important}}

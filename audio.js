@@ -1,6 +1,6 @@
 // Звук: двигатель, ветер, визг шин, ambience по локациям, музыка и эффекты. Всё синтезируется, внешних файлов нет.
 const Snd = (() => {
-  let ctx, master, sfx, mus, amb, eng, eng2, engF, engG, turboO, turboG, wind, sq, am, nbuf, timer = null, step = 0, mode = 'off', theme = 0, evT = 6, tAcc = 0;
+  let ctx, master, sfx, mus, amb, eng, eng2, engF, engG, turboO, turboG, wind, sq, am, nbuf, timer = null, step = 0, mode = 'off', theme = 0, evT = 6, tAcc = 0, crowdAt = 0;
   const cfg = { snd: 1, mus: 1 };
 
   const noiseBuf = sec => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; };
@@ -77,6 +77,9 @@ const Snd = (() => {
   const fanfare = () => [523, 659, 784, 1046, 1318].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'square', 0.07), i * 120));
   const lose = () => [392, 349, 311, 262].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'triangle', 0.08), i * 160));
   const lap = () => { beep(880, 0.1, 'sine', 0.08); setTimeout(() => beep(1175, 0.2, 'sine', 0.08), 100); };
+  // Лёгкий синтезированный свист/возглас прохожих. Срабатывает редко и учитывает настройки звука.
+  function crowd() { if(!ctx || !cfg.snd || T()-crowdAt<2.8)return; crowdAt=T(); const f=rrCrowd(900,1500); sweep(f,f*1.8,0.16,'sine',0.025,sfx); setTimeout(()=>{noise(0.055,2100,0.22);sweep(f*1.6,f*0.9,0.24,'triangle',0.022,sfx);},90); }
+  function rrCrowd(a,b){return a+Math.random()*(b-a);}
 
   // ---- ambience ----
   function setTheme(t) {
@@ -126,5 +129,5 @@ const Snd = (() => {
     timer = setInterval(mtick, 60000 / (m === 'race' ? 138 : 92) / 4);
   }
 
-  return { init, setCfg, update, idle, beep, bump, crash, coin, pickup, oil, jump, land, nitro, click, countdown, fanfare, lose, lap, setTheme, ambTick, music };
+  return { init, setCfg, update, idle, beep, bump, crash, coin, pickup, oil, jump, land, nitro, click, countdown, fanfare, lose, lap, crowd, setTheme, ambTick, music };
 })();

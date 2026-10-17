@@ -76,6 +76,7 @@ function makeCarModel(def, colOverride, options = {}) {
   const S = Object.assign({}, SHAPES[def.shape]), g = new THREE.Group();
   if (options.wing !== undefined && options.wing !== null && Number.isFinite(Number(options.wing))) S.sp = Math.max(0, Math.min(3, Number(options.wing) | 0));
   const h = S.l / 2, y0 = 0.22;
+  const liteDetails = !!(document.body && (document.body.classList.contains('gfx-verylow') || document.body.classList.contains('gfx-low')));
   const body = new THREE.MeshPhysicalMaterial({ color: colOverride || def.col, roughness: 0.32, metalness: 0.55, clearcoat: 1, clearcoatRoughness: 0.08 });
   const add = (geo, mat, x, y, z, sh) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = !!sh; g.add(m); return m; };
 
@@ -108,6 +109,7 @@ function makeCarModel(def, colOverride, options = {}) {
   const rimStyles = [{color:0xc9ced4,spokes:5},{color:0xd47745,spokes:6},{color:0x202630,spokes:8},{color:0x52e0e8,spokes:10},{color:0xffc52e,spokes:5}];
   const rimCfg = rimStyles[Math.max(0, Math.min(rimStyles.length - 1, Number(options.rimStyle) | 0))];
   const rimMat = new THREE.MeshStandardMaterial({ color: rimCfg.color, roughness: 0.25, metalness: 0.95 });
+  const trimLugMat = new THREE.MeshStandardMaterial({color:0xe5e8eb,roughness:0.2,metalness:0.95});
   const tireG = new THREE.CylinderGeometry(R, R, 0.32, 20), rimG = new THREE.CylinderGeometry(R * 0.66, R * 0.66, 0.34, 16), hubG = new THREE.CylinderGeometry(0.06, 0.06, 0.36, 8);
   const archG = new THREE.CylinderGeometry(R + 0.1, R + 0.1, 0.05, 20), discG = new THREE.CylinderGeometry(R * 0.52, R * 0.52, 0.03, 16);
   [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sz]) => {
@@ -117,12 +119,50 @@ function makeCarModel(def, colOverride, options = {}) {
     const t = new THREE.Mesh(tireG, _M.tire); t.rotation.z = Math.PI / 2; t.castShadow = true; piv.add(t);
     const r = new THREE.Mesh(rimG, rimMat); r.rotation.z = Math.PI / 2; piv.add(r);
     const hb = new THREE.Mesh(hubG, _M.dark); hb.rotation.z = Math.PI / 2; piv.add(hb);
+    if(!liteDetails){const lugG=new THREE.SphereGeometry(0.026,6,5); for(let li=0;li<5;li++){const a=li*Math.PI*2/5, lug=new THREE.Mesh(lugG,trimLugMat);lug.position.set(sx*0.185,Math.cos(a)*R*0.36,Math.sin(a)*R*0.36);piv.add(lug);}}
     const disc = new THREE.Mesh(discG, _M.disc); disc.rotation.z = Math.PI / 2; disc.position.x = -sx * 0.09; piv.add(disc);
     for (let k = 0; k < rimCfg.spokes; k++) { // спицы выбранного дизайна
       const sp = new THREE.Mesh(new THREE.BoxGeometry(rimCfg.spokes >= 8 ? 0.24 : 0.32, R * 1.08, 0.05), _M.dark); sp.rotation.x = k * Math.PI * 2 / rimCfg.spokes; piv.add(sp);
     }
     g.add(piv); wheels.push(piv);
   });
+
+  // Ультрадетальные элементы отключаются только на низких пресетах ради плавности.
+  if (!liteDetails) {
+    const detailMat = new THREE.MeshStandardMaterial({color:0x222a32,roughness:0.55,metalness:0.52});
+    const trimMat = new THREE.MeshStandardMaterial({color:0xc0c8d0,roughness:0.28,metalness:0.88});
+    const amberMat = new THREE.MeshBasicMaterial({color:0xffa52e});
+    const headLens = new THREE.MeshPhysicalMaterial({color:0xe8f5ff,roughness:0.12,metalness:0.12,clearcoat:1,emissive:0x283e58,emissiveIntensity:0.22});
+    // Hood vent slats with a dark recessed base.
+    add(new THREE.BoxGeometry(Math.min(1.05,S.w*0.46),0.025,0.58),detailMat,0,S.nose-0.01,S.wb+0.58,false);
+    for(let k=0;k<4;k++)add(new THREE.BoxGeometry(Math.min(0.92,S.w*0.41),0.018,0.055),trimMat,0,S.nose+0.008,S.wb+0.37+k*0.13,false);
+    // Door pulls, side repeaters, and lower rocker trim on each side.
+    [-1,1].forEach(sx=>{
+      add(new THREE.BoxGeometry(0.035,0.045,0.2),trimMat,sx*(S.w/2+0.025),S.belt-0.2,(S.wb+S.rb)/2-0.08,false);
+      add(new THREE.BoxGeometry(0.035,0.08,0.13),amberMat,sx*(S.w/2+0.032),S.belt-0.04,S.wb-0.38,false);
+      add(new THREE.BoxGeometry(0.045,0.07,S.l*0.56),detailMat,sx*(S.w/2+0.018),y0+0.12,-0.08,false);
+      for(let k=0;k<3;k++)add(new THREE.BoxGeometry(0.022,0.025,0.33),trimMat,sx*(S.w/2+0.037),S.belt-0.19,0.5+k*0.1,false);
+    });
+    // Headlamp lens layers and small parking sensors bring out the front fascia.
+    [-1,1].forEach(sx=>{
+      add(new THREE.BoxGeometry(0.52,0.12,0.055),headLens,sx*S.w*0.30,S.nose+0.015,h+0.105,false);
+      add(new THREE.BoxGeometry(0.1,0.055,0.05),amberMat,sx*S.w*0.42,S.nose-0.03,h+0.105,false);
+      add(new THREE.SphereGeometry(0.045,8,6),trimMat,sx*S.w*0.28,y0+0.13,h+0.17,false);
+    });
+    // Dashboard, steering rim and two bucket seats, seen through the glass.
+    const cabinDark=new THREE.MeshStandardMaterial({color:0x1b2027,roughness:0.86});
+    const seatMat=new THREE.MeshStandardMaterial({color:0x292f38,roughness:0.9});
+    add(new THREE.BoxGeometry(cw*0.82,0.12,0.34),cabinDark,0,S.belt-0.14,S.wb-0.12,false);
+    [-0.36,0.36].forEach(x=>{
+      add(new THREE.BoxGeometry(0.34,0.16,0.5),seatMat,x,S.belt-0.35,(S.wb+S.rb)*0.46,false);
+      add(new THREE.BoxGeometry(0.34,0.36,0.13),seatMat,x,S.belt-0.15,(S.wb+S.rb)*0.46-0.24,false);
+    });
+    const steering=new THREE.Mesh(new THREE.TorusGeometry(0.16,0.025,7,16),trimMat);steering.position.set(-0.34,S.belt-0.18,S.wb+0.03);steering.rotation.x=Math.PI/2;g.add(steering);
+    // Дворники у основания лобового стекла и небольшая антенна на крыше.
+    [-0.25,0.25].forEach(x=>{const wiper=add(new THREE.BoxGeometry(0.018,0.018,0.48),detailMat,x,S.belt+0.06,S.wb+0.24,false);wiper.rotation.y=x*0.22;});
+    add(new THREE.CylinderGeometry(0.015,0.025,0.32,6),detailMat,0,S.roof+0.13,S.rt-0.2,false).rotation.z=-0.25;
+
+  }
 
   // швы дверей, решётка, номера, воздухозаборники, суппорты, подсветка днища
   const seamH = S.belt - y0 - 0.25, seamY = y0 + 0.2 + seamH / 2;
@@ -193,7 +233,30 @@ function makeCarModel(def, colOverride, options = {}) {
   });
   flame.visible = false; g.add(flame);
 
-  g.userData = { wheels, tailMat, flame, len: S.l, S, driver: null };
+  // Самостоятельно видимые следы аварий: царапины, сколы и помятый бампер.
+  const damageMarks = [];
+  const scratchMat = new THREE.MeshStandardMaterial({ color: 0x171a1e, roughness: 0.95, metalness: 0.05, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 });
+  const bareMetal = new THREE.MeshStandardMaterial({ color: 0x7c858e, roughness: 0.78, metalness: 0.62, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2 });
+  const addDamageMark = (geo, mat, x, y, z, rx=0, ry=0, rz=0, threshold=15) => {
+    const mark = new THREE.Mesh(geo, mat); mark.position.set(x,y,z); mark.rotation.set(rx,ry,rz); mark.visible=false; mark.renderOrder=3; g.add(mark); damageMarks.push({ mesh:mark, threshold }); return mark;
+  };
+  // Шрамы на капоте и крыше (спереди модели находится +Z).
+  addDamageMark(new THREE.BoxGeometry(0.055,0.018,0.92), scratchMat, -0.38, 0.79, 1.0, 0, 0.23, 0, 12);
+  addDamageMark(new THREE.BoxGeometry(0.035,0.018,0.58), bareMetal, -0.18, 0.795, 1.12, 0, -0.44, 0, 24);
+  addDamageMark(new THREE.BoxGeometry(0.045,0.018,0.7), scratchMat, 0.31, 0.785, 1.16, 0, -0.34, 0, 36);
+  addDamageMark(new THREE.BoxGeometry(0.04,0.018,0.52), bareMetal, 0.1, S.roof+0.012, -0.15, 0, 0.58, 0, 58);
+  // Потёртости по бокам и след удара в передней части кузова.
+  [-1,1].forEach(side => {
+    addDamageMark(new THREE.BoxGeometry(0.018,0.12,0.85), scratchMat, side*(S.w/2+0.015), S.belt-0.03, -0.25, 0, 0, 0.08*side, 30);
+    addDamageMark(new THREE.BoxGeometry(0.018,0.07,0.44), bareMetal, side*(S.w/2+0.018), S.belt-0.19, 0.55, 0, 0, -0.12*side, 50);
+  });
+  const bentBumper = addDamageMark(new THREE.BoxGeometry(S.w*0.9,0.12,0.16), _M.dark, 0, y0+0.07, h+0.08, 0.06,0,0,68);
+  bentBumper.scale.x = 0.92;
+  const chip = addDamageMark(new THREE.BoxGeometry(0.24,0.07,0.035), bareMetal, -S.w*0.31, S.nose-0.08, h+0.08, 0.3,0,0,82);
+  // Лёгкий дым из-под капота при критическом уроне.
+  const smoke = new THREE.Sprite(new THREE.SpriteMaterial({ map:_glowTex, color:0x353b43, transparent:true, opacity:0.28, depthWrite:false }));
+  smoke.position.set(0, S.nose+0.5, h*0.42); smoke.scale.set(1.4,1.8,1); smoke.visible=false; g.add(smoke);
+  g.userData = { wheels, tailMat, flame, len: S.l, S, driver: null, damageMarks, damageSmoke: smoke, damageBumper: bentBumper, damageChip: chip };
   return g;
 }
 
