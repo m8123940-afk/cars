@@ -80,7 +80,7 @@
       <button id="gNext" class="btn sq">▶</button>
     </div>
     <div id="gStats"></div>
-    <div class="tuning"><h3>Тюнинг кузова</h3><p class="sub">Покраска и стиль машины</p><div id="paintOptions" class="paint-options"></div><div class="row tuning-actions"><button id="gStyleBtn" class="btn">Кузов: стандарт</button><button id="gNeonBtn" class="btn">Неон: выкл.</button><button id="gRimBtn" class="btn">Диски: Серебро</button><button id="gWingBtn" class="btn">Спойлер: Заводской</button></div></div>
+    <div class="tuning"><h3>Тюнинг кузова</h3><p class="sub">Тюнинг платный: краска 450, стиль кузова 1 200, диски 650, спойлер 1 400, установка неона 1 800 монет. Каждый элемент сохраняется за автомобилем.</p><div id="paintOptions" class="paint-options"></div><div class="row tuning-actions"><button id="gStyleBtn" class="btn">Кузов: стандарт</button><button id="gNeonBtn" class="btn">Неон: выкл.</button><button id="gRimBtn" class="btn">Диски: Серебро</button><button id="gWingBtn" class="btn">Спойлер: Заводской</button></div></div>
     <div class="row">
       <button id="gMain" class="big sm"></button>
       <button id="gRepair" class="btn"></button>
@@ -131,13 +131,14 @@
   <label class="set">Звук <button id="sndBtn" class="btn"></button></label>
   <label class="set">Музыка <button id="musBtn" class="btn"></button></label>
   <label class="set">Графика <button id="gfxBtn" class="btn"></button></label>
-  <p class="sub settings-note">«Трассировка лучей» — расширенные экранные эффекты и отражения; настоящая аппаратная RT зависит от поддержки браузера и видеокарты.</p>
+  <p class="sub settings-note">«RT-стиль» — усиленное освещение и тени. Это WebGL-пресет, а не настоящая аппаратная трассировка лучей; фильтр размытия отключён для чёткого изображения.</p>
   <label class="set">Тема меню <button id="themeBtn" class="btn"></button></label>
+  <h3 class="settings-section-title">Управление</h3><h4 class="settings-subtitle">Экран телефона</h4>
   <label class="set">Кнопки телефона <button id="touchLayoutBtn" class="btn"></button></label>
   <label class="set">Размер кнопок <button id="touchSizeBtn" class="btn"></button></label>
-  <label class="set">Управление → Экран <button id="editTouchBtn" class="btn">Переместить кнопки</button></label>
+  <label class="set">Управление · Экран <button id="editTouchBtn" class="btn">Переместить кнопки</button></label>
   <div class="screen-control-size"><label>Размер кнопки <select id="touchScaleTarget"><option value="left">Поворот влево</option><option value="right">Поворот вправо</option><option value="nitro">Нитро</option><option value="brake">Тормоз</option><option value="drift">Дрифт</option><option value="gas">Газ</option></select></label><label class="screen-slider"><input id="touchScaleRange" type="range" min="60" max="160" step="5" value="100"><b id="touchScaleValue">100%</b></label><button id="touchResetBtn" class="btn">Сбросить экран</button></div>
-  <p id="touchEditHint" class="sub" hidden>Перетаскивай кнопки пальцем/мышью. Выбери размер каждой кнопки ниже. Нажми «Сохранить расположение», чтобы закончить.</p>
+  <p id="touchEditHint" class="sub" hidden>Перетаскивай кнопки. Центр каждой кнопки остаётся внутри экрана с учётом её размера. Выбери размер кнопки и нажми «Сохранить расположение».</p>
   <div class="key-settings"><h3>Клавиатура</h3><p class="sub">Нажмите кнопку, затем новую клавишу</p><div id="keyBindings" class="key-bindings"></div><h3 style="margin-top:14px">Сенсорные кнопки</h3><p class="sub">Выберите действие для каждой кнопки телефона</p><div id="touchBindings" class="touch-bindings"></div></div>
   <div class="account-settings"><h3>Аккаунт</h3><p class="sub" id="settingsAccountName">Вход не выполнен</p><div class="row account-actions"><button id="copyAccountNameBtn" class="btn">Копировать имя</button></div><p class="sub">Этот браузер входит автоматически. Для нового устройства нужны имя и пароль, заданные при регистрации. Пароль нельзя посмотреть здесь: сервер хранит только его защищённый хэш. При необходимости задайте новый ниже.</p><label class="set">Текущий пароль <input id="currentPass" type="password" autocomplete="current-password" placeholder="Для смены пароля"></label><label class="set">Новый пароль <input id="newPass" type="password" autocomplete="new-password" minlength="6" placeholder="Не менее 6 символов"></label><button id="changePassBtn" class="btn">Сменить пароль</button><button id="logoutAccountBtn" class="btn">Выйти из аккаунта</button></div>
   <label class="set">Сервер <input id="srvIn" placeholder="wss://….onrender.com" autocomplete="off"></label>

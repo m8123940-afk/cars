@@ -2,12 +2,12 @@
 <html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Turbo Rivals — админ-панель</title>
 <style>
-body{margin:0;font:15px system-ui,sans-serif;background:#15171c;color:#f2efe6;padding:20px;max-width:900px;margin:auto}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:#0c1220;color:#f2efe6;padding:clamp(10px,3vw,24px);max-width:1100px;margin:auto}
 h1{font-size:22px;border-bottom:3px dashed #f5c542;padding-bottom:10px}
 .card{background:#ffffff12;border:1px solid #ffffff2a;border-radius:8px;padding:14px;margin:12px 0}
-input,button{font:inherit;padding:8px 12px;border-radius:6px;border:1px solid #ffffff3a;background:#ffffff14;color:inherit}
+input,button{font:inherit;padding:9px 12px;min-height:40px;max-width:100%;border-radius:9px;border:1px solid #ffffff3a;background:#ffffff14;color:inherit}input{min-width:0}input[type=number]{width:180px}
 button{cursor:pointer}button.p{background:#ff6a1a;color:#111;border:0}button.d{color:#ff7070}
-table{width:100%;border-collapse:collapse}td,th{padding:6px;text-align:left;border-bottom:1px solid #ffffff1a}
+table{width:100%;border-collapse:collapse;min-width:560px}td,th{padding:8px;text-align:left;border-bottom:1px solid #ffffff1a;overflow-wrap:anywhere}.table-wrap{width:100%;overflow-x:auto;border-radius:8px}.card h2{font-size:17px;margin:0 0 8px}.note{font-size:13px;line-height:1.4;opacity:.7;margin:7px 0}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.muted{opacity:.7}
 </style></head><body>
 <h1>Turbo Rivals — админ-панель</h1>
@@ -15,11 +15,14 @@ table{width:100%;border-collapse:collapse}td,th{padding:6px;text-align:left;bord
 <div id="panel" hidden>
   <div class="card row"><b id="stats"></b><span class="muted" id="maint"></span><button id="mt">Тех. работы вкл/выкл</button></div>
   <div class="card"><b>Объявление всем игрокам</b><div class="row" style="margin-top:8px"><input id="bc" maxlength="120" style="flex:1;min-width:200px" placeholder="Текст"><button class="p" id="bcb">Отправить</button></div></div>
-  <div class="card"><b>Игровые деньги аккаунтов</b><p class="muted">Выдача и установка монет. Данные паролей в админ-панели не показываются. После изменения игроку лучше перезайти, чтобы загрузить профиль с сервера.</p><div class="row" style="margin:8px 0"><input id="moneyName" maxlength="14" placeholder="Имя аккаунта"><input id="moneyAmount" type="number" min="0" max="1000000000000000" step="1" value="1000000000" placeholder="Сумма"><button id="moneyAdd" class="p">Добавить монеты</button><button id="moneySet">Установить баланс</button></div><table id="accounts"></table></div>
-  <div class="card"><b>Игроки онлайн</b><table id="pl"></table></div>
-  <div class="card"><b>Комнаты</b><table id="rm"></table></div>
+  <div class="card"><b>Игровые деньги аккаунтов</b><p class="note">Выдача и установка монет. После изменения игроку нужно перезайти, чтобы загрузить обновлённый профиль.</p><div class="row" style="margin:8px 0"><input id="moneyName" maxlength="14" placeholder="Имя аккаунта"><input id="moneyAmount" type="number" min="0" max="1000000000000000" step="1" value="1000000000" placeholder="Сумма"><button id="moneyAdd" class="p">Добавить монеты</button><button id="moneySet">Установить баланс</button></div></div>
+  <div class="card"><b>Уровень и прогресс</b><p class="note">Выбери аккаунт ниже. Высокий уровень открывает сложности и турниры, а разблокировка машин и улучшений влияет на гараж.</p><div class="row" style="margin:8px 0"><input id="levelName" maxlength="14" placeholder="Имя аккаунта"><input id="levelAmount" type="number" min="1" max="99999" step="1" value="50" placeholder="Уровень / сколько добавить"><button id="levelSet" class="p">Установить уровень</button><button id="levelAdd">Добавить уровни</button></div><div class="row"><button id="unlockCars">Открыть все машины</button><button id="maxUpgrades">Максимальный тюнинг всем машинам</button><button id="repairAll">Починить все машины</button></div></div>
+  <div class="card"><b>Аккаунты</b><div class="table-wrap"><table id="accounts"></table></div></div>
+  <div class="card"><b>Игроки онлайн</b><div class="table-wrap"><table id="pl"></table></div></div>
+  <div class="card"><b>Комнаты</b><div class="table-wrap"><table id="rm"></table></div></div>
   <div class="card"><b>Блокировки</b><div class="row" style="margin:8px 0"><input id="bn" placeholder="Имя"><button id="bnb" class="d">Заблокировать</button></div><div id="bl" class="muted"></div></div>
 </div>
+<style>@media(max-width:640px){body{padding:10px}.card{padding:11px}.row>*{flex:1 1 145px}.row input{width:100%}table{font-size:13px}.card h2{font-size:16px}}</style>
 <script>
 const $=id=>document.getElementById(id);let pw=sessionStorage.getItem('apw')||'';let timer;
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -27,14 +30,16 @@ async function api(p,body){const r=await fetch('/admin/api/'+p,{method:body?'POS
 async function refresh(){try{const s=await api('state');$('panel').hidden=false;$('msg').textContent='';
 $('stats').textContent='Онлайн: '+s.online+' · в очереди: '+s.queue;$('maint').textContent=s.maintenance?'ТЕХ. РАБОТЫ ВКЛЮЧЕНЫ':'';
 $('pl').innerHTML='<tr><th>ID</th><th>Имя</th><th>Машина</th><th>Статус</th><th></th></tr>'+s.players.map(p=>`<tr><td>${p.id}</td><td>${esc(p.name)}</td><td>${esc(p.car)}</td><td>${p.room?'комната '+p.room:p.inQueue?'очередь':'меню'}</td><td><button class="d" onclick="act('kick',{id:${p.id}})">Кик</button></td></tr>`).join('');
-$('accounts').innerHTML='<tr><th>Имя</th><th>Баланс</th><th>Уровень</th><th></th></tr>'+(s.accounts||[]).map(a=>`<tr><td>${esc(a.name)}</td><td>${Number(a.coins||0).toLocaleString('ru-RU')}</td><td>${a.level}</td><td><button onclick="pickMoney('${esc(a.name)}')">Выбрать</button></td></tr>`).join('') || '<tr><td colspan="4">Нет зарегистрированных аккаунтов</td></tr>'; 
+$('accounts').innerHTML='<tr><th>Имя</th><th>Баланс</th><th>Уровень</th><th>Машины</th><th>С повреждениями</th><th></th></tr>'+(s.accounts||[]).map(a=>`<tr><td>${esc(a.name)}</td><td>${Number(a.coins||0).toLocaleString('ru-RU')}</td><td>${a.level}</td><td>${a.carsOwned||0}/22</td><td>${a.damagedCars||0}</td><td><button onclick="pickPlayer('${esc(a.name)}')">Выбрать</button></td></tr>`).join('') || '<tr><td colspan="6">Нет зарегистрированных аккаунтов</td></tr>'; 
 $('rm').innerHTML='<tr><th>ID</th><th>Трасса</th><th>Игроки</th><th></th></tr>'+s.rooms.map(r=>`<tr><td>${r.id}</td><td>${r.L}</td><td>${r.players.map(esc).join(', ')}</td><td><button class="d" onclick="act('closeRoom',{id:${r.id}})">Закрыть</button></td></tr>`).join('');
 $('bl').innerHTML=s.banned.map(n=>esc(n)+' <a href="#" onclick="act(\'unban\',{name:\''+esc(n)+'\'});return false">разблок.</a>').join(' · ')||'нет';
 }catch(e){$('msg').textContent=e.message;$('panel').hidden=true;clearInterval(timer);}}
 async function act(p,b){await api(p,b);refresh();}
-function pickMoney(name){$('moneyName').value=name;}
+function pickPlayer(name){$('moneyName').value=name;$('levelName').value=name;$('msg').textContent='Выбран аккаунт: '+name;}function pickMoney(name){pickPlayer(name);}
 async function money(mode){const name=$('moneyName').value.trim(),raw=$('moneyAmount').value,amount=Number(raw);if(!name){$('msg').textContent='Укажите имя аккаунта';return;}if(!Number.isFinite(amount)||amount<0){$('msg').textContent='Введите корректную сумму';return;}try{const d=await api('grantCoins',{name,amount,mode});$('msg').textContent=`${d.name}: баланс ${Number(d.coins).toLocaleString('ru-RU')} монет`;refresh();}catch(e){$('msg').textContent=e.message||'Не удалось изменить баланс';}}
 $('moneyAdd').onclick=()=>money('add');$('moneySet').onclick=()=>money('set');
+async function playerUpdate(mode){const name=$('levelName').value.trim()||$('moneyName').value.trim();if(!name){$('msg').textContent='Выберите аккаунт';return;}const value=Number($('levelAmount').value);if(['levelSet','levelAdd'].includes(mode)&&(!Number.isInteger(value)||value<1||value>99999)){$('msg').textContent='Введите целый уровень от 1 до 99 999';return;}try{const d=await api('updatePlayer',{name,mode,value});$('msg').textContent=mode==='levelSet'||mode==='levelAdd'?`${d.name}: уровень ${d.level}`:mode==='unlockCars'?`${d.name}: открыто ${d.carsOwned} машин`:mode==='maxUpgrades'?`${d.name}: максимальные улучшения установлены всем машинам`:`${d.name}: отремонтировано машин ${d.repaired}`;refresh();}catch(e){$('msg').textContent=e.message||'Не удалось изменить профиль';}}
+$('levelSet').onclick=()=>playerUpdate('levelSet');$('levelAdd').onclick=()=>playerUpdate('levelAdd');$('unlockCars').onclick=()=>playerUpdate('unlockCars');$('maxUpgrades').onclick=()=>playerUpdate('maxUpgrades');$('repairAll').onclick=()=>playerUpdate('repairAll');
 $('login').onclick=()=>{pw=$('pw').value;sessionStorage.setItem('apw',pw);clearInterval(timer);refresh();timer=setInterval(refresh,3000);};
 $('bcb').onclick=()=>{if($('bc').value.trim())act('broadcast',{text:$('bc').value});$('bc').value='';};
 $('bnb').onclick=()=>{if($('bn').value.trim())act('ban',{name:$('bn').value});$('bn').value='';};
