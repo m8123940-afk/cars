@@ -395,7 +395,7 @@ function buildTrack(L, providedSeed) {
   fenceRails.instanceMatrix.needsUpdate=true;fencePosts.instanceMatrix.needsUpdate=true;trackG.add(fenceRails,fencePosts);
   const poles = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.1, 0.13, 6.5, 6), new THREE.MeshStandardMaterial({ color: 0x555a60 }), 2 * Math.ceil(N / 10));
   const glowM = new THREE.SpriteMaterial({ map: glowT, color: th.lamp, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.85 });
-  k = 0;
+  let k = 0;
   for (let i = 0; i < N; i += 10) for (const s of [-1, 1]) {
     const x = pos[i].x + tan[i].z * (ROAD_W + 3.6) * s, z = pos[i].z - tan[i].x * (ROAD_W + 3.6) * s;
     dum.position.set(x, 3.25, z); dum.rotation.set(0, 0, 0); dum.updateMatrix(); poles.setMatrixAt(k++, dum.matrix);
