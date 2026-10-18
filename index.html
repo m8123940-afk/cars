@@ -168,17 +168,25 @@
 
 <div id="worldHud" hidden>
   <div class="world-location"><b id="worldLocation">Центр города</b><span id="worldWeatherTag">☀ День · Ясно</span><span id="worldActionHint">WASD — движение · E — взаимодействие · V — камера</span></div>
-  <div class="world-actions"><button id="worldPhoneBtn" class="world-action">📱 Телефон</button><button id="worldCamBtn" class="world-action">Камера: 3-е лицо</button><button id="worldInteractBtn" class="world-action">E · Осмотреться</button><button id="worldDevBtn" class="world-action">🛠 Разработчик</button><button id="worldExitBtn" class="world-action">В меню</button></div>
+  <div class="world-actions"><button id="worldPhoneBtn" class="world-action">📱 Телефон</button><button id="worldBigMapBtn" class="world-action">🗺 Карта</button><button id="worldRadioBtn" class="world-action">📻 Включить радио</button><button id="worldCamBtn" class="world-action">Камера: 3-е лицо</button><button id="worldInteractBtn" class="world-action">E · Осмотреться</button><button id="worldDevBtn" class="world-action">🛠 Разработчик</button><button id="worldExitBtn" class="world-action">В меню</button></div>
 </div>
 <div id="worldPhone" class="overlay world-phone" hidden>
   <div class="phone-shell"><div class="phone-notch"></div><div class="phone-head"><span>TR MOBILE</span><button id="worldPhoneClose" class="btn">✕</button></div>
     <div id="worldPhoneContent" class="phone-content"><h2>Добро пожаловать</h2><p class="sub">Город живёт своей жизнью.</p></div>
-    <div class="phone-dock"><button class="btn" data-phone-tab="home">Главная</button><button class="btn" data-phone-tab="map">Карта</button><button class="btn" data-phone-tab="services">Сервисы</button><button class="btn" data-phone-tab="events">События</button></div>
+    <div class="phone-dock"><button class="btn" data-phone-tab="home">Главная</button><button class="btn" data-phone-tab="map">Карта</button><button class="btn" data-phone-tab="services">Сервисы</button><button class="btn" data-phone-tab="events">События</button><button class="btn" data-phone-tab="social">Соцсеть</button></div>
   </div>
 </div>
 
 <div id="worldLoading" class="world-loading" hidden role="status" aria-live="polite">
   <div class="loading-card"><div class="loading-spinner"></div><h2>Загрузка Нью-Йорка</h2><p id="worldLoadingText">Загружаем оптимизированную карту и текстуры…</p><div class="loading-track"><i></i></div><small>Не закрывай игру, пока карта подключается.</small></div>
+</div>
+<div id="worldBigMapOverlay" class="world-big-map-overlay" hidden>
+  <div class="world-big-map-shell">
+    <div class="world-big-map-toolbar"><b>🗺 Карта Нью-Йорка</b><input id="worldMapMarkName" maxlength="48" placeholder="Название отметки"><button id="worldMapSaveMark" class="btn">📍 Сохранить отметку</button><button id="worldMapRouteBtn" class="btn">Построить маршрут</button><button id="worldBigMapClose" class="btn">Закрыть ✕</button></div>
+    <p class="world-map-help">Нажми на карту, чтобы выбрать место. Сохранённые отметки останутся на этом устройстве; маршрут появится на мини-карте.</p>
+    <canvas id="worldBigMapCanvas" width="980" height="760" aria-label="Карта Нью-Йорка: нажмите, чтобы поставить отметку"></canvas>
+    <div id="worldMapMarks" class="world-map-marks"></div>
+  </div>
 </div>
 <div id="worldDevPanel" class="world-dev-panel" hidden>
   <div class="dev-head"><div><b>TR · Редактор мира</b><small id="devStatus">Заблокирован</small></div><button id="devClose" class="btn">✕</button></div>
@@ -192,6 +200,9 @@
     </div>
     <label class="dev-check"><input id="devDrag" type="checkbox"> Перетаскивать предмет прямо в игре</label>
     <div class="dev-row"><button id="devApplySelf" class="btn">Применить только себе</button><button id="devApplyAll" class="btn dev-primary">Применить для всех</button></div>
+    <div class="dev-row"><input id="devCommand" type="text" autocomplete="off" placeholder="/ghost · /fly · /tp X Z"><button id="devRunCommand" class="btn">Выполнить</button></div>
+    <div id="devConsoleLog" class="dev-console-log">Команды: /ghost, /fly, /tp X Z, /tpmark</div>
+    <div class="dev-row"><button id="devTeleportToMark" class="btn">Телепорт к маршруту</button></div>
     <p class="dev-help">Координаты и размер берутся из выбранного объекта. «Весь Нью-Йорк» двигает/масштабирует только импортированную карту — светофоры, люди и другие игровые объекты останутся на месте. Общие изменения сохраняются на игровом сервере.</p>
   </div>
 </div>
@@ -220,6 +231,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="assets3d.js"></script>
 <script src="vehicle-catalog.js"></script>
 <script src="audio.js"></script>

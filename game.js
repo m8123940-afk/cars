@@ -378,22 +378,21 @@ function buildTrack(L, providedSeed) {
   ribbon(ROAD_W + 1.3, 0.01, new THREE.MeshStandardMaterial({ map: curbT, roughness: 0.8, side: THREE.DoubleSide }), 4);
   ribbon(ROAD_W, 0.03, new THREE.MeshStandardMaterial({ map: roadT, roughness: envInfo.weather === 'Дождь' ? 0.24 : themeIdx === 1 ? 0.35 : 0.65, metalness: envInfo.weather === 'Дождь' ? 0.22 : 0.1, envMapIntensity: 0.7, side: THREE.DoubleSide }), 16);
 
-  const s0 = sampleAt(0, 0);
-  const sl = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_W * 2, 1.4), new THREE.MeshBasicMaterial({ color: 0xffffff }));
-  sl.rotation.x = -Math.PI / 2; sl.rotation.z = -s0.h; sl.position.set(s0.x, 0.07, s0.z); trackG.add(sl);
+  const s0 = sampleAt(0, 0), t0=tan[0], lateralX=t0.z, lateralZ=-t0.x, halfW=ROAD_W, halfT=0.72;
+  const finishGeo=new THREE.BufferGeometry();
+  const finishVerts=[s0.x+lateralX*halfW+t0.x*halfT,0.075,s0.z+lateralZ*halfW+t0.z*halfT, s0.x-lateralX*halfW+t0.x*halfT,0.075,s0.z-lateralZ*halfW+t0.z*halfT, s0.x-lateralX*halfW-t0.x*halfT,0.075,s0.z-lateralZ*halfW-t0.z*halfT, s0.x+lateralX*halfW-t0.x*halfT,0.075,s0.z+lateralZ*halfW-t0.z*halfT];
+  finishGeo.setAttribute('position',new THREE.Float32BufferAttribute(finishVerts,3));finishGeo.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1,0,1,1,0,1],2));finishGeo.setIndex([0,1,2,0,2,3]);finishGeo.computeVertexNormals();
+  const finishTex=canvasTex(512,64,(ctx,w,h)=>{const cells=24,rows=2;for(let y=0;y<rows;y++)for(let x=0;x<cells;x++){ctx.fillStyle=(x+y)%2?'#101317':'#f7f8fa';ctx.fillRect(x*w/cells,y*h/rows,w/cells+0.5,h/rows+0.5);}});finishTex.wrapS=finishTex.wrapT=THREE.ClampToEdgeWrapping;
+  const sl=new THREE.Mesh(finishGeo,new THREE.MeshBasicMaterial({map:finishTex,side:THREE.DoubleSide}));sl.name='TR perpendicular checker finish line';trackG.add(sl);
   const arch = new THREE.Group(), am = new THREE.MeshStandardMaterial({ color: 0xcc2222, emissive: 0x330000 });
   [-1, 1].forEach(s => { const p = new THREE.Mesh(new THREE.BoxGeometry(0.6, 8, 0.6), am); p.position.set(s * (ROAD_W + 2), 4, 0); arch.add(p); });
   const bm = new THREE.Mesh(new THREE.BoxGeometry(ROAD_W * 2 + 4.6, 1.2, 0.8), am); bm.position.y = 8; arch.add(bm);
   arch.position.set(s0.x, 0, s0.z); arch.rotation.y = s0.h; trackG.add(arch);
 
-  const dum = new THREE.Object3D();
-  const rails = new THREE.InstancedMesh(new THREE.BoxGeometry(0.25, 0.8, SP * 3.3), new THREE.MeshStandardMaterial({ color: 0x8a8d92, roughness: 0.5, metalness: 0.5 }), 2 * Math.ceil(N / 3));
-  let k = 0;
-  for (let i = 0; i < N; i += 3) for (const s of [-1, 1]) {
-    dum.position.set(pos[i].x + tan[i].z * (ROAD_W + 2) * s, 0.4, pos[i].z - tan[i].x * (ROAD_W + 2) * s);
-    dum.rotation.set(0, Math.atan2(tan[i].x, tan[i].z), 0); dum.updateMatrix(); rails.setMatrixAt(k++, dum.matrix);
-  }
-  trackG.add(rails);
+  const dum = new THREE.Object3D(),fenceMat=new THREE.MeshStandardMaterial({color:0x9ca5ad,roughness:0.42,metalness:0.68});
+  const segmentCount=Math.ceil(N/3),fenceRails=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.045,0.045,1,6),fenceMat,segmentCount*2*3),fencePosts=new THREE.InstancedMesh(new THREE.CylinderGeometry(0.075,0.085,1.65,7),fenceMat,segmentCount*2);let rk=0,pk=0;
+  for(let i=0;i<N;i+=3){const j=(i+3)%N;for(const side of [-1,1]){const ox=tan[i].z*(ROAD_W+1.8)*side,oz=-tan[i].x*(ROAD_W+1.8)*side,ox2=tan[j].z*(ROAD_W+1.8)*side,oz2=-tan[j].x*(ROAD_W+1.8)*side;const ax=pos[i].x+ox,az=pos[i].z+oz,bx=pos[j].x+ox2,bz=pos[j].z+oz2;const dx=bx-ax,dz=bz-az,len=Math.hypot(dx,dz);const dir=new THREE.Vector3(dx,0,dz).normalize();for(const y of [0.42,0.92,1.42]){dum.position.set((ax+bx)/2,y,(az+bz)/2);dum.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);dum.scale.set(1,len,1);dum.updateMatrix();fenceRails.setMatrixAt(rk++,dum.matrix);}dum.position.set(ax,0.83,az);dum.quaternion.identity();dum.scale.set(1,1,1);dum.updateMatrix();fencePosts.setMatrixAt(pk++,dum.matrix);}}
+  fenceRails.instanceMatrix.needsUpdate=true;fencePosts.instanceMatrix.needsUpdate=true;trackG.add(fenceRails,fencePosts);
   const poles = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.1, 0.13, 6.5, 6), new THREE.MeshStandardMaterial({ color: 0x555a60 }), 2 * Math.ceil(N / 10));
   const glowM = new THREE.SpriteMaterial({ map: glowT, color: th.lamp, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0.85 });
   k = 0;
@@ -576,6 +575,7 @@ function placeGrid(mySlot) {
 
 // ================= ввод =================
 const held = new Set();
+const WORLD_DEFAULT_KEYMAP = { KeyW: 'gas', KeyA: 'left', KeyS: 'brake', KeyD: 'right' };
 const DEFAULT_KEYMAP = { ArrowUp: 'gas', KeyW: 'gas', ArrowDown: 'brake', KeyS: 'brake', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'nitro', ShiftLeft: 'drift', ShiftRight: 'drift', KeyX: 'drift' };
 let waitingKey = null;
 const actionKeys = ['gas', 'brake', 'left', 'right', 'nitro', 'drift'];
@@ -592,9 +592,9 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyV' && state === 'race') { cycleRaceCamera(); e.preventDefault(); return; }
   if (e.code === 'KeyF' && (state === 'race' || state === 'world')) { photoRequested = true; e.preventDefault(); return; }
   if (e.code === 'KeyR') { fixPlayer(); return; }
-  const k = activeKeyMap()[e.code]; if (k) { held.add(k); e.preventDefault(); }
+  const k = activeKeyMap()[e.code] || (state === 'world' ? WORLD_DEFAULT_KEYMAP[e.code] : null); if (k) { held.add(k); e.preventDefault(); }
 });
-addEventListener('keyup', e => { const k = activeKeyMap()[e.code]; if (k) held.delete(k); });
+addEventListener('keyup', e => { const k = activeKeyMap()[e.code] || (state === 'world' ? WORLD_DEFAULT_KEYMAP[e.code] : null); if (k) held.delete(k); });
 function releaseAllInputs() {
   held.clear();
   document.querySelectorAll('.tb.on').forEach(b => { b.classList.remove('on'); delete b.dataset.activeAction; });
@@ -1058,7 +1058,7 @@ function setDamage(value) {
   if(player.dmg<100){criticalRespawnAt=0;criticalRespawnReady=false;}
   else if(player.dmg>=86 && before<86 && Math.random()<0.65){player.engineStall=rr(1.4,3.4);player.speed*=0.18;toast('Двигатель заглох от сильного удара!');}
 }
-function addDmg(v) { const amt=Math.max(0,Number(v)||0); setDamage(player.dmg + amt); if(amt>=1.6) spawnCrashDebris(amt); }
+function addDmg(v) { const amt=Math.max(0,Number(v)||0); if(amt>=1.8&&window.TRModels&&typeof window.TRModels.dentCar==='function')window.TRModels.dentCar(player.mesh,amt); setDamage(player.dmg + amt); if(amt>=1.6) spawnCrashDebris(amt); }
 const angDiff = (a, b) => ((a - b + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 
 function fixPlayer() {
@@ -1105,7 +1105,7 @@ function updatePlayer(dt) {
   if (player.slip > 0) { player.slip -= dt; player.h += player.spin * 7 * dt; player.speed -= player.speed * 0.9 * dt; steer = 0; }
   player.steerS += (steer - player.steerS) * Math.min(1, 8 * dt);
   const sp = Math.abs(player.speed);
-  if (!player.air) player.h -= player.steerS * P.hnd * (player.mesh.userData.trWheelLost ? 0.56 : 1) * 1.25 * clamp(sp / 18, 0, 1) / (1 + sp / 55) * dt * (player.speed >= 0 ? 1 : -1);
+  player.h -= player.steerS * P.hnd * (player.mesh.userData.trWheelLost ? 0.56 : 1) * (player.air ? 0.34 : 1) * 1.25 * clamp(sp / 18, 0, 1) / (1 + sp / 55) * dt * (player.speed >= 0 ? 1 : -1);
 
   const fx = Math.sin(player.h) * player.speed, fz = Math.cos(player.h) * player.speed;
   const weatherGrip = envInfo.weather === 'Дождь' ? 0.80 : envInfo.weather === 'Туман' ? 0.96 : 1;
@@ -1330,7 +1330,7 @@ function itemsUpdate(dt) {
       case 'nitro': if (d2 < 5) { it.on = false; it.mesh.visible = false; nitro = Math.min(phys.nCap, nitro + phys.nCap * 0.4); Snd.pickup(); toast('Нитро +'); } break;
       case 'repair': if (d2 < 5) { it.on = false; it.mesh.visible = false; setDamage(Math.max(0, player.dmg - 18)); player.immobilized = player.dmg >= 100; if(!player.immobilized && player.speed===0) player.engineStall=0; Snd.pickup(); toast('Ремонтный набор: −18% повреждений'); } break;
       case 'oil': if (d2 < 5.2 && !player.air && player.slip <= 0) { player.slip = 1.2; player.spin = Math.random() < 0.5 ? 1 : -1; toast('Масло!'); Snd.oil(); } break;
-      case 'cone': if (d2 < 4 && !player.air) { it.on = false; it.mesh.visible = false; player.speed *= 0.45; addDmg(8); Snd.crash(); toast('Препятствие!'); } break;
+      case 'cone': if (d2 < 4 && !player.air) { it.on = false; it.mesh.visible = false; player.speed *= 0.88; addDmg(1.2); Snd.bump(); toast('Небольшое препятствие'); } break;
     }
   }
   if (!player.air) player.y += (ry - player.y) * Math.min(1, 15 * dt);
@@ -1428,8 +1428,8 @@ function updateCamera(dt) {
   let wanted, look, fov;
   if(state==='race'&&raceCamMode===0){
     // Dashboard-height cockpit view, aimed along the actual vehicle heading.
-    wanted=new THREE.Vector3(m.x+Math.sin(camH)*0.45,1.12+player.y*0.45,m.z+Math.cos(camH)*0.72);
-    look=new THREE.Vector3(m.x+Math.sin(camH)*24,1.0+player.y*0.45,m.z+Math.cos(camH)*24);fov=80+clamp(Math.abs(player.speed)/100,0,1)*7;
+    wanted=new THREE.Vector3(m.x-Math.sin(camH)*0.18,0.92+player.y*0.45,m.z-Math.cos(camH)*0.18);
+    look=new THREE.Vector3(wanted.x+Math.sin(camH)*24,wanted.y+Math.sin(camH)*24*0.012,wanted.z+Math.cos(camH)*24);fov=80+clamp(Math.abs(player.speed)/100,0,1)*7;
   }else if(state==='race'&&raceCamMode===1){
     const side=0.9;wanted=new THREE.Vector3(m.x-Math.sin(camH)*5.4+Math.cos(camH)*side,2.55+player.y*0.6,m.z-Math.cos(camH)*5.4-Math.sin(camH)*side);
     look=new THREE.Vector3(m.x+Math.sin(camH)*7,1.35+player.y*0.45,m.z+Math.cos(camH)*7);fov=72+clamp(Math.abs(player.speed)/90,0,1)*7;
@@ -1473,7 +1473,7 @@ function loop(now) {
     const firstRace=state==='race'&&raceCamMode===0;
     const firstWorld=state==='world'&&worldCamMode===0&&!worldInterior;
     const context=(state==='world'&&worldDriving)||state==='race'?'drive':state==='world'?'world':'race';
-    window.TRModels.setFirstPerson(firstRace||firstWorld,context);
+    window.TRModels.setFirstPerson(firstRace||firstWorld,context,player.mesh);
     if(typeof window.TRModels.setSteer==='function')window.TRModels.setSteer(state==='world'&&worldDriving?((held.has('right')?1:0)-(held.has('left')?1:0)):player.steerS||0);
     window.TRModels.update(dt);
   }
@@ -1487,7 +1487,7 @@ function loop(now) {
   const smoke=player.mesh&&player.mesh.userData&&player.mesh.userData.damageSmoke;if(smoke&&smoke.visible){smoke.material.opacity=(player.dmg>=90?0.38:0.18)+0.08*(0.5+0.5*Math.sin(tAcc*5));smoke.position.y+=Math.sin(tAcc*2)*0.0008;}
   renderer.render(scene, cam);
   if(state==='world'){renderWorldMinimap();if(!worldInterior)pollSharedWorldEdits();}
-  if(photoRequested){photoRequested=false;savePhoto();}
+  if(photoRequested){photoRequested=false;savePhoto();}if(socialPublishRequested){socialPublishRequested=false;try{const caption=$('socialCaption')?.value||'Мой момент в Turbo Rivals',image=captureSocialPhoto();void publishSocialPost(caption,image);}catch(err){console.warn('social photo',err);toast('Не удалось сделать фото');}}
 }
 
 
@@ -1504,6 +1504,8 @@ const devRaycaster = new THREE.Raycaster(), devPointer = new THREE.Vector2();
 let worldRouteTarget = { x: 0, z: -190, name: 'Empire State Building' };
 let worldMinimapLast = 0, worldMiniMapBaseCanvas = null, worldMiniMapWorldSpan = 1080, worldMiniMapCenterX = 0, worldMiniMapCenterZ = 0;
 let devUnlocked = false, devPassword = '', devPickMode = false, devSelected = null, devDragState = null;
+let worldGhostMode=false,worldFlyMode=false,worldEnteringCar=false,worldEnterCarTimer=0,worldMapSelectedPoint=null,radioStationIndex=0;
+const WORLD_RADIO_LABELS=['Neon Highway','Vice Night','Sunset Drive'];
 let devGlobalEdits = {}, devLocalEdits = {}, devGlobalRevision = 0, devLastPollAt = 0;
 let worldCamOrbitYaw = 0, worldCamOrbitPitch = 0, worldLookDrag = null;
 let pendingTutorialRegion='newyork',tutorialPermitStart=false;
@@ -1807,15 +1809,26 @@ function updateCrashDebris(dt){
   }
 }
 // ---- Фото: клавиша F в гонке и открытом мире ----
-let photoRequested=false;
+let photoRequested=false,socialPublishRequested=false;
+function captureSocialPhoto(){
+  const src=renderer.domElement,cv=document.createElement('canvas');cv.width=640;cv.height=360;const c=cv.getContext('2d');if(!c)throw new Error('Canvas недоступен');c.drawImage(src,0,0,cv.width,cv.height);return cv.toDataURL('image/jpeg',0.66);
+}
+function publishWorldPhoto(){socialPublishRequested=true;toast('Снимок делается…');}
+function escapeHTML(value){return String(value??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));}
+function readSocialPosts(){try{const v=JSON.parse(localStorage.getItem('tr_world_social_v1')||'[]');return Array.isArray(v)?v:[];}catch(_){return[];}}
+function writeSocialPosts(posts){try{localStorage.setItem('tr_world_social_v1',JSON.stringify(posts.slice(0,8)));return true;}catch(_){toast('Недостаточно памяти для сохранения публикации');return false;}}
+let socialFeedPosts=null,socialFeedLoading=false;
+function currentSocialPosts(){return Array.isArray(socialFeedPosts)?socialFeedPosts:readSocialPosts();}
+function storeSocialFeed(posts){socialFeedPosts=Array.isArray(posts)?posts.slice(0,12):[];try{localStorage.setItem('tr_world_social_v1',JSON.stringify(socialFeedPosts.slice(0,8)));}catch(_){} }
+async function refreshSocialFeed(){if(socialFeedLoading)return;const base=getWorldApiBase();if(!base){socialFeedPosts=null;return;}socialFeedLoading=true;try{const r=await fetch(base+'/api/social-posts',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const data=await r.json();if(!data||!Array.isArray(data.posts))throw new Error('bad social feed');storeSocialFeed(data.posts);if(!$('worldPhone').hidden&&$('worldPhoneContent').innerHTML.includes('data-social-publish'))renderSocialFeed();}catch(e){console.warn('Shared social feed unavailable; using local cache',e);socialFeedPosts=null;}finally{socialFeedLoading=false;}}
+async function postSocialAction(path,payload){const base=getWorldApiBase();if(!base)throw new Error('Сервер недоступен');const r=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const data=await r.json().catch(()=>({}));if(!r.ok)throw new Error(data.error||('HTTP '+r.status));if(Array.isArray(data.posts))storeSocialFeed(data.posts);return data;}
+async function publishSocialPost(caption,image){const post={id:Date.now(),author:String(save.name||'Гонщик').slice(0,18),caption:String(caption||'Мой момент в Turbo Rivals').slice(0,180),image,likes:0,comments:[]};try{await postSocialAction('/api/social-posts',post);toast('Фото опубликовано для всех игроков');}catch(e){const posts=readSocialPosts();posts.unshift(post);writeSocialPosts(posts);socialFeedPosts=null;toast('Опубликовано локально: серверная лента недоступна');console.warn('Social publish fallback',e);}renderSocialFeed();}
+async function likeSocialPost(id){try{await postSocialAction('/api/social-posts/like',{id});}catch(e){const posts=readSocialPosts(),post=posts.find(p=>Number(p.id)===Number(id));if(post){post.likes=(Number(post.likes)||0)+1;writeSocialPosts(posts);socialFeedPosts=null;toast('Лайк сохранён только на этом устройстве');}}renderSocialFeed();}
+async function commentSocialPost(id,text){text=String(text||'').trim().slice(0,120);if(!text)return;try{await postSocialAction('/api/social-posts/comment',{id,text,author:String(save.name||'Гонщик').slice(0,18)});}catch(e){const posts=readSocialPosts(),post=posts.find(p=>Number(p.id)===Number(id));if(post){post.comments=post.comments||[];post.comments.push({author:'Ты',text});writeSocialPosts(posts);socialFeedPosts=null;toast('Комментарий сохранён локально');}}renderSocialFeed();}
+function renderSocialFeed(){const el=$('worldPhoneContent');const posts=currentSocialPosts();const shared=Array.isArray(socialFeedPosts);el.innerHTML=`<h2>📸 TR Social</h2><p>Сделай снимок заезда и поделись им с другими игроками.</p><div class="card"><input id="socialCaption" maxlength="180" placeholder="Подпись к фото…" style="width:100%;padding:10px;border:1px solid #ccdbea;border-radius:9px"><button class="btn" data-social-publish style="margin-top:8px">📷 Сфотографировать и опубликовать</button></div>${posts.map(post=>`<div class="social-post"><b>${escapeHTML(post.author||'Гонщик')}</b><p>${escapeHTML(post.caption||'Без подписи')}</p><img src="${post.image}" alt="Фото игрока"><div class="social-actions"><button class="btn" data-social-like="${Number(post.id)}">❤️ ${Number(post.likes)||0} лайков</button><span>${(post.comments||[]).length} комментариев</span></div>${(post.comments||[]).slice(-3).map(c=>`<p><b>${escapeHTML(c.author||'Гонщик')}:</b> ${escapeHTML(c.text)}</p>`).join('')}<div class="social-comment-row"><input data-social-comment-input="${Number(post.id)}" maxlength="120" placeholder="Комментарий"><button class="btn" data-social-comment="${Number(post.id)}">Отправить</button></div></div>`).join('')||'<p class="sub">Лента пока пустая. Первая публикация появится здесь.</p>'}<p class="sub">${shared?'Общая лента: публикации, лайки и комментарии передаются через игровой сервер.':'Локальный кэш: подключись к игровому серверу, чтобы увидеть общую ленту.'}</p>`;}
 function savePhoto(){
-  try{
-    const url=renderer.domElement.toDataURL('image/png');
-    const a=document.createElement('a');
-    a.href=url;a.download='turbo-rivals-'+new Date().toISOString().replace(/[:.]/g,'-')+'.png';
-    document.body.appendChild(a);a.click();a.remove();
-    toast('Фото сохранено');
-  }catch(err){toast('Не удалось сохранить фото');}
+  try{const url=renderer.domElement.toDataURL('image/png');const a=document.createElement('a');a.href=url;a.download='turbo-rivals-'+new Date().toISOString().replace(/[:.]/g,'-')+'.png';document.body.appendChild(a);a.click();a.remove();toast('Фото сохранено');}
+  catch(err){toast('Не удалось сохранить фото');}
 }
 // ---- Интерьер школы №103 ----
 let schoolG=null,activeInteriorG=null,interiorExit={x:-50,z:-23};
@@ -2111,16 +2124,16 @@ function buildOpenWorld(regionId=worldRegionId){
   if(!player.mesh){showCar(save.cur);}player.mesh.position.set(9,0,8);player.mesh.rotation.set(0,0,0);player.mesh.visible=false;worldYaw=0;
   worldInteractables.push({type:'raceboard',x:-28,z:12,r:10,name:'Городские заезды'},{type:'plaza',x:0,z:50,r:12,name:'Центральная площадь'});
   // Пешеходы: разнообразные лица, куртки и обувь; прохожие гуляют, машут рукой и радуются рядом с гонщиком.
-  const pedCount=quality==='verylow'?6:quality==='low'?10:quality==='med'?14:quality==='high'?20:quality==='veryhigh'?26:32;
+  const pedCount=quality==='verylow'?6:quality==='low'?12:quality==='med'?18:quality==='high'?26:quality==='veryhigh'?34:40;
   for(let i=0;i<pedCount;i++){
     const axis=Math.random()<0.5?'x':'z',road=Math.floor(Math.random()*9-4)*100+(Math.random()<0.5?-1:1)*13;
     const centerX=axis==='x'?road:(Math.random()*850-425),centerZ=axis==='z'?road:(Math.random()*850-425);
     const ped=makeWorldPedestrian(Math.random()<0.42?'girl':'boy',Math.floor(Math.random()*OUTFITS.length),Math.floor(Math.random()*SKINS.length));
     ped.position.set(centerX,0,centerZ);ped.rotation.y=Math.random()*Math.PI*2;worldG.add(ped);
-    const rec={mesh:ped,name:WORLD_NAMES[i%WORLD_NAMES.length],centerX,centerZ,axis,phase:Math.random()*6.28,amp:2+Math.random()*5,walk:0.45+Math.random()*0.7,waveT:Math.random()*2,jumpT:0,nextCheer:2+Math.random()*6,baseYaw:ped.rotation.y};ped.userData.trWalkSpeed=rec.walk;ped.userData.trMotionPhase=rec.phase;worldPedestrians.push(rec);
+    const rec={mesh:ped,name:WORLD_NAMES[i%WORLD_NAMES.length],centerX,centerZ,axis,phase:Math.random()*6.28,amp:2+Math.random()*5,walk:0.45+Math.random()*0.7,waveT:Math.random()*2,jumpT:0,nextCheer:2+Math.random()*6,baseYaw:ped.rotation.y};ped.userData.trWalkSpeed=rec.walk;ped.userData.trMotionPhase=rec.phase;if(window.TRModels&&window.TRModels.registerCharacter)window.TRModels.registerCharacter(ped);worldPedestrians.push(rec);
   }
   // Движущийся городской транспорт для масштаба и жизни города.
-  const trafficCount=quality==='verylow'?2:quality==='low'?3:quality==='med'?4:quality==='high'?6:quality==='veryhigh'?7:8;
+  const trafficCount=quality==='verylow'?2:quality==='low'?4:quality==='med'?6:quality==='high'?8:quality==='veryhigh'?10:12;
   for(let i=0;i<trafficCount;i++){
     const def=CARS[Math.floor(Math.random()*Math.min(7,CARS.length))],mesh=makeCarModel(def,Math.random()<0.5?undefined:Math.floor(Math.random()*0xffffff),{neon:false,rimStyle:Math.floor(Math.random()*3)});seatDriver(mesh,Math.random()<0.5?'boy':'girl',Math.floor(Math.random()*6),Math.floor(Math.random()*3));
     const dir=Math.random()<0.5?1:-1,z=Math.floor(Math.random()*9-4)*100+(Math.random()<0.5?-5:5),x=Math.random()*1200-600;mesh.position.set(x,0,z);mesh.rotation.y=dir>0?Math.PI/2:-Math.PI/2;worldG.add(mesh);worldTraffic.push({mesh,x,z,dir,speed:6+Math.random()*8,axis:'x',phase:Math.random()*6.28});
@@ -2197,7 +2210,7 @@ function renderWorldMinimap(){
     ctx.strokeStyle='#ffd75e';ctx.lineWidth=3;ctx.lineCap='round';ctx.setLineDash([5,3]);ctx.beginPath();ctx.moveTo(mapX(px),mapY(pz));ctx.lineTo(mapX(tx),mapY(pz));ctx.lineTo(mapX(tx),mapY(tz));ctx.stroke();ctx.setLineDash([]);
     const dx=mapX(tx),dy=mapY(tz);ctx.fillStyle='#ffd75e';ctx.beginPath();ctx.arc(dx,dy,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#17202b';ctx.lineWidth=2;ctx.stroke();
   }
-  ctx.save();ctx.translate(cx,cy);ctx.rotate(Math.PI-(worldDriving?player.h:worldYaw));ctx.fillStyle='#65e4ff';ctx.strokeStyle='#06121c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(-(worldDriving?player.h:worldYaw));ctx.fillStyle='#65e4ff';ctx.strokeStyle='#06121c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
   ctx.fillStyle='#fff';ctx.font='bold 10px Arial';ctx.textAlign='left';ctx.fillText('NYC · МАРШРУТ',7,13);
 }
 function getCityEditorRoot(){return worldG&&worldG.userData&&worldG.userData.importedCityRoot;}
@@ -2232,7 +2245,66 @@ function registerWorldEditor(){
   ['pointerup','pointercancel','lostpointercapture'].forEach(type=>$('c').addEventListener(type,e=>{if(devDragState&&e.pointerId===devDragState.id){const cityKey=devDragState.key==='__city__';devDragState=null;if(cityKey)syncCityBoundsAndMiniMap(true);}},true));
 }
 registerWorldEditor();
+$('devRunCommand')?.addEventListener('click',()=>{runDeveloperCommand($('devCommand')?.value||'');if($('devConsoleLog'))$('devConsoleLog').textContent='Выполнено: '+($('devCommand')?.value||'');});
+$('devCommand')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();runDeveloperCommand($('devCommand').value);if($('devConsoleLog'))$('devConsoleLog').textContent='Команда: '+$('devCommand').value;}});
+$('devTeleportToMark')?.addEventListener('click',()=>runDeveloperCommand('/tpmark'));
+$('worldBigMapBtn')?.addEventListener('click',showWorldBigMap);$('worldBigMapClose')?.addEventListener('click',hideWorldBigMap);
+$('worldBigMapCanvas')?.addEventListener('pointerdown',e=>{const c=$('worldBigMapCanvas'),r=c.getBoundingClientRect();worldMapSelectedPoint={x:worldMiniMapCenterX-worldMiniMapWorldSpan/2+((e.clientX-r.left)/r.width)*worldMiniMapWorldSpan,z:worldMiniMapCenterZ-worldMiniMapWorldSpan/2+((e.clientY-r.top)/r.height)*worldMiniMapWorldSpan};worldMapSelectedPoint.x=clamp(worldMapSelectedPoint.x,worldBounds.minX+3,worldBounds.maxX-3);worldMapSelectedPoint.z=clamp(worldMapSelectedPoint.z,worldBounds.minZ+3,worldBounds.maxZ-3);drawWorldBigMap();if($('worldMapMarkName')&&!$('worldMapMarkName').value)$('worldMapMarkName').value='Моя отметка';});
+$('worldMapSaveMark')?.addEventListener('click',()=>{if(!worldMapSelectedPoint){toast('Сначала нажми на точку карты');return;}const marks=readWorldMapMarks();marks.push({id:Date.now(),name:($('worldMapMarkName')?.value||'Моя отметка').slice(0,48),x:worldMapSelectedPoint.x,z:worldMapSelectedPoint.z});saveWorldMapMarks(marks);renderWorldMapMarks();drawWorldBigMap();toast('Место сохранено на карте');});
+$('worldMapRouteBtn')?.addEventListener('click',()=>{if(!worldMapSelectedPoint){toast('Нажми на место на карте');return;}worldRouteTarget={...worldMapSelectedPoint,name:($('worldMapMarkName')?.value||'Маршрут')};hideWorldBigMap();toast('Маршрут построен · он отмечен на мини-карте');});
+$('worldMapMarks')?.addEventListener('click',e=>{const rb=e.target.closest('[data-map-route]'),tb=e.target.closest('[data-map-tp]');const id=Number((rb||tb)?.dataset.mapRoute||(tb&&tb.dataset.mapTp));if(!Number.isFinite(id))return;const m=readWorldMapMarks().find(v=>Number(v.id)===id);if(!m)return;if(rb){worldRouteTarget={x:m.x,z:m.z,name:m.name};hideWorldBigMap();toast('Маршрут к '+m.name+' построен');}else if(tb){if(!devUnlocked){toast('Телепорт доступен после входа в режим разработчика');return;}worldRouteTarget={x:m.x,z:m.z,name:m.name};runDeveloperCommand('/tp '+m.x+' '+m.z);}});
 $('worldMiniMap').addEventListener('click',e=>{if(state!=='world'||worldInterior)return;const c=$('worldMiniMap'),r=c.getBoundingClientRect(),actor=currentWorldActor();if(!actor)return;const range=145,scale=c.width/(range*2),x=(e.clientX-r.left)/r.width*c.width,z=(e.clientY-r.top)/r.height*c.height;worldRouteTarget={x:clamp(actor.position.x+(x-c.width/2)/scale,worldBounds.minX+3,worldBounds.maxX-3),z:clamp(actor.position.z+(z-c.height/2)/scale,worldBounds.minZ+3,worldBounds.maxZ-3),name:'пользовательская точка'};toast('Маршрут установлен');});
+
+function findSafeCitySpawn(x=0,z=0,radius=2){
+  const loX=worldBounds.minX+7,hiX=worldBounds.maxX-7,loZ=worldBounds.minZ+7,hiZ=worldBounds.maxZ-7;
+  const city=worldG&&worldG.userData&&worldG.userData.importedCityRoot;
+  const meshes=window.TRModels&&window.TRModels.getCityMeshes?window.TRModels.getCityMeshes():[];
+  if(!city||!meshes||!meshes.length)return{x:clamp(x,loX,hiX),z:clamp(z,loZ,hiZ)};
+  const top=(city.userData.importedBounds?.maxY||city.userData.importedBounds?.max?.y||worldGroundY+260)+20;
+  const pts=[{x,z}];
+  for(let r=5;r<=100;r+=5)for(let a=0;a<Math.PI*2;a+=Math.PI/4)pts.push({x:x+Math.cos(a)*r,z:z+Math.sin(a)*r});
+  const ray=new THREE.Raycaster();
+  for(const q of pts){const cx=clamp(q.x,loX,hiX),cz=clamp(q.z,loZ,hiZ);ray.set(new THREE.Vector3(cx,top,cz),new THREE.Vector3(0,-1,0));ray.near=0;ray.far=top-worldGroundY+10;const hits=ray.intersectObjects(meshes,false).filter(h=>h.point.y>=worldGroundY-0.6);if(hits.length&&hits[0].point.y>worldGroundY+2.2)continue;
+    let occupied=false;for(const [dx,dz] of [[radius,0],[-radius,0],[0,radius],[0,-radius]]){ray.set(new THREE.Vector3(cx,worldGroundY+1.1,cz),new THREE.Vector3(dx||0,dz?0:0,dz||0).normalize());ray.near=0.05;ray.far=Math.max(0.3,radius*1.15);const wh=ray.intersectObjects(meshes,false).find(h=>h.point.y>worldGroundY-.1&&h.point.y<worldGroundY+2.3);if(wh){occupied=true;break;}}
+    if(!occupied)return{x:cx,z:cz};
+  }
+  return{x:clamp(x,loX,hiX),z:clamp(z,loZ,hiZ)};
+}
+function createWorldEdgeFence(bounds){
+  if(!worldG||worldG.userData.trEdgeFenceAdded)return;
+  const group=new THREE.Group();group.name='TR New York world boundary fence';group.userData.trCustomAddon=true;group.userData.trEditorSkip=true;
+  const x0=bounds.minX+0.65,x1=bounds.maxX-0.65,z0=bounds.minZ+0.65,z1=bounds.maxZ-0.65,step=9;
+  const posts=[],rails=[];
+  function edge(ax,az,bx,bz){const len=Math.hypot(bx-ax,bz-az),n=Math.ceil(len/step);for(let i=0;i<=n;i++){const t=i/n;posts.push([ax+(bx-ax)*t,az+(bz-az)*t]);}for(let i=0;i<n;i++){const t0=i/n,t1=(i+1)/n;const a={x:ax+(bx-ax)*t0,z:az+(bz-az)*t0},b={x:ax+(bx-ax)*t1,z:az+(bz-az)*t1};rails.push({a,b});}}
+  edge(x0,z0,x1,z0);edge(x1,z0,x1,z1);edge(x1,z1,x0,z1);edge(x0,z1,x0,z0);
+  const mat=new THREE.MeshStandardMaterial({color:0x626d78,metalness:0.72,roughness:0.45});
+  const postGeo=new THREE.CylinderGeometry(0.055,0.065,2.3,6),postMesh=new THREE.InstancedMesh(postGeo,mat,posts.length),dummy=new THREE.Object3D();
+  posts.forEach((q,i)=>{dummy.position.set(q[0],1.15,q[1]);dummy.updateMatrix();postMesh.setMatrixAt(i,dummy.matrix);});postMesh.instanceMatrix.needsUpdate=true;group.add(postMesh);
+  const rodGeo=new THREE.CylinderGeometry(0.025,0.025,1,5),rodMat=mat.clone(),rodMesh=new THREE.InstancedMesh(rodGeo,rodMat,rails.length*3);let ri=0;
+  for(const r of rails){const a=r.a,b=r.b,dx=b.x-a.x,dz=b.z-a.z,len=Math.hypot(dx,dz),dir=new THREE.Vector3(dx,0,dz).normalize();for(const y of [0.35,0.95,1.55]){dummy.position.set((a.x+b.x)/2,y,(a.z+b.z)/2);dummy.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);dummy.scale.set(1,len,1);dummy.updateMatrix();rodMesh.setMatrixAt(ri++,dummy.matrix);}}
+  rodMesh.instanceMatrix.needsUpdate=true;group.add(rodMesh);worldG.add(group);worldG.userData.trEdgeFenceAdded=true;
+}
+function readWorldMapMarks(){try{const v=JSON.parse(localStorage.getItem('tr_world_map_marks_v1')||'[]');return Array.isArray(v)?v:[];}catch(_){return[];}}
+function saveWorldMapMarks(m){try{localStorage.setItem('tr_world_map_marks_v1',JSON.stringify(m.slice(-80)));}catch(_){toast('Не удалось сохранить отметку на устройстве');}}
+function drawWorldBigMap(){
+ const canvas=$('worldBigMapCanvas');if(!canvas)return;const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#1d2933';ctx.fillRect(0,0,canvas.width,canvas.height);
+ if(worldMiniMapBaseCanvas)ctx.drawImage(worldMiniMapBaseCanvas,0,0,canvas.width,canvas.height);else{ctx.fillStyle='#293945';ctx.fillRect(0,0,canvas.width,canvas.height);}
+ const span=worldMiniMapWorldSpan||500,cx=worldMiniMapCenterX,cz=worldMiniMapCenterZ;
+ const mapX=x=>(x-(cx-span/2))/span*canvas.width,mapY=z=>(z-(cz-span/2))/span*canvas.height;
+ for(const m of readWorldMapMarks()){const x=mapX(m.x),y=mapY(m.z);ctx.fillStyle='#ffd44f';ctx.strokeStyle='#111b22';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='bold 16px Arial';ctx.fillStyle='#fff';ctx.strokeStyle='#17212a';ctx.lineWidth=3;ctx.strokeText(m.name||'Отметка',x+11,y+5);ctx.fillText(m.name||'Отметка',x+11,y+5);}
+ if(worldRouteTarget){ctx.strokeStyle='#ffe16b';ctx.lineWidth=4;ctx.setLineDash([10,6]);ctx.beginPath();const actor=currentWorldActor();if(actor){ctx.moveTo(mapX(actor.position.x),mapY(actor.position.z));ctx.lineTo(mapX(worldRouteTarget.x),mapY(worldRouteTarget.z));}ctx.stroke();ctx.setLineDash([]);}
+ const a=currentWorldActor();if(a){ctx.fillStyle='#50ebff';ctx.beginPath();ctx.arc(mapX(a.position.x),mapY(a.position.z),7,0,Math.PI*2);ctx.fill();}
+}
+function renderWorldMapMarks(){const el=$('worldMapMarks');if(!el)return;el.innerHTML=readWorldMapMarks().map(m=>`<div class="world-map-mark"><span>📍 ${String(m.name||'Отметка').replace(/[<>]/g,'')}</span><button class="btn" data-map-route="${m.id}">Маршрут</button><button class="btn" data-map-tp="${m.id}">Телепорт</button></div>`).join('')||'<p class="sub">Пока нет отметок. Нажми на карту и сохрани место.</p>';}
+function showWorldBigMap(){const el=$('worldBigMapOverlay');if(!el)return;el.hidden=false;worldMapSelectedPoint=null;drawWorldBigMap();renderWorldMapMarks();}
+function hideWorldBigMap(){const el=$('worldBigMapOverlay');if(el)el.hidden=true;}
+function runDeveloperCommand(raw){if(!devUnlocked){toast('Сначала открой панель разработчика');return;}const txt=String(raw||'').trim().toLowerCase();const parts=txt.split(/\s+/);const cmd=parts[0];
+ if(cmd==='/ghost'){worldGhostMode=!worldGhostMode;if(worldGhostMode)worldFlyMode=false;toast('Ghost '+(worldGhostMode?'включён':'выключен'));return;}
+ if(cmd==='/fly'){worldFlyMode=!worldFlyMode;if(worldFlyMode)worldGhostMode=true;else worldGhostMode=false;toast('Fly '+(worldFlyMode?'включён':'выключен'));return;}
+ if(cmd==='/tp'||cmd==='/teleport'){let x=Number(parts[1]),z=Number(parts[2]);if(!Number.isFinite(x)||!Number.isFinite(z)){toast('Формат: /tp X Z');return;}x=clamp(x,worldBounds.minX+7,worldBounds.maxX-7);z=clamp(z,worldBounds.minZ+7,worldBounds.maxZ-7);const safe=window.TRModels&&worldG?.userData?.importedCityActive?findSafeCitySpawn(x,z,worldDriving?2.2:0.5):{x,z};const a=currentWorldActor();if(!a)return;a.position.set(safe.x,worldGroundY+10,safe.z);if(worldDriving){player.speed=0;player.vx=0;player.vz=0;worldFallState.car={vy:0,grounded:false};}else worldFallState.character={vy:0,grounded:false};toast('Телепорт: '+Math.round(safe.x)+', '+Math.round(safe.z));return;}
+ if(cmd==='/tpmark'){if(!worldRouteTarget){toast('Сначала построй маршрут на карте');return;}runDeveloperCommand('/tp '+worldRouteTarget.x+' '+worldRouteTarget.z);return;}
+ toast('Команды: /ghost, /fly, /tp X Z, /tpmark');
+}
 
 function activateImportedNewYork(){
   if(!window.TRModels||!worldG||worldRegionId!=='newyork'||worldG.userData.importedCityActive)return;
@@ -2253,7 +2325,7 @@ function activateImportedNewYork(){
   // A real, invisible walkable floor at y=0 prevents the player/car from falling through
   // the visual ground. It is not part of the selectable city geometry.
   const floorScaleX=Math.max(0.01,Math.abs(city.scale.x)),floorScaleZ=Math.max(0.01,Math.abs(city.scale.z)),floorScaleY=Math.max(0.01,Math.abs(city.scale.y));
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(1080/floorScaleX,880/floorScaleZ),new THREE.MeshBasicMaterial({color:0xffffff,colorWrite:false,depthWrite:false,side:THREE.DoubleSide}));
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(Math.max(1,((ib.maxX??ib.max.x)-(ib.minX??ib.min.x)+8)/floorScaleX),Math.max(1,((ib.maxZ??ib.max.z)-(ib.minZ??ib.min.z)+8)/floorScaleZ)),new THREE.MeshBasicMaterial({color:0xffffff,colorWrite:false,depthWrite:false,side:THREE.DoubleSide}));
   floor.name='TR Walkable floor collider';floor.rotation.x=-Math.PI/2;floor.position.y=-0.045/floorScaleY;floor.userData.trEditorSkip=true;city.add(floor);
   worldG.add(city);worldG.visible=true;worldG.userData.importedCityActive=true;worldG.userData.importedCityRoot=city;
   city.updateMatrixWorld(true);syncCityBoundsAndMiniMap(false);
@@ -2262,6 +2334,9 @@ function activateImportedNewYork(){
   const b=city.userData.importedBounds||new THREE.Box3().setFromObject(city);
   worldBounds={minX:(b.minX??b.min.x)+3,maxX:(b.maxX??b.max.x)-3,minZ:(b.minZ??b.min.z)+3,maxZ:(b.maxZ??b.max.z)-3};
   worldG.userData.importedCityBounds=Object.assign({},worldBounds);
+  createWorldEdgeFence(worldBounds);
+  const safeStart=findSafeCitySpawn(0,0,2.4);player.mesh.position.set(safeStart.x,worldGroundY+10,safeStart.z);player.mesh.rotation.set(0,0,0);player.h=0;player.speed=0;player.vx=0;player.vz=0;worldFallState.car={vy:0,grounded:false};
+  if(charMesh){const safePed=findSafeCitySpawn(safeStart.x-3,safeStart.z,0.5);charMesh.position.set(safePed.x,worldGroundY+10,safePed.z);charMesh.rotation.y=0;charMesh.visible=!worldDriving;worldFallState.character={vy:0,grounded:false};}
   worldInteractables=worldInteractables.filter(it=>(it.type==='raceboard'||it.type==='plaza')&&it.x>worldBounds.minX+8&&it.x<worldBounds.maxX-8&&it.z>worldBounds.minZ+8&&it.z<worldBounds.maxZ-8);
   // Do not turn the bounding box of a whole grouped building mesh into a giant wall.
   // Actual city triangles and the visible, separately-created service/signal meshes
@@ -2277,7 +2352,7 @@ function worldPos(){const a=currentWorldActor();return a?a.position:new THREE.Ve
 function startOpenWorld(regionId=worldRegionId){
   if(!save.set.tutorialComplete&&!tutorialPermitStart){pendingTutorialRegion=regionId||'newyork';const panel=$('tutorialOverlay');if(panel){panel.hidden=false;return;}}
   tutorialPermitStart=false;requestGameFullscreen();worldRegionId='newyork';const cfg=WORLD_REGIONS.newyork;
-  held.clear();buildOpenWorld('newyork');state='world';worldInterior=false;worldDriving=false;worldJumpRemaining=0;worldJumpCooldown=0;worldJumpWasHeld=false;worldCamMode=2;worldCamOrbitYaw=0;worldCamOrbitPitch=0;worldLookDrag=null;worldNear=null;worldCollisionTimer=0;
+  held.clear();worldGhostMode=false;worldFlyMode=false;worldEnteringCar=false;worldEnterCarTimer=0;buildOpenWorld('newyork');state='world';worldInterior=false;worldDriving=false;worldJumpRemaining=0;worldJumpCooldown=0;worldJumpWasHeld=false;worldCamMode=2;worldCamOrbitYaw=0;worldCamOrbitPitch=0;worldLookDrag=null;worldNear=null;worldCollisionTimer=0;
   if(trackG)trackG.visible=false;worldG.visible=false;apartmentG.visible=false;if(schoolG)schoolG.visible=false;activeInteriorG=null;
   if($('worldLoading')){$('worldLoading').hidden=false;$('worldLoadingText').textContent='Загружаем карту Нью-Йорка и оптимизированные текстуры…';}
   if(window.TRModels){window.TRModels.ensureCity().then(()=>{
@@ -2287,7 +2362,7 @@ function startOpenWorld(regionId=worldRegionId){
   });}else{$('worldLoading').hidden=true;}
   if(!worldKeepAtmo){worldTime='Вечер';worldWeather='Ясно';}worldKeepAtmo=false;applyWorldAtmosphere();ensureWorldAtmoButtons();
   clearRemotes();ais.forEach(a=>{scene.remove(a.mesh);disposeModel(a.mesh);});ais=[];
-  if(charMesh){scene.remove(charMesh);disposeModel(charMesh);}charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.set(9,10,1.8);charMesh.rotation.y=0;scene.add(charMesh);worldYaw=0;
+  if(charMesh){scene.remove(charMesh);disposeModel(charMesh);}charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.set(9,10,1.8);charMesh.rotation.y=0;scene.add(charMesh);if(window.TRModels&&window.TRModels.registerWorldCharacter)window.TRModels.registerWorldCharacter(charMesh);worldYaw=0;
   player.mesh.position.set(9,10,8);player.mesh.rotation.set(0,0,0);player.h=0;player.mesh.visible=true;player.speed=0;player.vx=0;player.vz=0;player.dmg=save.cars[save.cur]?.dmg||0;player.immobilized=player.dmg>=100;phys=physFor(save.cur);applyDamageVisual();
   worldFallState={character:{vy:0,grounded:false},car:{vy:0,grounded:false}};
   show(null);$('hud').hidden=true;$('minimap').hidden=true;$('worldHud').hidden=false;$('worldPhone').hidden=true;$('worldShop').hidden=true;$('worldMiniMap').hidden=false;$('worldDevPanel').hidden=true;$('touch').hidden=!isTouch;$('fixBtn').hidden=true;$('worldLocation').textContent=cfg.welcome+' · СВОБОДНАЯ ЕЗДА';$('worldActionHint').textContent=isTouch?'Двигайся кнопками · проведи пальцем по пустой области, чтобы повернуть камеру':'WASD — движение · перетащи мышь по сцене, чтобы повернуть камеру · E — действие';Snd.music('menu');applyTouchSettings();updateWorldCameraLabel();toast('Нью-Йорк · город загружается');
@@ -2301,11 +2376,15 @@ function renderWorldPhone(tab='home'){
   const el=$('worldPhoneContent'),p=worldPos(),loc=worldInterior?'Квартира':Math.hypot(p.x,p.z)<100?'Центр города':p.x<0?'Западный район':'Восточный район';
   if(tab==='map')el.innerHTML=`<h2>Карта · ${(WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.tashkent).name}</h2><p>Ты находишься: <b>${loc}</b></p><div class="card"><b>🏠 Апартаменты</b><div class="muted">${worldRegionId==='tashkent'?'Катта Чиланзар 1, дом 11А, подъезд 4 · X −126 / Z −40':'Запад, около X −50 / Z −25'}</div></div><div class="card"><b>🛠 AUTO LAB</b><div class="muted">Восток, около X 150 / Z 20</div></div><div class="card"><b>🏁 Городской клуб</b><div class="muted">Рядом с центральным перекрёстком</div></div><p>В городе можно свободно ходить, садиться в свою машину, посещать магазины и запускать заезды.</p>`;
   else if(tab==='services')el.innerHTML=`<h2>Сервисы</h2><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>монет на счету</span></div><div><b>${Math.round(player.dmg)}%</b><span>повреждение машины</span></div></div><div class="card"><b>Эвакуатор и механик</b><p>Вызвать сервис, сбросить критическую поломку или заказать ремонт.</p><button class="btn" data-phone-action="tow">Вызвать эвакуатор · 600</button></div><div class="card"><b>Автосервис</b><p>Улучшить двигатель, ускорение и нитро за игровые монеты.</p><button class="btn" data-phone-action="garage">Открыть магазин тюнинга</button></div><div class="card"><b>🚕 Городское такси</b><p>Вызови такси, чтобы быстро добраться к городской точке.</p><button class="btn" data-phone-action="taxi">Вызвать такси · 150</button></div>`;
+  else if(tab==='social'){renderSocialFeed();void refreshSocialFeed();return;}
   else if(tab==='events')el.innerHTML=`<h2>События</h2><div class="card"><b>🏁 Уличный спринт</b><p>Короткий заезд против соперников, которые ускоряются, используют нитро и пытаются объезжать ловушки.</p><button class="btn" data-phone-action="race">Начать заезд</button></div><div class="card"><b>🏆 Турниры</b><p>Открывай турниры в главном меню: дождевой кубок, дрифт, марафон и Hyper League.</p><button class="btn" data-phone-action="menu-tours">Список турниров</button></div>`;
   else el.innerHTML=`<h2>Добро пожаловать</h2><p>Город открыт для исследования. Жители гуляют, машут руками, прыгают от радости, читают телефон и реагируют на твою машину.</p><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>баланс · монеты</span></div><div><b>${Math.round(player.dmg)}%</b><span>состояние авто</span></div></div><div class="card"><b>Подсказки</b><p>WASD — ходить/ехать · E — взаимодействие · V — смена камеры · P — телефон · Esc — в меню.</p></div><button class="btn" data-phone-action="tow">Эвакуатор / ремонт</button><button class="btn" data-phone-action="race">Быстрый уличный заезд</button>`;
 }
 $('worldPhoneContent').addEventListener('click',e=>{const b=e.target.closest('[data-travel]');if(b)travelTo(b.dataset.travel);});
-$('worldPhoneBtn').onclick=()=>openWorldPhone('home');$('worldPhoneClose').onclick=closeWorldPhone;$('worldCamBtn').onclick=cycleWorldCamera;$('worldExitBtn').onclick=toMenu;$('worldInteractBtn').onclick=interactWorld;$('worldPhone').addEventListener('click',e=>{const t=e.target.closest('[data-phone-tab]');if(t){renderWorldPhone(t.dataset.phoneTab);return;}const a=e.target.closest('[data-phone-action]');if(!a)return;const act=a.dataset.phoneAction;if(act==='taxi'){if(save.coins<150){toast('Не хватает 150 монет на такси');return;}save.coins-=150;store();closeWorldPhone();toast('🚕 Такси едет к тебе…');setTimeout(()=>{if(state!=='world')return;const dest=worldRouteTarget||{x:0,z:0,name:'центр города'};const tx=clamp(dest.x,worldBounds.minX+8,worldBounds.maxX-8),tz=clamp(dest.z,worldBounds.minZ+8,worldBounds.maxZ-8);player.mesh.position.set(tx,worldGroundY,tz);player.speed=0;worldFallState.car={vy:0,grounded:true};if(charMesh){charMesh.position.set(tx-2,worldGroundY,tz-2);charMesh.visible=!worldDriving;worldFallState.character={vy:0,grounded:true};}worldRouteTarget={x:0,z:0,name:'Центр города'};toast('🚕 Такси доставило к '+(dest.name||'месту назначения'));},1200);return;}else if(act==='tow'){if(save.coins<600){toast('Не хватает 600 монет на выезд механика');return;}save.coins-=600;setDamage(Math.max(0,player.dmg-45));player.immobilized=false;player.engineStall=0;player.speed=0;player.mesh.position.set(9,worldGroundY,8);worldFallState.car={vy:0,grounded:true};store();renderWorldPhone('services');toast('Механик прибыл: восстановлено 45% прочности');}else if(act==='garage'){closeWorldPhone();openWorldShop('garage');}else if(act==='race'){closeWorldPhone();toMenu();setTimeout(startCareer,20);}else if(act==='menu-tours'){closeWorldPhone();toMenu();setTimeout(()=>openScreen('tour'),20);}});
+$('worldPhoneBtn').onclick=()=>openWorldPhone('home');$('worldPhoneClose').onclick=closeWorldPhone;
+$('worldRadioBtn')?.addEventListener('click',()=>{if(state!=='world')return;if(!worldDriving){toast('Сначала садись в машину, чтобы слушать радио');return;}Snd.init();let info=Snd.radioInfo();if(info.on&&info.index>=2){Snd.toggleRadio();radioStationIndex=-1;$('worldRadioBtn').textContent='📻 Включить радио';toast('Радио выключено');}else if(!info.on){if(info.index!==0){while(Snd.radioInfo().index!==0)Snd.nextRadio();}const r=Snd.toggleRadio();radioStationIndex=0;$('worldRadioBtn').textContent='📻 '+r.name;toast('Радио: '+r.name);}else{const name=Snd.nextRadio();radioStationIndex=Snd.radioInfo().index;$('worldRadioBtn').textContent='📻 '+name;toast('Радио: '+name);}});
+$('worldPhoneContent').addEventListener('click',e=>{const publish=e.target.closest('[data-social-publish]');if(publish){publishWorldPhoto();return;}const like=e.target.closest('[data-social-like]');if(like){void likeSocialPost(Number(like.dataset.socialLike));return;}const comment=e.target.closest('[data-social-comment]');if(comment){const id=Number(comment.dataset.socialComment),field=document.querySelector(`[data-social-comment-input="${id}"]`),txt=(field?.value||'').trim();if(txt)void commentSocialPost(id,txt);return;}});
+$('worldPhoneContent').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[data-social-comment-input]')){const id=e.target.getAttribute('data-social-comment-input'),btn=document.querySelector(`[data-social-comment="${id}"]`);if(btn)btn.click();}});$('worldCamBtn').onclick=cycleWorldCamera;$('worldExitBtn').onclick=toMenu;$('worldInteractBtn').onclick=interactWorld;$('worldPhone').addEventListener('click',e=>{const t=e.target.closest('[data-phone-tab]');if(t){renderWorldPhone(t.dataset.phoneTab);return;}const a=e.target.closest('[data-phone-action]');if(!a)return;const act=a.dataset.phoneAction;if(act==='taxi'){if(save.coins<150){toast('Не хватает 150 монет на такси');return;}save.coins-=150;store();closeWorldPhone();toast('🚕 Такси едет к тебе…');setTimeout(()=>{if(state!=='world')return;const dest=worldRouteTarget||{x:0,z:0,name:'центр города'};const tx=clamp(dest.x,worldBounds.minX+8,worldBounds.maxX-8),tz=clamp(dest.z,worldBounds.minZ+8,worldBounds.maxZ-8);player.mesh.position.set(tx,worldGroundY,tz);player.speed=0;worldFallState.car={vy:0,grounded:true};if(charMesh){charMesh.position.set(tx-2,worldGroundY,tz-2);charMesh.visible=!worldDriving;worldFallState.character={vy:0,grounded:true};}worldRouteTarget={x:0,z:0,name:'Центр города'};toast('🚕 Такси доставило к '+(dest.name||'месту назначения'));},1200);return;}else if(act==='tow'){if(save.coins<600){toast('Не хватает 600 монет на выезд механика');return;}save.coins-=600;setDamage(Math.max(0,player.dmg-45));player.immobilized=false;player.engineStall=0;player.speed=0;player.mesh.position.set(9,worldGroundY,8);worldFallState.car={vy:0,grounded:true};store();renderWorldPhone('services');toast('Механик прибыл: восстановлено 45% прочности');}else if(act==='garage'){closeWorldPhone();openWorldShop('garage');}else if(act==='race'){closeWorldPhone();toMenu();setTimeout(startCareer,20);}else if(act==='menu-tours'){closeWorldPhone();toMenu();setTimeout(()=>openScreen('tour'),20);}});
 document.querySelectorAll('[data-phone-tab]').forEach(()=>{});
 function openWorldShop(kind){
   const title=kind==='market'?'MARKET 24/7':kind==='fashion'?'CITY MODA':'AUTO LAB';$('worldShopTitle').textContent=title;$('worldShopDesc').textContent=kind==='market'?'Городской магазин и полезные вещи':kind==='fashion'?'Одежда и внешний вид персонажа':'Ремонт, двигатель и спортивные детали';
@@ -2328,7 +2407,7 @@ function openWorldShop(kind){
   };
 }
 $('worldShopClose').onclick=()=>{$('worldShop').hidden=true;};
-function replaceWorldPlayer(){if(!charMesh)return;const p=charMesh.position.clone(),r=charMesh.rotation.y;scene.remove(charMesh);disposeModel(charMesh);charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.copy(p);charMesh.rotation.y=r;scene.add(charMesh);}
+function replaceWorldPlayer(){if(!charMesh)return;const p=charMesh.position.clone(),r=charMesh.rotation.y;scene.remove(charMesh);disposeModel(charMesh);charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.copy(p);charMesh.rotation.y=r;scene.add(charMesh);if(window.TRModels&&window.TRModels.registerWorldCharacter)window.TRModels.registerWorldCharacter(charMesh);}
 function enterApartment(){
   worldCarVisibleBeforeInterior=!!player.mesh.visible;
   worldInterior=true;worldJumpRemaining=0;worldJumpWasHeld=held.has('drift');if(charMesh)charMesh.position.y=0;worldG.visible=false;apartmentG.visible=true;activeInteriorG=apartmentG;interiorExit={x:-50,z:-23};
@@ -2359,7 +2438,7 @@ function interactWorld(){
   if(target.type==='school'){enterSchool(target);return;}
   if(target.type==='market'||target.type==='garage'||target.type==='fashion'){openWorldShop(target.type);return;}
   if(target.type==='car'){
-    if(!worldDriving){worldDriving=true;worldYaw=player.h;player.mesh.visible=true;charMesh.visible=false;applyTouchSettings();toast('Ты за рулём. WASD — управление, E — выйти.');}
+    if(!worldDriving){if(worldEnteringCar)return;worldEnteringCar=true;worldEnterCarTimer=0.72;if(window.TRModels&&window.TRModels.playCharacterAction)window.TRModels.playCharacterAction('EnterCar',0.72,charMesh);toast('Садишься в машину…');}
     else{worldDriving=false;charMesh.visible=true;charMesh.position.set(player.mesh.position.x-Math.cos(player.h)*3,worldGroundY,player.mesh.position.z+Math.sin(player.h)*3);worldFallState.character={vy:0,grounded:true};worldYaw=player.h;player.mesh.visible=true;player.speed=0;applyTouchSettings();toast('Ты вышел из машины. E — снова сесть.');}
     return;
   }
@@ -2373,8 +2452,9 @@ function stepWorldFall(actor,key,dt){
   f.vy-=25*dt;actor.position.y+=f.vy*dt;
   if(actor.position.y<=worldGroundY){actor.position.y=worldGroundY;f.vy=0;f.grounded=true;}
 }
+let lastCityCollisionWeight=1;
 function cityWallHit(ax,az,bx,bz,radius,y=1.0){
-  const city=worldG&&worldG.userData&&worldG.userData.importedCityActive;
+  lastCityCollisionWeight=1;const city=worldG&&worldG.userData&&worldG.userData.importedCityActive;
   if(!city||!window.TRModels||!window.TRModels.getCityMeshes)return false;
   const meshes=window.TRModels.getCityMeshes();if(!meshes||!meshes.length)return false;
   const dx=bx-ax,dz=bz-az,dist=Math.hypot(dx,dz);if(dist<0.025)return false;
@@ -2382,30 +2462,32 @@ function cityWallHit(ax,az,bx,bz,radius,y=1.0){
   for(const offset of [0, radius*0.62, -radius*0.62]){
     const rayY=worldGroundY+y;cityWallRay.set(new THREE.Vector3(ax+perpX*offset,rayY,az+perpZ*offset),new THREE.Vector3(dx/dist,0,dz/dist));cityWallRay.near=0.02;cityWallRay.far=dist+radius*0.3;
     const hits=cityWallRay.intersectObjects(meshes,false);
-    if(hits.some(h=>h.distance<=dist+radius*0.3&&h.point.y>worldGroundY-0.1&&h.point.y<worldGroundY+2.7))return true;
+    const hit=hits.find(h=>h.distance<=dist+radius*0.3&&h.point.y>worldGroundY-0.1&&h.point.y<worldGroundY+2.7);if(hit){try{const box=new THREE.Box3().setFromObject(hit.object),size=box.getSize(new THREE.Vector3());lastCityCollisionWeight=clamp(Math.max(size.x,size.y,size.z)/5,0.12,1.15);}catch(_){lastCityCollisionWeight=1;}return true;}
   }
   return false;
 }
 function resolveCityMotion(oldX,oldZ,newX,newZ,radius,isCar){
   if(!(worldG&&worldG.userData&&worldG.userData.importedCityActive))return{x:newX,z:newZ,hit:false};
-  if(!cityWallHit(oldX,oldZ,newX,newZ,radius,isCar?0.9:1.0))return{x:newX,z:newZ,hit:false};
+  if(!cityWallHit(oldX,oldZ,newX,newZ,radius,isCar?0.9:1.0))return{x:newX,z:newZ,hit:false,weight:0};
+  const hitWeight=lastCityCollisionWeight;
   // Slide along walls rather than trapping the actor in an oversized rectangle.
   const xFree=!cityWallHit(oldX,oldZ,newX,oldZ,radius,isCar?0.9:1.0);
   const zFree=!cityWallHit(oldX,oldZ,oldX,newZ,radius,isCar?0.9:1.0);
-  if(xFree&&!zFree)return{x:newX,z:oldZ,hit:true};
-  if(zFree&&!xFree)return{x:oldX,z:newZ,hit:true};
-  if(xFree&&zFree){const dx=Math.abs(newX-oldX),dz=Math.abs(newZ-oldZ);return dx>dz?{x:newX,z:oldZ,hit:true}:{x:oldX,z:newZ,hit:true};}
-  return{x:oldX,z:oldZ,hit:true};
+  if(xFree&&!zFree)return{x:newX,z:oldZ,hit:true,weight:hitWeight};
+  if(zFree&&!xFree)return{x:oldX,z:newZ,hit:true,weight:hitWeight};
+  if(xFree&&zFree){const dx=Math.abs(newX-oldX),dz=Math.abs(newZ-oldZ);return dx>dz?{x:newX,z:oldZ,hit:true,weight:hitWeight}:{x:oldX,z:newZ,hit:true,weight:hitWeight};}
+  return{x:oldX,z:oldZ,hit:true,weight:hitWeight};
 }
 function updateOpenWorld(dt){
   if($('worldPhone').hidden===false||$('worldShop').hidden===false)return;
   // Do not let movement collide with invisible placeholder buildings while the GLB is loading.
   if(worldRegionId==='newyork'&&!(worldG&&worldG.userData&&worldG.userData.importedCityActive))return;
   worldAnimT+=dt;worldCollisionTimer=Math.max(0,worldCollisionTimer-dt);
-  if(!worldInterior){stepWorldFall(charMesh,'character',dt);stepWorldFall(player.mesh,'car',dt);}
+  if(worldEnteringCar){worldEnterCarTimer-=dt;if(worldEnterCarTimer<=0){worldEnteringCar=false;worldDriving=true;worldYaw=player.h;player.mesh.visible=true;if(charMesh)charMesh.visible=false;applyTouchSettings();toast('Ты за рулём. WASD — управление, E — выйти.');}}
+  if(!worldInterior&&!worldFlyMode){stepWorldFall(charMesh,'character',dt);stepWorldFall(player.mesh,'car',dt);}
   worldJumpCooldown=Math.max(0,worldJumpCooldown-dt);
   const jumpHeld=held.has('drift');
-  if(!worldDriving&&!worldInterior&&jumpHeld&&!worldJumpWasHeld&&worldJumpCooldown<=0){worldJumpRemaining=0.62;worldJumpCooldown=0.88;}
+  if(!worldDriving&&!worldInterior&&!worldFlyMode&&jumpHeld&&!worldJumpWasHeld&&worldJumpCooldown<=0){worldJumpRemaining=0.62;worldJumpCooldown=0.88;if(window.TRModels&&window.TRModels.playCharacterAction)window.TRModels.playCharacterAction('Jump',0.62,charMesh);}
   worldJumpWasHeld=jumpHeld;
   if(charMesh){
     if(worldJumpRemaining>0&&!worldInterior&&!worldDriving&&worldFallState.character.grounded){worldJumpRemaining=Math.max(0,worldJumpRemaining-dt);charMesh.position.y=worldGroundY+Math.sin((0.62-worldJumpRemaining)/0.62*Math.PI)*0.78;}
@@ -2433,11 +2515,12 @@ function updateOpenWorld(dt){
     const max=player.immobilized?0:Math.max(18,phys.max*0.92);if(gas)player.speed+=phys.acc*0.82*dt;if(brake)player.speed-=phys.brk*dt;if(!gas&&!brake)player.speed-=player.speed*0.48*dt;player.speed=player.immobilized?0:clamp(player.speed,-8,max);
     player.h-=steer*(0.4+Math.min(Math.abs(player.speed)/45,1)*0.85)*(player.mesh.userData.trWheelLost?0.56:1)*dt*Math.sign(player.speed||1);player.mesh.rotation.y=player.h;
     const oldX=player.mesh.position.x,oldZ=player.mesh.position.z;player.mesh.position.x+=Math.sin(player.h)*player.speed*dt;player.mesh.position.z+=Math.cos(player.h)*player.speed*dt;player.mesh.userData.wheels.forEach(w=>w.rotation.x+=player.speed*dt/0.4);(player.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=player.speed*dt/0.4);
-    const cityActive=!!(worldG&&worldG.userData&&worldG.userData.importedCityActive);let struck=false;
-    if(cityActive){const r=resolveCityMotion(oldX,oldZ,player.mesh.position.x,player.mesh.position.z,2.1,true);player.mesh.position.x=r.x;player.mesh.position.z=r.z;struck=r.hit;
-      const beforeX=player.mesh.position.x,beforeZ=player.mesh.position.z;player.mesh.position.x=clamp(beforeX,worldBounds.minX,worldBounds.maxX);player.mesh.position.z=clamp(beforeZ,worldBounds.minZ,worldBounds.maxZ);if(beforeX!==player.mesh.position.x||beforeZ!==player.mesh.position.z)struck=true;
+    if(worldFlyMode){if(held.has('nitro'))player.mesh.position.y+=12*dt;if(held.has('drift'))player.mesh.position.y-=12*dt;player.mesh.position.y=clamp(player.mesh.position.y,worldGroundY+0.65,worldGroundY+100);worldFallState.car={vy:0,grounded:true};}
+    const cityActive=!!(worldG&&worldG.userData&&worldG.userData.importedCityActive);let struck=false,struckWeight=1;
+    if(cityActive){if(worldGhostMode||worldFlyMode){struck=false;}else{const r=resolveCityMotion(oldX,oldZ,player.mesh.position.x,player.mesh.position.z,2.1,true);player.mesh.position.x=r.x;player.mesh.position.z=r.z;struck=r.hit;struckWeight=r.weight||1;}
+      if(!(worldGhostMode||worldFlyMode)){const beforeX=player.mesh.position.x,beforeZ=player.mesh.position.z;player.mesh.position.x=clamp(beforeX,worldBounds.minX,worldBounds.maxX);player.mesh.position.z=clamp(beforeZ,worldBounds.minZ,worldBounds.maxZ);if(beforeX!==player.mesh.position.x||beforeZ!==player.mesh.position.z)struck=true;}
     }else{const radX=2.15,radZ=2.65;for(const b of worldBuildings){const dx=player.mesh.position.x-b.x,dz=player.mesh.position.z-b.z,ox=b.hw+radX-Math.abs(dx),oz=b.hd+radZ-Math.abs(dz);if(ox>0&&oz>0){if(ox<oz)player.mesh.position.x=b.x+Math.sign(dx||1)*(b.hw+radX);else player.mesh.position.z=b.z+Math.sign(dz||1)*(b.hd+radZ);struck=true;break;}}}
-    if(struck&&worldCollisionTimer<=0){worldCollisionTimer=0.34;const impact=Math.abs(player.speed);player.speed*=0.22;player.vx*=0.24;player.vz*=0.24;if(impact>9)addDmg(clamp(impact*0.065,0.7,7));if(impact>12)spawnSparks(player.mesh.position.x,0.7,player.mesh.position.z,clamp(Math.floor(impact*.28),5,15));Snd.bump();if(impact>5)toast('Столкновение · машина затормозила у препятствия');}
+    if(struck&&worldCollisionTimer<=0){worldCollisionTimer=0.34;const impact=Math.abs(player.speed);player.speed*=0.22;player.vx*=0.24;player.vz*=0.24;if(impact>9)addDmg(clamp(impact*0.065*struckWeight,0.25,7));if(impact>12)spawnSparks(player.mesh.position.x,0.7,player.mesh.position.z,clamp(Math.floor(impact*.28),5,15));Snd.bump();if(impact>5)toast('Столкновение · машина затормозила у препятствия');}
     // Городской транспорт сталкивается по повёрнутым прямоугольным хитбоксам,
     // без старого телепорта машины на 4.65 м и без автоматического разворота трафика.
     for(const tr of worldTraffic){
@@ -2468,23 +2551,26 @@ function updateOpenWorld(dt){
       worldCollisionTimer=0.34;Snd.bump();toast('Столкновение с городским транспортом');break;
     }
     if(Math.abs(player.speed)>0.7){player.vx=Math.sin(player.h)*player.speed;player.vz=Math.cos(player.h)*player.speed;}
+  }else if(worldEnteringCar){
+    if(charMesh)charMesh.rotation.y=worldYaw;
   }else{
-    const oldX=charMesh.position.x,oldZ=charMesh.position.z;const turn=(held.has('right')?1:0)-(held.has('left')?1:0);worldYaw-=turn*2.15*dt;const forward=(held.has('gas')?1:0)-(held.has('brake')?1:0),walkSpeed=held.has('nitro')?14:8.3;
-    charMesh.position.x+=Math.sin(worldYaw)*forward*walkSpeed*dt;charMesh.position.z+=Math.cos(worldYaw)*forward*walkSpeed*dt;charMesh.rotation.y=worldYaw;
+    const oldX=charMesh.position.x,oldZ=charMesh.position.z;const turn=(held.has('right')?1:0)-(held.has('left')?1:0);worldYaw-=turn*1.55*dt;const forward=(held.has('gas')?1:0)-(held.has('brake')?1:0),walkSpeed=held.has('nitro')?14:8.3,strafe=turn;
+    charMesh.position.x+=(Math.sin(worldYaw)*forward+Math.cos(worldYaw)*strafe)*walkSpeed*dt;charMesh.position.z+=(Math.cos(worldYaw)*forward-Math.sin(worldYaw)*strafe)*walkSpeed*dt;charMesh.rotation.y=worldYaw;
     if(worldInterior){
       // Apartment interior has its own walkable bounds; don't let the character pass through the room's walls.
       charMesh.position.x=clamp(charMesh.position.x,-11.55,11.55);
       charMesh.position.z=clamp(charMesh.position.z,-11.55,11.55);
     } else {
       const cityActive=!!(worldG&&worldG.userData&&worldG.userData.importedCityActive);
-      if(cityActive){const r=resolveCityMotion(oldX,oldZ,charMesh.position.x,charMesh.position.z,0.42,false);charMesh.position.x=r.x;charMesh.position.z=r.z;
-        charMesh.position.x=clamp(charMesh.position.x,worldBounds.minX,worldBounds.maxX);charMesh.position.z=clamp(charMesh.position.z,worldBounds.minZ,worldBounds.maxZ);
-      }else{
+      if(cityActive){if(!(worldGhostMode||worldFlyMode)){const r=resolveCityMotion(oldX,oldZ,charMesh.position.x,charMesh.position.z,0.42,false);charMesh.position.x=r.x;charMesh.position.z=r.z;}
+        if(!(worldGhostMode||worldFlyMode)){charMesh.position.x=clamp(charMesh.position.x,worldBounds.minX,worldBounds.maxX);charMesh.position.z=clamp(charMesh.position.z,worldBounds.minZ,worldBounds.maxZ);}
+      }else if(!(worldGhostMode||worldFlyMode)){
         for(const b of worldBuildings){const dx=charMesh.position.x-b.x,dz=charMesh.position.z-b.z,ox=b.hw+0.42-Math.abs(dx),oz=b.hd+0.42-Math.abs(dz);if(ox>0&&oz>0){if(Math.abs(charMesh.position.x-oldX)>Math.abs(charMesh.position.z-oldZ))charMesh.position.x=b.x+Math.sign(dx||1)*(b.hw+0.42);else charMesh.position.z=b.z+Math.sign(dz||1)*(b.hd+0.42);}}
         charMesh.position.x=clamp(charMesh.position.x,-WORLD_RANGE+8,WORLD_RANGE-8);charMesh.position.z=clamp(charMesh.position.z,-WORLD_RANGE+8,WORLD_RANGE-8);
       }
     }
-    const moving=Math.abs(forward)>0;
+    if(worldFlyMode){if(held.has('nitro'))charMesh.position.y+=9*dt;if(held.has('drift'))charMesh.position.y-=9*dt;charMesh.position.y=clamp(charMesh.position.y,worldGroundY+0.6,worldGroundY+80);worldFallState.character={vy:0,grounded:true};}
+    const moving=Math.abs(forward)>0||Math.abs(strafe)>0;
     if(window.TRModels)window.TRModels.setCharacterMotion(moving,held.has('nitro'));
     const u=charMesh.userData;u.legs[0].rotation.x=moving?Math.sin(worldAnimT*10)*0.55:0;u.legs[1].rotation.x=moving?-Math.sin(worldAnimT*10)*0.55:0;u.arms[0].rotation.x=moving?-Math.sin(worldAnimT*10)*0.22:0;u.arms[1].rotation.x=moving?Math.sin(worldAnimT*10)*0.22:0;
     if(u.bodyGroup){u.bodyGroup.position.y=moving?Math.abs(Math.sin(worldAnimT*10))*0.035:Math.sin(worldAnimT*1.6)*0.012;u.bodyGroup.rotation.z=moving?Math.sin(worldAnimT*5)*0.018:Math.sin(worldAnimT*0.8)*0.008;}
@@ -2504,9 +2590,9 @@ function updateWorldCamera(dt){
   const p=a.position, actorYaw=worldDriving?player.h:worldYaw, yaw=actorYaw+worldCamOrbitYaw;
   let wanted,look,fov;
   if(worldCamMode===0){
-    a.visible=false;
-    const eyeY=worldDriving?1.28:1.62;
-    wanted=new THREE.Vector3(p.x+Math.sin(actorYaw)*(worldDriving?.62:0),p.y+eyeY+(worldInterior?.06:0),p.z+Math.cos(actorYaw)*(worldDriving?.62:0));
+    a.visible=!!worldDriving;
+    const eyeY=worldDriving?0.94:1.62;
+    wanted=new THREE.Vector3(p.x-Math.sin(actorYaw)*(worldDriving?.18:0),p.y+eyeY+(worldInterior?.06:0),p.z-Math.cos(actorYaw)*(worldDriving?.18:0));
     const sight=15, pitchOffset=Math.sin(worldCamOrbitPitch)*sight;
     look=new THREE.Vector3(wanted.x+Math.sin(yaw)*sight,wanted.y+pitchOffset,wanted.z+Math.cos(yaw)*sight);
     fov=worldDriving?77:73;
@@ -2527,7 +2613,7 @@ function updateWorldCamera(dt){
   cam.position.lerp(wanted,follow);cam.lookAt(look);cam.fov += (fov-cam.fov)*Math.min(1,7*Math.max(0,dt));cam.updateProjectionMatrix();
 }
 
-function worldKey(code){if(state!=='world')return false;if(code==='KeyE'){interactWorld();return true;}if(code==='KeyT'){cycleWorldTime();return true;}if(code==='KeyY'){cycleWorldWeather();return true;}if(code==='KeyV'){cycleWorldCamera();return true;}if(code==='KeyP'){if($('worldPhone').hidden)openWorldPhone('home');else closeWorldPhone();return true;}if(code==='Escape'){if(!$('worldPhone').hidden)closeWorldPhone();else if(!$('worldShop').hidden)$('worldShop').hidden=true;else toMenu();return true;}if(code==='KeyR'){if(worldDriving){if(player.immobilized){setDamage(Math.max(0,player.dmg-32));player.immobilized=false;player.engineStall=0;toast('Эвакуатор запустил двигатель');}player.mesh.position.set(9,worldGroundY,8);player.speed=0;}return true;}return false;}
+function worldKey(code){if(state!=='world')return false;if(code==='KeyE'){interactWorld();return true;}if(code==='KeyT'){cycleWorldTime();return true;}if(code==='KeyY'){cycleWorldWeather();return true;}if(code==='KeyV'){cycleWorldCamera();return true;}if(code==='KeyP'){if($('worldPhone').hidden)openWorldPhone('home');else closeWorldPhone();return true;}if(code==='Escape'){if(!$('worldPhone').hidden)closeWorldPhone();else if(!$('worldShop').hidden)$('worldShop').hidden=true;else toMenu();return true;}if(code==='KeyR'){if(worldDriving){if(player.immobilized){setDamage(Math.max(0,player.dmg-32));player.immobilized=false;player.engineStall=0;toast('Эвакуатор запустил двигатель');}const safe=findSafeCitySpawn(0,0,2.4);player.mesh.position.set(safe.x,worldGroundY+10,safe.z);player.speed=0;worldFallState.car={vy:0,grounded:false};}return true;}return false;}
 
 
 // ================= запуск =================

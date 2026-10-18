@@ -22,6 +22,14 @@ let queue = [];              // clients waiting
 const failed = new Map();    // ip -> {n, t}
 const ACCOUNT_FILE = path.join(__dirname, 'accounts.json');
 const WORLD_EDITS_FILE = path.join(__dirname, 'world-edits.json');
+const SOCIAL_FILE = path.join(__dirname, 'social-posts.json');
+let socialPosts = [];
+const socialRate = new Map();
+try { const saved = JSON.parse(fs.readFileSync(SOCIAL_FILE, 'utf8')); if(Array.isArray(saved)) socialPosts=saved.slice(0,80); } catch (_) {}
+function saveSocialPosts(){ const tmp=SOCIAL_FILE+'.tmp'; fs.writeFileSync(tmp,JSON.stringify(socialPosts)); fs.renameSync(tmp,SOCIAL_FILE); }
+function publicSocialPosts(){ return socialPosts.slice(0,12).map(p=>({id:p.id,author:p.author,caption:p.caption,image:p.image,likes:Number(p.likes)||0,comments:Array.isArray(p.comments)?p.comments.slice(-30):[]})); }
+function socialRateAllowed(key,interval){const now=Date.now(),prev=socialRate.get(key)||0;if(now-prev<interval)return false;socialRate.set(key,now);if(socialRate.size>4000){for(const [k,t] of socialRate)if(now-t>60*60*1000)socialRate.delete(k);}return true;}
+function socialText(v,max){return String(v||'').replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,max);}
 let worldEditsState = { edits: {}, updatedAt: 0 };
 try { const saved = JSON.parse(fs.readFileSync(WORLD_EDITS_FILE, 'utf8')); if(saved && saved.edits && typeof saved.edits==='object') worldEditsState={edits:saved.edits,updatedAt:Number(saved.updatedAt)||0}; } catch (_) {}
 function saveWorldEdits(){ const tmp=WORLD_EDITS_FILE+'.tmp'; fs.writeFileSync(tmp,JSON.stringify(worldEditsState)); fs.renameSync(tmp,WORLD_EDITS_FILE); }
@@ -118,6 +126,33 @@ const server = http.createServer(async (req, res) => {
   const json = (code, o) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
   if (url === '/' || url === '/health') return json(200, { ok: true, online: clients.size });
   if (url === '/api/world-edits' && req.method === 'GET') return json(200, worldEditsState);
+  // Public, shared in-game photo feed. Images are small JPEG data URLs captured by the game.
+  if (url === '/api/social-posts' && req.method === 'GET') return json(200, { posts: publicSocialPosts() });
+  if (url === '/api/social-posts' && req.method === 'POST') {
+    const b=await readBody(req), ip=ipOf(req), image=String(b.image||'');
+    if(!socialRateAllowed('post:'+ip,15000)) return json(429,{error:'Подожди 15 секунд перед следующей публикацией'});
+    if(!/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(image)||image.length>480000) return json(400,{error:'Фото должно быть небольшим JPEG-снимком из игры'});
+    const post={id:Date.now(),author:socialText(b.author||'Гонщик',18)||'Гонщик',caption:socialText(b.caption||'Мой момент в Turbo Rivals',180),image,likes:0,likedBy:[],comments:[],created:Date.now()};
+    socialPosts.unshift(post);socialPosts=socialPosts.slice(0,80);
+    try{saveSocialPosts();}catch(e){socialPosts.shift();console.error('Social feed could not persist',e);return json(500,{error:'Не удалось сохранить публикацию на сервере'});}
+    return json(200,{ok:true,posts:publicSocialPosts()});
+  }
+  if (url === '/api/social-posts/like' && req.method === 'POST') {
+    const b=await readBody(req),id=Number(b.id),post=socialPosts.find(p=>Number(p.id)===id),who=crypto.createHash('sha256').update(ipOf(req)).digest('hex');
+    if(!post)return json(404,{error:'Публикация не найдена'});
+    post.likedBy=Array.isArray(post.likedBy)?post.likedBy:[];
+    if(!post.likedBy.includes(who)){if(post.likedBy.length>=2000)post.likedBy.shift();post.likedBy.push(who);post.likes=(Number(post.likes)||0)+1;try{saveSocialPosts();}catch(e){return json(500,{error:'Не удалось сохранить лайк'});}}
+    return json(200,{ok:true,posts:publicSocialPosts()});
+  }
+  if (url === '/api/social-posts/comment' && req.method === 'POST') {
+    const b=await readBody(req),ip=ipOf(req),id=Number(b.id),post=socialPosts.find(p=>Number(p.id)===id),text=socialText(b.text,120);
+    if(!post)return json(404,{error:'Публикация не найдена'});
+    if(!text)return json(400,{error:'Напиши комментарий'});
+    if(!socialRateAllowed('comment:'+ip,1200))return json(429,{error:'Не отправляй комментарии слишком часто'});
+    post.comments=Array.isArray(post.comments)?post.comments:[];post.comments.push({author:socialText(b.author||'Гонщик',18)||'Гонщик',text,created:Date.now()});post.comments=post.comments.slice(-30);
+    try{saveSocialPosts();}catch(e){return json(500,{error:'Не удалось сохранить комментарий'});}
+    return json(200,{ok:true,posts:publicSocialPosts()});
+  }
   if (url === '/api/world-edits/auth' && req.method === 'POST') return authOk(req) ? json(200,{ok:true}) : json(401,{error:'Неверный пароль разработчика или ADMIN_PASSWORD не задан'});
   if (url === '/api/world-edits' && req.method === 'POST') {
     if (!authOk(req)) return json(401,{error:'Неверный пароль разработчика или ADMIN_PASSWORD не задан'});

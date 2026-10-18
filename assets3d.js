@@ -19,6 +19,8 @@
   const extraCityCollisionMeshes = new Set();
   const editorObjects = new Map();
   let carAssetsPromise = null, personPromise = null, cityPromise = null, armsPromise = null;
+  let personClips = [];
+  const characterAnimations = new Map();
   let fordTemplate = null, carPackTemplates = [], personTemplate = null, cityTemplate = null;
   let armsRoot = null, armsMixer = null, armsActions = {}, armsCurrent = null, armsOverlay = null, cockpitOverlay = null, steeringWheel = null, gameCamera = null;
   let firstPersonWanted = false, firstPersonContext = 'race', characterMotion = 'idle', characterMotionClock = 0;
@@ -75,12 +77,21 @@
     doomed.forEach(o => { if (o.parent) o.parent.remove(o); });
   }
 
+  function cloneModel(source) {
+    if (THREE.SkeletonUtils && typeof THREE.SkeletonUtils.clone === 'function') return THREE.SkeletonUtils.clone(source);
+    const clone = source.clone(true);
+    const sourceBones=[],cloneBones=[];source.traverse(o=>{if(o.isBone)sourceBones.push(o);});clone.traverse(o=>{if(o.isBone)cloneBones.push(o);});
+    const boneMap=new Map();sourceBones.forEach((b,i)=>{if(cloneBones[i])boneMap.set(b,cloneBones[i]);});
+    clone.traverse(o=>{if(o.isSkinnedMesh&&o.skeleton){const sk=o.skeleton.clone();sk.bones=o.skeleton.bones.map(b=>boneMap.get(b)||b);o.bind(sk,o.bindMatrix);}});
+    return clone;
+  }
   function makeNormalisedInstance(source, options = {}) {
     const holder = new THREE.Group();
     holder.name = options.name || 'TR imported model';
-    const model = source.clone(true);
-    holder.add(model);
+    const model = cloneModel(source);
+    if (options.rotateX !== undefined) model.rotation.x = options.rotateX;
     if (options.rotateY !== undefined) model.rotation.y = options.rotateY;
+    holder.add(model);
     holder.updateMatrixWorld(true);
     let box = new THREE.Box3().setFromObject(holder);
     const size = box.getSize(new THREE.Vector3());
@@ -95,26 +106,22 @@
     return holder;
   }
 
-  // GLB-колёса не имеют анимационных клипов, поэтому ставим pivot в центр каждой детали колеса.
-  function prepareWheelPivots(model) {
+  // Ford stores each wheel as a complete wheel_*_dummy assembly. Rotate that
+  // assembly around its own centre. The Ultimate pack stores its four tires in a
+  // combined mesh, so rotating that mesh as one pivot makes the wheels orbit; keep
+  // those wheels visually stable rather than applying a wrong circular motion.
+  function prepareWheelPivots(model, useFord) {
+    if (!useFord) return [];
     model.updateMatrixWorld(true);
-    const wheelMeshes = [];
-    model.traverse(o => {
-      if (o.isMesh && /wheel|tire|tyre|rim/i.test(o.name || '') && !isCollisionMesh(o)) wheelMeshes.push(o);
-    });
-    const pivots = [];
-    for (const mesh of wheelMeshes) {
-      if (!mesh.parent) continue;
-      const box = new THREE.Box3().setFromObject(mesh);
-      if (box.isEmpty()) continue;
-      const centerWorld = box.getCenter(new THREE.Vector3());
-      const centerLocal = model.worldToLocal(centerWorld.clone());
-      const pivot = new THREE.Group();
-      pivot.name = 'TR animated wheel pivot';
-      pivot.position.copy(centerLocal);
-      model.add(pivot);
-      pivot.attach(mesh); // сохраняет положение детали и переносит её вращение на центр колеса
-      pivots.push(pivot);
+    const wheelGroups=[];
+    model.traverse(o=>{if(o.isGroup && /^wheel_(lb|rb|lf|rf)_dummy$/i.test(o.name||'') && !o.userData.trWheelPivotBuilt)wheelGroups.push(o);});
+    const pivots=[];
+    for(const group of wheelGroups){
+      const box=new THREE.Box3().setFromObject(group);if(box.isEmpty())continue;
+      const centerWorld=box.getCenter(new THREE.Vector3());
+      const centerLocal=model.worldToLocal(centerWorld.clone());
+      const pivot=new THREE.Group();pivot.name='TR Ford GT wheel pivot';pivot.position.copy(centerLocal);
+      pivot.userData.trWheelPivot=true;model.add(pivot);pivot.attach(group);group.userData.trWheelPivotBuilt=true;pivots.push(pivot);
     }
     return pivots;
   }
@@ -129,11 +136,17 @@
 
     const model = source.clone(true);
     removeCollisionMeshes(model);
-    const pivots = prepareWheelPivots(model);
+    const pivots = prepareWheelPivots(model, useFord);
     const external = new THREE.Group();
     external.name = useFord ? '2006 Ford GT — external visual' : 'Ultimate pack — external visual';
-    model.rotation.y = Math.PI; // исходные модели смотрят по -Z, игровой автомобиль — по +Z
+    // The Ford GLB is exported Z-up and its local +Y axis is the car's length axis.
+    // Keep the GLTF's -90° X conversion intact, then turn the outer Y-up group so the
+    // bonnet/front (source world -Z) points toward the game's forward direction (+Z).
+    // The Ultimate pack instead uses Y-up and faces -Z, so rotate its model locally.
+    if (useFord) external.rotation.y = Math.PI;
+    else model.rotation.y = Math.PI;
     external.add(model);
+    external.visible = !(firstPersonWanted && (firstPersonContext === 'drive' || firstPersonContext === 'race'));
     external.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(external);
     const size = box.getSize(new THREE.Vector3());
@@ -190,7 +203,28 @@
 
   function makePersonInstance() {
     if (!personTemplate) return null;
-    return makeNormalisedInstance(personTemplate, { height: 1.78, name: 'New Person — character model' });
+    return makeNormalisedInstance(personTemplate, { height: 1.78, name: 'New Person — rigged character model' });
+  }
+  function bindCharacterAnimations(root, model) {
+    if(!root||!model||!personClips.length)return;
+    try{
+      const mixer=new THREE.AnimationMixer(model),actions={};
+      for(const clip of personClips){actions[clip.name]=mixer.clipAction(clip);}
+      characterAnimations.set(root,{mixer,actions,current:'',forcedUntil:0,forcedName:''});
+      playCharacterAnimation(root,'Idle');
+    }catch(error){console.warn('[Turbo Rivals] Не удалось активировать риг персонажа:',error);}
+  }
+  function playCharacterAnimation(root,name,forceSeconds=0) {
+    const state=characterAnimations.get(root);if(!state||!state.actions[name])return;
+    if(state.current!==name){
+      const next=state.actions[name];next.reset();
+      if(name==='Jump'||name==='EnterCar'){next.setLoop(THREE.LoopOnce,1);next.clampWhenFinished=true;}
+      else next.setLoop(THREE.LoopRepeat,Infinity);
+      next.fadeIn(0.12).play();
+      if(state.current&&state.actions[state.current])state.actions[state.current].fadeOut(0.12);
+      state.current=name;
+    }
+    if(forceSeconds>0){state.forcedName=name;state.forcedUntil=characterMotionClock+forceSeconds;}
   }
   function attachWorldCharacter(root) {
     if (!root || !root.userData || root.userData.trNewPersonAttached || !personTemplate) return;
@@ -206,6 +240,7 @@
       (u.trOriginalCharacterParts || []).forEach(part => { if (part) part.visible = false; });
     }
     body.add(model);
+    bindCharacterAnimations(root,model);
     model.userData.trNewPersonBaseY = model.position.y;
     model.userData.trNewPersonBaseRotZ = model.rotation.z;
     u.trNewPersonAttached = true;
@@ -221,6 +256,7 @@
     model.scale.y *= 0.94;
     model.userData.trDriverModel = true;
     root.add(model);
+    bindCharacterAnimations(root,model);
     root.userData.trNewPersonAttached = true;
     root.userData.trNewPersonModel = model;
   }
@@ -228,6 +264,7 @@
     if (personPromise) return personPromise;
     personPromise = loadGLB('new_person.glb').then(gltf => {
       personTemplate = gltf.scene;
+      personClips = Array.isArray(gltf.animations) ? gltf.animations : [];
       markSharedTree(personTemplate);
       worldCharacters.forEach(attachWorldCharacter);
       staticCharacters.forEach(attachWorldCharacter);
@@ -316,7 +353,7 @@
     const box = new THREE.Box3().setFromObject(content);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    const scale = 1080 / Math.max(size.x, size.z, 1);
+    const scale = 2.2; // постоянный размер города по требованию: 2.2 × 2.2 × 2.2
     // The map root itself stays exactly at world origin; only its inner content
     // is normalized and centered. This keeps editor coordinates predictable.
     content.position.set(-center.x, -box.min.y, -center.z);
@@ -326,7 +363,7 @@
     holder.userData.importedNYCity = true;
     holder.userData.trSharedAsset = true;
     const sourceBounds = new THREE.Box3().setFromObject(holder);
-    holder.userData.importedBounds = { minX: sourceBounds.min.x, maxX: sourceBounds.max.x, minZ: sourceBounds.min.z, maxZ: sourceBounds.max.z };
+    holder.userData.importedBounds = { minX: sourceBounds.min.x, maxX: sourceBounds.max.x, minY: sourceBounds.min.y, maxY: sourceBounds.max.y, minZ: sourceBounds.min.z, maxZ: sourceBounds.max.z };
     importedCityMeshes = [];
     extraCityCollisionMeshes.clear();
     holder.traverse(o => {
@@ -355,46 +392,63 @@
   }
 
   function detachCrashParts(root, severity) {
-    if (!root || !root.userData || !root.userData.externalCarRoot || severity < 4.6) return [];
-    // Only remove independently modelled GLB parts. Merged geometry cannot become
-    // separate debris without modifying the original model, so it is never faked as a cube.
-    const external=root.userData.externalCarRoot, candidates=[], wheelCandidates=[], glassCandidates=[];
-    const pattern=/^(front|rear|door|bonnet|boot|wind|window|glass|mirror|spoiler|wing|bumper|tire|tyre|wheel|rim)/i;
+    if (!root || !root.userData || !root.userData.externalCarRoot || severity < 4.4) return [];
+    const external=root.userData.externalCarRoot,candidates=[],wheelCandidates=[],glassCandidates=[];
+    const ford=String(external.name||'').includes('Ford GT');
+    const pattern=/^(front|rear|door|bonnet|boot|wind|window|glass|mirror|spoiler|wing|bumper|tire|tyre|wheel|rim|body|paint)/i;
     external.updateMatrixWorld(true);
     external.traverse(o=>{
+      if(o===external||o.userData.trDetachedPart||!pattern.test(String(o.name||'')))return;
+      // Prefer a complete named assembly/group so it flies away as one real panel,
+      // rather than detaching every tiny material triangle as a separate object.
       const name=String(o.name||'');
-      if(o===external||o.userData.trDetachedPart||!pattern.test(name))return;
-      if(!o.isMesh)return;
+      const isFordWheel=ford && o.isGroup && /^wheel_(lb|rb|lf|rf)_dummy$/i.test(name);
+      const isFordPanel=ford && o.isGroup && /^(door_(rf|lf)_dummy|bonnet_dummy|boot_dummy|windscreen_dummy|winds2n_dummy)$/i.test(name);
+      const isPackPanel=!ford && o.isGroup && /^(front|rear|window|body|paint)(?:[._ -]|$)/i.test(name);
+      const isFordGlass=ford && (o.isGroup||o.isMesh) && /^(windscreen_ok|winds2n_ok|glass_dam)/i.test(name);
+      const isMeshPanel=o.isMesh && /^(front|rear|door|bonnet|boot|wind|window|glass|mirror|spoiler|wing|bumper)/i.test(name);
+      const isWheelMesh=ford&&o.isMesh&&/^(wheel|rim)/i.test(name);
+      if(!(isFordWheel||isFordPanel||isPackPanel||isFordGlass||isMeshPanel||isWheelMesh))return;
       const box=new THREE.Box3().setFromObject(o);if(box.isEmpty())return;
       const size=box.getSize(new THREE.Vector3()),largest=Math.max(size.x,size.y,size.z);
-      if(largest>5.2)return;
-      const wheel=/tire|tyre|wheel|rim/i.test(name),glass=/window|glass|wind/i.test(name);
-      // Wheels must be individual, compact meshes. If tires are merged in the asset,
-      // do not remove all four as if one wheel could be separated.
-      if(wheel){if(largest<=1.55)wheelCandidates.push({object:o,glass:false,wheel:true,score:0});return;}
-      if(glass)glassCandidates.push({object:o,glass:true,wheel:false,score:0});
-      else if(/door|bonnet|boot|bumper/i.test(name))candidates.push({object:o,glass:false,wheel:false,score:1});
-      else candidates.push({object:o,glass:false,wheel:false,score:2});
+      if(largest>6.0)return;
+      const wheel=isFordWheel||isWheelMesh,glass=/window|glass|wind/i.test(name)||isFordGlass;
+      const candidate={part:o,object:o,glass:!!glass,wheel:!!wheel,score:wheel?0:glass?1:/door|bonnet|boot|bumper|front|rear/i.test(name)?2:3};
+      (wheel?wheelCandidates:glass?glassCandidates:candidates).push(candidate);
     });
+    // Do not offer a child when its enclosing door/window assembly is already a choice.
+    const all=[...candidates,...glassCandidates,...wheelCandidates];
+    for(const item of all){let parent=item.part.parent;while(parent&&parent!==external){if(all.some(other=>other!==item&&other.part===parent)){item._nested=true;break;}parent=parent.parent;}}
+    const valid=a=>a.filter(v=>!v._nested&&v.part.parent&&!v.part.userData.trDetachedPart);
+    const wheels=valid(wheelCandidates),glass=valid(glassCandidates),panels=valid(candidates);
     const severityRatio=Math.max(0,Math.min(1,(severity-4.2)/3.1));
-    // Rare tyre/wheel loss on a hard crash, only if the GLB contains a separately
-    // modelled wheel mesh. A remaining rim stays in the car if the pack separates it.
-    if(wheelCandidates.length&&severity>=5.6&&Math.random()<0.035+severityRatio*0.075){
-      const wheel=wheelCandidates[Math.floor(Math.random()*wheelCandidates.length)];
-      if(wheel&&wheel.object.parent){wheel.object.userData.trDetachedPart=true;return [wheel];}
+    if(wheels.length&&severity>=5.7&&Math.random()<0.025+severityRatio*0.07){
+      const item=wheels[Math.floor(Math.random()*wheels.length)];item.part.userData.trDetachedPart=true;return [item];
     }
-    // Glass can shatter first; otherwise a body panel or bumper may tear away.
-    let pool=[];
-    if(glassCandidates.length&&severity>=5.1&&Math.random()<0.36+severityRatio*0.25)pool=glassCandidates;
-    else pool=candidates;
-    if(!pool.length)return [];
-    if(Math.random()>Math.max(0.16,Math.min(0.88,(severity-3.6)*0.19)))return [];
+    let pool=(glass.length&&severity>=5.0&&Math.random()<0.34+severityRatio*0.28)?glass:panels;
+    if(!pool.length)pool=glass;
+    if(!pool.length||Math.random()>Math.max(0.18,Math.min(0.9,(severity-3.5)*0.2)))return [];
     pool.sort((a,b)=>a.score-b.score);
-    const best=pool[0].score;pool=pool.filter(c=>c.score<=best+1);
-    const choice=pool[Math.floor(Math.random()*pool.length)];
-    if(!choice||!choice.object.parent)return [];
-    choice.object.userData.trDetachedPart=true;
+    const best=pool[0].score,near=pool.filter(c=>c.score<=best+1),choice=near[Math.floor(Math.random()*near.length)];
+    if(!choice||!choice.part.parent)return [];
+    choice.part.userData.trDetachedPart=true;
     return [choice];
+  }
+  function dentCar(root,severity){
+    if(!root||!root.userData||!root.userData.externalCarRoot||severity<1.8)return false;
+    const ext=root.userData.externalCarRoot;const already=root.userData.trDentedMeshSet||(root.userData.trDentedMeshSet=new Set());
+    const options=[];ext.traverse(o=>{if(!o.isMesh||o.userData.trDetachedPart||o.userData.trDentedPermanently||!o.geometry||!o.geometry.attributes||!o.geometry.attributes.position)return;const n=String(o.name||'');if(/body|paint|front|rear|bonnet|boot|door/i.test(n)&&!already.has(o)){const box=new THREE.Box3().setFromObject(o);if(!box.isEmpty()&&box.getSize(new THREE.Vector3()).length()>0.18)options.push(o);}});
+    if(!options.length)return false;
+    const mesh=options[Math.floor(Math.random()*options.length)];mesh.geometry=mesh.geometry.clone();mesh.userData.trDentedPermanently=true;already.add(mesh);
+    const attr=mesh.geometry.attributes.position;if(!attr||attr.count<8)return false;
+    const box=mesh.geometry.boundingBox||new THREE.Box3().setFromBufferAttribute(attr);if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
+    const cx=box.min.x+Math.random()*(box.max.x-box.min.x),cy=box.min.y+Math.random()*(box.max.y-box.min.y),cz=box.min.z+Math.random()*(box.max.z-box.min.z);
+    const radius=Math.min(0.55,0.12+severity*0.045),depth=Math.min(0.22,0.035+severity*0.027);
+    for(let i=0;i<attr.count;i++){
+      const dx=attr.getX(i)-cx,dy=attr.getY(i)-cy,dz=attr.getZ(i)-cz,d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+      if(d<radius){const k=(1-d/radius)*(0.35+Math.random()*0.2)*depth;const inv=1/(d+0.03);attr.setXYZ(i,attr.getX(i)-dx*inv*k,attr.getY(i)-dy*inv*k,attr.getZ(i)-dz*inv*k);}
+    }
+    attr.needsUpdate=true;mesh.geometry.computeVertexNormals();mesh.geometry.computeBoundingSphere();return true;
   }
   function makeCockpit() {
     if(cockpitOverlay)return cockpitOverlay;
@@ -432,7 +486,8 @@
     armsPromise = loadGLB('fps_arms.glb').then(gltf => {
       armsRoot = gltf.scene;
       const background=armsRoot.getObjectByName('Background_Background_0');if(background)background.visible=false;
-      armsRoot.scale.setScalar(0.18);
+      const helperCamera=armsRoot.getObjectByName('Camera');if(helperCamera)helperCamera.visible=false;
+      armsRoot.scale.setScalar(1);
       armsOverlay = new THREE.Group();
       armsOverlay.name = 'TR first-person animated arms';
       armsOverlay.add(armsRoot);
@@ -525,12 +580,14 @@
       if (armsOverlay && gameCamera && armsOverlay.parent !== gameCamera) gameCamera.add(armsOverlay);
       if (cockpitOverlay && gameCamera && cockpitOverlay.parent !== gameCamera) gameCamera.add(cockpitOverlay);
     },
-    setFirstPerson(active, context = 'race') {
+    setFirstPerson(active, context = 'race', playerCar = null) {
       firstPersonWanted = !!active;
       firstPersonContext = context;
       if (firstPersonWanted) ensureArms();
       const driving=firstPersonContext==='drive'||firstPersonContext==='race';
       if(driving)makeCockpit();
+      if(playerCar&&playerCar.userData&&playerCar.userData.externalCarRoot){playerCar.userData.externalCarRoot.visible=!(firstPersonWanted&&driving);}
+      if(playerCar&&playerCar.userData&&playerCar.userData.driver){playerCar.userData.driver.visible=!(firstPersonWanted&&driving);}
       if (armsOverlay) {
         armsOverlay.visible = firstPersonWanted;
         if(firstPersonContext==='drive'){armsOverlay.position.set(0,-0.48,-0.79);armsOverlay.scale.setScalar(0.15);}
@@ -543,25 +600,37 @@
     },
     setSteer(value) { if(steeringWheel)steeringWheel.rotation.z=Math.max(-1,Math.min(1,Number(value)||0))*0.48; },
     detachCrashParts,
+    dentCar,
+    playCharacterAction(name,seconds=0.65,root=null){if(root)playCharacterAnimation(root,name,seconds);else{const playerRoot=[...worldCharacters,...staticCharacters].find(r=>r&&r.userData&&r.userData.playerPed);if(playerRoot)playCharacterAnimation(playerRoot,name,seconds);}},
     setCharacterMotion(moving, sprinting) {
       characterMotion = !moving ? 'idle' : sprinting ? 'sprint' : 'walk';
       if (firstPersonWanted) playArmsAction(wantedArmsClip());
     },
     update(dt) {
       const step = Math.min(0.05, Math.max(0, dt || 0));
-      if (armsMixer && firstPersonWanted) armsMixer.update(step);
       characterMotionClock += step;
-      for (const root of [...worldCharacters, ...staticCharacters]) {
-        const model = root && root.userData && root.userData.trNewPersonModel;
-        if (!model) continue;
-        const isPlayer = !!root.userData.playerPed;
-        const moving = isPlayer ? (characterMotion === 'walk' || characterMotion === 'sprint') : Number(root.userData.trWalkSpeed || 0) > 0;
-        const speed = isPlayer && characterMotion === 'sprint' ? 13 : 8 + (Number(root.userData.trWalkSpeed) || 0) * 2;
-        // The supplied new_person.glb has no skeleton or animation clips. This subtle
-        // whole-model bob/sway is a fallback only; limbs cannot be articulated without a rig.
-        const phase = characterMotionClock * speed + (Number(root.userData.trMotionPhase) || 0);
-        model.position.y = (model.userData.trNewPersonBaseY || 0) + (moving ? Math.abs(Math.sin(phase)) * 0.025 : Math.sin(characterMotionClock * 1.6) * 0.004);
-        model.rotation.z = (model.userData.trNewPersonBaseRotZ || 0) + (moving ? Math.sin(phase) * 0.025 : 0);
+      if (armsMixer && firstPersonWanted) armsMixer.update(step);
+      const roots=new Set([...worldCharacters,...staticCharacters,...driverCharacters]);
+      for(const root of roots){
+        if(!root)continue;
+        const state=characterAnimations.get(root);
+        if(state){
+          let desired='Idle';
+          if(state.forcedUntil>characterMotionClock&&state.forcedName) desired=state.forcedName;
+          else if(root.userData&&root.userData.playerPed) desired=characterMotion==='sprint'?'Run':characterMotion==='walk'?'Walk':'Idle';
+          else if(Number(root.userData&&root.userData.trWalkSpeed)>0) desired='Walk';
+          if(!state.actions[desired])desired=state.actions.Idle?'Idle':Object.keys(state.actions)[0];
+          if(desired)playCharacterAnimation(root,desired);
+          state.mixer.update(step);
+        }
+        const model=root.userData&&root.userData.trNewPersonModel;
+        if(!model)continue;
+        const isPlayer=!!(root.userData&&root.userData.playerPed);
+        const moving=isPlayer?(characterMotion==='walk'||characterMotion==='sprint'):Number(root.userData.trWalkSpeed||0)>0;
+        const speed=isPlayer&&characterMotion==='sprint'?13:8+(Number(root.userData.trWalkSpeed)||0)*2;
+        const phase=characterMotionClock*speed+(Number(root.userData.trMotionPhase)||0);
+        // Small body bob is an additive motion on top of real skeletal clips.
+        model.position.y=(model.userData.trNewPersonBaseY||0)+(moving?Math.abs(Math.sin(phase))*0.012:Math.sin(characterMotionClock*1.6)*0.002);
       }
     }
   };

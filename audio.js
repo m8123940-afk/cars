@@ -1,6 +1,6 @@
 // Звук: двигатель, ветер, визг шин, ambience по локациям, музыка и эффекты. Всё синтезируется, внешних файлов нет.
 const Snd = (() => {
-  let ctx, master, sfx, mus, amb, eng, eng2, engF, engG, turboO, turboG, wind, sq, am, nbuf, timer = null, step = 0, mode = 'off', theme = 0, evT = 6, tAcc = 0, crowdAt = 0;
+  let ctx, master, sfx, mus, amb, eng, eng2, engF, engG, turboO, turboG, wind, sq, am, nbuf, timer = null, step = 0, mode = 'off', theme = 0, evT = 6, tAcc = 0, crowdAt = 0, radioIndex = 0;
   const cfg = { snd: 1, mus: 1 };
 
   const noiseBuf = sec => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; };
@@ -114,20 +114,25 @@ const Snd = (() => {
     f.type = 'highpass'; f.frequency.value = 7000; g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
     s.connect(f); f.connect(g); g.connect(mus); s.start(t, Math.random()); s.stop(t + 0.05);
   }
+  const RADIO_TRACKS=[
+    {name:'Neon Highway',tempo:112,bass:[55,0,55,0,82.4,0,73.4,0,49,0,49,0,73.4,0,65.4,0],lead:[330,0,392,494,0,392,330,0,294,0,370,440,0,370,294,0]},
+    {name:'Vice Night',tempo:98,bass:[65.4,0,0,65.4,0,82.4,0,73.4,55,0,0,55,0,73.4,0,82.4],lead:[262,330,0,392,440,0,392,330,247,294,370,0,494,440,370,0]},
+    {name:'Sunset Drive',tempo:90,bass:[49,0,61.7,0,73.4,0,61.7,0,43.7,0,55,0,65.4,0,55,0],lead:[220,262,330,0,392,330,262,0,196,247,294,0,370,294,247,0]}
+  ];
   function mtick() {
     if (!ctx || mode === 'off' || !cfg.mus) return;
-    const t = T() + 0.05, s = step % 16, race = mode === 'race';
-    if (race ? s % 4 === 0 : s % 8 === 0) kick(t);
-    if (race && s % 2 === 0) hat(t);
-    if (BASS[s]) note(BASS[s], t, race ? 0.16 : 0.3, 'sawtooth', race ? 0.16 : 0.1);
-    if (race || s % 2 === 0) note(ARP[s], t, 0.12, 'square', race ? 0.03 : 0.015);
+    const t=T()+0.05,s=step%16,race=mode==='race';
+    if(mode==='radio'){const tr=RADIO_TRACKS[radioIndex%RADIO_TRACKS.length];if(s%4===0)kick(t);if(s%2===0)hat(t);if(tr.bass[s])note(tr.bass[s],t,0.24,'triangle',0.12);if(tr.lead[s])note(tr.lead[s],t,0.2,'sawtooth',0.042);}
+    else{if(race?s%4===0:s%8===0)kick(t);if(race&&s%2===0)hat(t);if(BASS[s])note(BASS[s],t,race?0.16:0.3,'sawtooth',race?0.16:0.1);if(race||s%2===0)note(ARP[s],t,0.12,'square',race?0.03:0.015);}
     step++;
   }
   function music(m) {
-    if (m === mode) return; mode = m; clearInterval(timer); timer = null;
-    if (m === 'off' || !ctx) return;
-    timer = setInterval(mtick, 60000 / (m === 'race' ? 138 : 92) / 4);
+    if(m===mode)return;mode=m;clearInterval(timer);timer=null;if(m==='off'||!ctx)return;
+    const tempo=m==='race'?138:m==='radio'?RADIO_TRACKS[radioIndex%RADIO_TRACKS.length].tempo:92;timer=setInterval(mtick,60000/tempo/4);
   }
+  function toggleRadio(){if(mode==='radio'){music('menu');return{on:false,name:RADIO_TRACKS[radioIndex].name};}music('radio');return{on:true,name:RADIO_TRACKS[radioIndex].name};}
+  function nextRadio(){radioIndex=(radioIndex+1)%RADIO_TRACKS.length;step=0;if(mode==='radio'){clearInterval(timer);timer=setInterval(mtick,60000/RADIO_TRACKS[radioIndex].tempo/4);}return RADIO_TRACKS[radioIndex].name;}
+  function radioInfo(){return{on:mode==='radio',name:RADIO_TRACKS[radioIndex].name,index:radioIndex};}
 
-  return { init, setCfg, update, idle, beep, bump, crash, coin, pickup, oil, jump, land, nitro, click, countdown, fanfare, lose, lap, crowd, setTheme, ambTick, music };
+  return { init, setCfg, update, idle, beep, bump, crash, coin, pickup, oil, jump, land, nitro, click, countdown, fanfare, lose, lap, crowd, setTheme, ambTick, music, toggleRadio, nextRadio, radioInfo };
 })();
