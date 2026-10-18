@@ -161,6 +161,23 @@ function makeCarModel(def, colOverride, options = {}) {
     // Дворники у основания лобового стекла и небольшая антенна на крыше.
     [-0.25,0.25].forEach(x=>{const wiper=add(new THREE.BoxGeometry(0.018,0.018,0.48),detailMat,x,S.belt+0.06,S.wb+0.24,false);wiper.rotation.y=x*0.22;});
     add(new THREE.CylinderGeometry(0.015,0.025,0.32,6),detailMat,0,S.roof+0.13,S.rt-0.2,false).rotation.z=-0.25;
+    // Side mirrors with reflective caps, rear lamp clusters, quad exhaust options and body badges.
+    const mirrorShell=new THREE.MeshPhysicalMaterial({color:colOverride||def.col,roughness:0.24,metalness:0.45,clearcoat:1});
+    const mirrorGlass=new THREE.MeshStandardMaterial({color:0xa9d3e5,roughness:0.16,metalness:0.8});
+    [-1,1].forEach(sx=>{
+      add(new THREE.BoxGeometry(0.15,0.10,0.22),mirrorShell,sx*(S.w*0.48),S.belt+0.02,S.wb+0.06,false);
+      add(new THREE.BoxGeometry(0.018,0.065,0.145),mirrorGlass,sx*(S.w*0.48+0.075),S.belt+0.025,S.wb+0.06,false);
+      add(new THREE.BoxGeometry(0.09,0.16,0.04),detailMat,sx*(S.w*0.22),S.tail-0.05,-h-0.018,false);
+      add(new THREE.BoxGeometry(0.36,0.10,0.055),new THREE.MeshPhysicalMaterial({color:0xff263b,roughness:0.18,emissive:0x7a0710,emissiveIntensity:0.45}),sx*S.w*0.31,S.tail-0.06,-h-0.035,false);
+    });
+    const exhaustMat=new THREE.MeshStandardMaterial({color:0x9ba6b2,roughness:0.2,metalness:0.95});
+    [-1,1].forEach(sx=>{const ex=add(new THREE.CylinderGeometry(0.075,0.09,0.22,12),exhaustMat,sx*S.w*0.31,y0+0.03,-h-0.13,false);ex.rotation.x=Math.PI/2;});
+    add(new THREE.BoxGeometry(S.w*0.78,0.05,0.08),trimMat,0,S.belt-0.02,-h-0.02,false);
+    // Subtle front splitter and rear diffuser fins define the lower body silhouette.
+    add(new THREE.BoxGeometry(S.w*0.92,0.07,0.24),detailMat,0,y0-0.015,h+0.08,false);
+    for(let fin=-2;fin<=2;fin++)add(new THREE.BoxGeometry(0.055,0.09,0.34),detailMat,fin*S.w*0.17,y0-0.015,-h-0.02,false);
+    // Machined hub caps and fine tire sidewall rings.
+    for(const wheel of wheels){const ring=new THREE.Mesh(new THREE.TorusGeometry(R*0.73,0.018,5,20),trimMat);ring.rotation.y=Math.PI/2;wheel.add(ring);}
 
   }
 

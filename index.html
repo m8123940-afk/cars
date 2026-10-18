@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Turbo Rivals 3D</title>
+<title>Turbo Rivals 3D · Five Regions</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -23,6 +23,7 @@
 </div>
 <canvas id="minimap" width="180" height="180" hidden aria-label="Мини-карта трассы"></canvas>
 <button id="fixBtn" hidden>↺ Поправить (R)</button>
+<button id="raceCamBtn" hidden>Камера: 3-е лицо (V)</button>
 <button id="touchEditDone" hidden>Сохранить расположение</button>
 <div id="touchEditPanel" hidden><label>Кнопка <select id="touchEditTarget"><option value="left">Поворот влево</option><option value="right">Поворот вправо</option><option value="nitro">Нитро</option><option value="brake">Тормоз</option><option value="drift">Дрифт</option><option value="gas">Газ</option></select></label><label>Размер <input id="touchEditRange" type="range" min="60" max="160" step="5" value="100"><b id="touchEditValue">100%</b></label><button id="touchEditReset" type="button">Сбросить</button></div>
 <div id="count" hidden></div>
@@ -144,6 +145,13 @@
   <label class="set">Сервер <input id="srvIn" placeholder="wss://….onrender.com" autocomplete="off"></label>
   <button id="resetBtn" class="btn danger">Сбросить прогресс</button>
   <button id="setBack" class="big sm">Готово</button>
+</div>
+
+<div id="worldSelect" class="overlay world-select" hidden>
+  <h2>Открытый мир · выбор региона</h2>
+  <p class="sub">Пять отдельных районов с собственной архитектурой, освещением и декорациями. Существующие гонки и гараж сохраняются.</p>
+  <div id="worldRegionCards" class="world-region-grid"></div>
+  <button id="worldSelectClose" class="btn">← Назад</button>
 </div>
 
 <div id="worldHud" hidden>
