@@ -489,7 +489,11 @@ const player = { name: 'Вы', mesh: null, h: 0, speed: 0, vx: 0, vz: 0, y: 0, v
 let ais = [], remotes = {}, state = 'menu', nitro = 100, finishOrder = [], camH = 0, bumpT = 0, menuT = 0, raceId = 0, raceCoins = 0, curLaps = 3, wallT = 0, cfg = null, stuckT = 0, fixCool = 0, lastLap = 0, charMesh = null;
 const all = () => [player, ...ais, ...Object.values(remotes)];
 
-function disposeModel(root) { if (!root) return; root.traverse(o => { if (o.geometry && o.geometry !== WEDGE) o.geometry.dispose(); }); }
+function disposeModel(root) {
+  if (!root) return;
+  if (window.TRModels && typeof window.TRModels.unregister === 'function') window.TRModels.unregister(root);
+  root.traverse(o => { if (o.geometry && o.geometry !== WEDGE && !(o.userData && o.userData.trSharedAsset)) o.geometry.dispose(); });
+}
 function showCar(id) {
   if (player.mesh) { scene.remove(player.mesh); disposeModel(player.mesh); }
   const tune = carTune(id); player.mesh = makeCarModel(visualCarDef(id), carPaint(id), { neon: save.neon[id] !== false, rimStyle: tune.rimStyle, wing: tune.wing }); scene.add(player.mesh); player.mid = id;
@@ -1105,7 +1109,7 @@ function updatePlayer(dt) {
   player.mesh.rotation.z = -player.steerS * Math.min(sp / 60, 1) * 0.05;
   player.mesh.rotation.x = player.air ? -clamp(player.vy / 40, -0.4, 0.4) : 0;
   const ud = player.mesh.userData;
-  ud.wheels.forEach(w => w.rotation.x += player.speed * dt / 0.4);
+  ud.wheels.forEach(w => w.rotation.x += player.speed * dt / 0.4); (ud.externalWheels||[]).forEach(w => w.rotation.x += player.speed * dt / 0.4);
   ud.tailMat.color.setHex(brk ? 0xff5050 : 0xaa1010);
   ud.flame.visible = boost; if (boost) ud.flame.scale.set(1, 1, 0.7 + Math.random() * 0.6);
 
@@ -1159,7 +1163,7 @@ function updateAI(a, dt) {
 
   const s = sampleAt(a.p, a.lat);
   a.mesh.position.set(s.x, a.y, s.z); a.mesh.rotation.set(0, s.h + (a.slipT > 0 ? Math.sin(a.slipT * 10) * 0.5 : 0), 0);
-  const u = a.mesh.userData; u.wheels.forEach(w => w.rotation.x += a.speed * dt / 0.4); u.flame.visible = (a.nOn > 0 || a.rampT > 0) && racing;
+  const u = a.mesh.userData; u.wheels.forEach(w => w.rotation.x += a.speed * dt / 0.4); (u.externalWheels||[]).forEach(w => w.rotation.x += a.speed * dt / 0.4); u.flame.visible = (a.nOn > 0 || a.rampT > 0) && racing;
 }
 
 function updateRemotes(dt) {
@@ -1167,7 +1171,7 @@ function updateRemotes(dt) {
     const k = 1 - Math.exp(-11.5 * dt);
     if (Math.hypot(r.tx - r.x, r.tz - r.z) > 100) { r.x = r.tx; r.z = r.tz; }
     r.x += (r.tx - r.x) * k; r.z += (r.tz - r.z) * k; r.y += (r.ty - r.y) * k; r.h += angDiff(r.th, r.h) * Math.min(1, 1 - Math.exp(-9.5 * dt));
-    r.mesh.position.set(r.x, r.y, r.z); r.mesh.rotation.y = r.h; r.mesh.userData.wheels.forEach(w => w.rotation.x += r.speed * dt / 0.4);
+    r.mesh.position.set(r.x, r.y, r.z); r.mesh.rotation.y = r.h; r.mesh.userData.wheels.forEach(w => w.rotation.x += r.speed * dt / 0.4); (r.mesh.userData.externalWheels||[]).forEach(w => w.rotation.x += r.speed * dt / 0.4);
   }
 }
 
@@ -1407,6 +1411,14 @@ function loop(now) {
   const aimYaw = state==='world' && !worldDriving ? worldYaw : player.h;
   spot.position.set(focus.x, 1.3, focus.z); spot.target.position.set(focus.x + Math.sin(aimYaw) * 25, 0, focus.z + Math.cos(aimYaw) * 25);
   updateCamera(dt);
+  if(window.TRModels){
+    if(typeof window.TRModels.setCamera==='function')window.TRModels.setCamera(cam);
+    const firstRace=state==='race'&&raceCamMode===0;
+    const firstWorld=state==='world'&&worldCamMode===0&&!worldInterior;
+    const context=state==='world'?(worldDriving?'drive':'world'):'race';
+    window.TRModels.setFirstPerson(firstRace||firstWorld,context);
+    window.TRModels.update(dt);
+  }
   if (starsG) starsG.position.copy(cam.position);
   updateRain(dt); updateWorldSnow(dt); updateImpactBursts(dt); updateCrashDebris(dt);
   const smoke=player.mesh&&player.mesh.userData&&player.mesh.userData.damageSmoke;if(smoke&&smoke.visible){smoke.material.opacity=(player.dmg>=90?0.38:0.18)+0.08*(0.5+0.5*Math.sin(tAcc*5));smoke.position.y+=Math.sin(tAcc*2)*0.0008;}
@@ -1485,7 +1497,9 @@ function makeWorldPedestrian(gender='boy', outfit=0, skin=0){
   }
   const phone=new THREE.Mesh(new THREE.BoxGeometry(0.085,0.13,0.018),dark);phone.position.set(-0.28,1.04,0.06);phone.rotation.z=0.15;g.add(phone);
   const bodyGroup=mergePedestrianStaticMeshes(g);
-  g.userData={arms:armG,legs:legG,bodyGroup,phase:Math.random()*Math.PI*2,walk:0,wave:0,jump:0,gender,outfit,skin,phone,playerPed:false};return g;
+  g.userData={arms:armG,legs:legG,bodyGroup,phase:Math.random()*Math.PI*2,walk:0,wave:0,jump:0,gender,outfit,skin,phone,playerPed:false};
+  if(window.TRModels)window.TRModels.registerWorldCharacter(g);
+  return g;
 }
 function mergePedestrianStaticMeshes(root){
   const statics=root.children.filter(o=>o.isMesh);
@@ -1866,7 +1880,11 @@ function addStreetSign(parent,text,x,z){
 }
 function disposeWorldGroup(group){
   if(!group)return;
-  group.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>{if(m.map&&m.map.dispose)m.map.dispose();if(m.dispose)m.dispose();});}});
+  group.traverse(o=>{
+    if(o.userData&&o.userData.trSharedAsset)return;
+    if(o.geometry)o.geometry.dispose();
+    if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>{if(m.map&&m.map.dispose)m.map.dispose();if(m.dispose)m.dispose();});}
+  });
   if(group.parent)group.parent.remove(group);
 }
 function buildOpenWorld(regionId=worldRegionId){
@@ -1902,10 +1920,14 @@ function buildOpenWorld(regionId=worldRegionId){
   }
   benchSeat.count=bi;trashBins.count=ti;parking.count=pi;worldG.add(benchSeat,trashBins,parking);
   for(let i=0;i<bi;i++){const x=(Math.floor(i/11)-5)*100+15,z=(i%11-5)*100+16;dummy.position.set(x,0.38,z);dummy.rotation.set(0,0,0);dummy.updateMatrix();benchLeg.setMatrixAt(i*2,dummy.matrix);dummy.position.x+=2.0;dummy.updateMatrix();benchLeg.setMatrixAt(i*2+1,dummy.matrix);}benchLeg.count=bi*2;worldG.add(benchLeg);
+  // В Нью-Йорке сохраняем базовый слой дорог и тротуаров под импортированной 3D-картой.
+  // Дальнейшие процедурные дома будут скрыты, чтобы не накладываться на здания GLB.
+  worldG.children.forEach(child=>{child.userData=child.userData||{};child.userData.keepForNY=true;});
   // Фасады — отдельные здания, оконные панели и кондиционеры инстансированы.
   const winMax=['verylow','low'].includes(resolvedGfx())?1700:5200,winMesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1.5,1.35,0.12),windowMat,winMax);winMesh.castShadow=false;
   let wn=0;const colliders=[];const specialCells=new Map([['-1,-1',{kind:'apartment',name:'АПАРТАМЕНТЫ',sub:'HOME · 24/7',col:0x7e8d9d}],['0,-1',{kind:'market',name:'MARKET 24/7',sub:'ЕЖЕДНЕВНЫЕ ТОВАРЫ',col:0x2c7867}],['1,0',{kind:'garage',name:'AUTO LAB',sub:'РЕМОНТ · ТЮНИНГ',col:0x305c7d}],['-1,0',{kind:'fashion',name:'CITY MODA',sub:'ОДЕЖДА · СТИЛЬ',col:0x82537d}]]);
   const addFacade=(x,z,w,d,h,color,special=null)=>{
+    const facadeStart=worldG.children.length;
     const mat=wmat(color,0.78,0.05);wbox(worldG,w,h,d,mat,x,h/2,z);wbox(worldG,w+0.8,0.42,d+0.8,wmat(0x343d47,0.82,0.2),x,h+0.12,z);
     // Вертикальные угловые колонны и тонкая цокольная полоса делают объём менее «коробочным».
     const trim=wmat(0xd2d8de,0.55,0.25);for(const sx of [-1,1]){wbox(worldG,0.35,h,0.35,trim,x+sx*w/2,h/2,z+d/2);wbox(worldG,0.35,h,0.35,trim,x+sx*w/2,h/2,z-d/2);}
@@ -1927,6 +1949,7 @@ function buildOpenWorld(regionId=worldRegionId){
     // Крыша, вентиляция и случайные рекламные панели.
     wbox(worldG,2.3,0.9,1.4,wmat(0x59616b,0.75,0.15),x-w/4,h+0.75,z-d/5);
     if(h>30){wbox(worldG,3,0.8,1.6,wmat(0x4b5661,0.7,0.2),x+w/4,h+0.7,z+d/6);}
+    if(special)for(let k=facadeStart;k<worldG.children.length;k++)worldG.children[k].userData.keepForNY=true;
   };
   if(cfg.id==='tashkent'){
     specialCells.delete('-1,-1');
@@ -1991,11 +2014,27 @@ function buildOpenWorld(regionId=worldRegionId){
   // Уютная квартира с окном, гостиной, кухней и спальней.
   apartmentG=createApartmentInterior();
 }
+function activateImportedNewYork(){
+  if(!window.TRModels||!worldG||worldRegionId!=='newyork'||worldG.userData.importedCityActive)return;
+  const city=window.TRModels.createCityInstance();if(!city)return;
+  // Сохраняем живых пешеходов, городской трафик и входы в сервисы; геометрию города берём из GLB.
+  const keep=new Set([...worldPedestrians.map(r=>r.mesh),...worldTraffic.map(r=>r.mesh)]);
+  worldG.children.forEach(child=>{if(keep.has(child)||child.userData.keepForNY)return;child.visible=false;});
+  city.userData.trSharedAsset=true;city.userData.importedNYCity=true;worldG.add(city);worldG.userData.importedCityActive=true;worldG.userData.importedCityRoot=city;
+  // Простые AABB-коллайдеры строятся по крупным импортированным частям зданий.
+  city.updateMatrixWorld(true);const boxes=[];
+  city.traverse(o=>{if(!o.isMesh)return;const b=new THREE.Box3().setFromObject(o);if(b.isEmpty())return;const sz=b.getSize(new THREE.Vector3()),c=b.getCenter(new THREE.Vector3());
+    if(sz.y>7&&sz.x>8&&sz.z>8&&sz.x<180&&sz.z<180&&sz.y<520)boxes.push({x:c.x,z:c.z,hw:sz.x/2+0.4,hd:sz.z/2+0.4,h:sz.y});
+  });
+  worldBuildings=boxes;
+  toast('Нью-Йорк загружен: импортированная 3D-карта активна');
+}
 function currentWorldActor(){return worldDriving?player.mesh:charMesh;}
 function worldPos(){const a=currentWorldActor();return a?a.position:new THREE.Vector3();}
 function startOpenWorld(regionId=worldRegionId){
   requestGameFullscreen(); worldRegionId=WORLD_REGIONS[regionId]?regionId:'tashkent';const cfg=WORLD_REGIONS[worldRegionId];
   held.clear(); buildOpenWorld(worldRegionId);state='world';worldInterior=false;worldDriving=false;worldJumpRemaining=0;worldJumpCooldown=0;worldJumpWasHeld=false;worldCamMode=2;worldCamOrbitYaw=0;worldCamOrbitPitch=0;worldLookDrag=null;worldNear=null;worldCollisionTimer=0;
+  if(worldRegionId==='newyork'&&window.TRModels){window.TRModels.ensureCity().then(()=>{if(state==='world'&&worldRegionId==='newyork')activateImportedNewYork();});}
   if(!worldKeepAtmo){worldTime=WORLD_TIMES[Math.floor(Math.random()*WORLD_TIMES.length)];worldWeather=WORLD_WEATHERS[Math.floor(Math.random()*WORLD_WEATHERS.length)];}worldKeepAtmo=false;applyWorldAtmosphere();ensureWorldAtmoButtons();
   if(trackG)trackG.visible=false;worldG.visible=true;apartmentG.visible=false;if(schoolG)schoolG.visible=false;activeInteriorG=null;
   // Clear race entities and place the selected car beside the player as a usable vehicle.
@@ -2102,14 +2141,15 @@ function updateOpenWorld(dt){
       p.position.y=rec.jumpT>0?Math.sin((1-rec.jumpT/.7)*Math.PI)*0.85:0;
       if(u.bodyGroup){u.bodyGroup.position.y=Math.abs(Math.sin(rec.phase*2))*0.022;u.bodyGroup.rotation.z=cheering?Math.sin(worldAnimT*3+rec.phase)*0.025:Math.sin(rec.phase)*0.008;}
     }
-    for(const car of worldTraffic){car.x+=car.speed*car.dir*dt;if(car.x>WORLD_RANGE)car.x=-WORLD_RANGE;if(car.x< -WORLD_RANGE)car.x=WORLD_RANGE;car.mesh.position.set(car.x,0,car.z);car.mesh.userData.wheels.forEach(w=>w.rotation.x+=car.speed*dt/0.4);}
+    for(const car of worldTraffic){car.x+=car.speed*car.dir*dt;if(car.x>WORLD_RANGE)car.x=-WORLD_RANGE;if(car.x< -WORLD_RANGE)car.x=WORLD_RANGE;car.mesh.position.set(car.x,0,car.z);car.mesh.userData.wheels.forEach(w=>w.rotation.x+=car.speed*dt/0.4);(car.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=car.speed*dt/0.4);}
   }
   const actor=worldDriving?player.mesh:charMesh;if(!actor)return;
   if(worldDriving){
     const gas=held.has('gas')&&!player.immobilized&&player.engineStall<=0,brake=held.has('brake'),steer=(held.has('right')?1:0)-(held.has('left')?1:0);player.engineStall=Math.max(0,player.engineStall-dt);
     const max=player.immobilized?0:Math.max(18,phys.max*0.92);if(gas)player.speed+=phys.acc*0.82*dt;if(brake)player.speed-=phys.brk*dt;if(!gas&&!brake)player.speed-=player.speed*0.48*dt;player.speed=player.immobilized?0:clamp(player.speed,-8,max);
     player.h-=steer*(0.4+Math.min(Math.abs(player.speed)/45,1)*0.85)*dt*Math.sign(player.speed||1);player.mesh.rotation.y=player.h;
-    const oldX=player.mesh.position.x,oldZ=player.mesh.position.z;player.mesh.position.x+=Math.sin(player.h)*player.speed*dt;player.mesh.position.z+=Math.cos(player.h)*player.speed*dt;player.mesh.userData.wheels.forEach(w=>w.rotation.x+=player.speed*dt/0.4);
+    const oldX=player.mesh.position.x,oldZ=player.mesh.position.z;player.mesh.position.x+=Math.sin(player.h)*player.speed*dt;player.mesh.position.z+=Math.cos(player.h)*player.speed*dt;player.mesh.userData.wheels.forEach(w=>w.rotation.x+=player.speed*dt/0.4);(player.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=player.speed*dt/0.4);
+    if(worldG&&worldG.userData&&worldG.userData.importedCityActive){const edgeX=526,edgeZ=414;let edgeHit=false;if(player.mesh.position.x<-edgeX||player.mesh.position.x>edgeX){player.mesh.position.x=clamp(player.mesh.position.x,-edgeX,edgeX);player.h=-player.h;edgeHit=true;}if(player.mesh.position.z<-edgeZ||player.mesh.position.z>edgeZ){player.mesh.position.z=clamp(player.mesh.position.z,-edgeZ,edgeZ);player.h=Math.PI-player.h;edgeHit=true;}if(edgeHit){player.speed*=-0.28;if(worldCollisionTimer<=0){worldCollisionTimer=0.3;addDmg(1.2);Snd.bump();toast('Край карты Нью-Йорка');}}}
     const radX=2.15,radZ=2.65;
     let struck=false,wallNX=0,wallNZ=0;for(const b of worldBuildings){const dx=player.mesh.position.x-b.x,dz=player.mesh.position.z-b.z,ox=b.hw+radX-Math.abs(dx),oz=b.hd+radZ-Math.abs(dz);if(ox>0&&oz>0){if(ox<oz){wallNX=Math.sign(dx||1);player.mesh.position.x=b.x+wallNX*(b.hw+radX);player.speed*=0.72;player.h+=wallNX*0.035;}else{wallNZ=Math.sign(dz||1);player.mesh.position.z=b.z+wallNZ*(b.hd+radZ);player.speed*=0.72;player.h-=wallNZ*0.035;}struck=true;break;}}
     if(struck&&worldCollisionTimer<=0){worldCollisionTimer=0.34;const impact=Math.abs(player.speed)/0.72;const normal=wallNX||wallNZ;player.speed*=-0.34;player.vx*=0.58;player.vz*=0.58;addDmg(clamp(impact*0.095,0.8,9));if(impact>8)spawnSparks(player.mesh.position.x,0.7,player.mesh.position.z,clamp(Math.floor(impact*.3),6,18));Snd.bump();toast('Удар о препятствие · повреждения '+Math.round(player.dmg)+'%');}
@@ -2125,10 +2165,13 @@ function updateOpenWorld(dt){
     } else {
       for(const b of worldBuildings){const dx=charMesh.position.x-b.x,dz=charMesh.position.z-b.z,ox=b.hw+0.42-Math.abs(dx),oz=b.hd+0.42-Math.abs(dz);if(ox>0&&oz>0){if(Math.abs(charMesh.position.x-oldX)>Math.abs(charMesh.position.z-oldZ))charMesh.position.x=b.x+Math.sign(dx||1)*(b.hw+0.42);else charMesh.position.z=b.z+Math.sign(dz||1)*(b.hd+0.42);}}
       // The city is large, but the playable region stays inside the generated street grid.
-      charMesh.position.x=clamp(charMesh.position.x,-WORLD_RANGE+8,WORLD_RANGE-8);
-      charMesh.position.z=clamp(charMesh.position.z,-WORLD_RANGE+8,WORLD_RANGE-8);
+      const cityActive=!!(worldG&&worldG.userData&&worldG.userData.importedCityActive);
+      const limitX=cityActive?526:WORLD_RANGE-8, limitZ=cityActive?414:WORLD_RANGE-8;
+      charMesh.position.x=clamp(charMesh.position.x,-limitX,limitX);
+      charMesh.position.z=clamp(charMesh.position.z,-limitZ,limitZ);
     }
     const moving=Math.abs(forward)>0;
+    if(window.TRModels)window.TRModels.setCharacterMotion(moving,held.has('nitro'));
     const u=charMesh.userData;u.legs[0].rotation.x=moving?Math.sin(worldAnimT*10)*0.55:0;u.legs[1].rotation.x=moving?-Math.sin(worldAnimT*10)*0.55:0;u.arms[0].rotation.x=moving?-Math.sin(worldAnimT*10)*0.22:0;u.arms[1].rotation.x=moving?Math.sin(worldAnimT*10)*0.22:0;
     if(u.bodyGroup){u.bodyGroup.position.y=moving?Math.abs(Math.sin(worldAnimT*10))*0.035:Math.sin(worldAnimT*1.6)*0.012;u.bodyGroup.rotation.z=moving?Math.sin(worldAnimT*5)*0.018:Math.sin(worldAnimT*0.8)*0.008;}
   }

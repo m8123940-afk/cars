@@ -273,7 +273,13 @@ function makeCarModel(def, colOverride, options = {}) {
   // Лёгкий дым из-под капота при критическом уроне.
   const smoke = new THREE.Sprite(new THREE.SpriteMaterial({ map:_glowTex, color:0x353b43, transparent:true, opacity:0.28, depthWrite:false }));
   smoke.position.set(0, S.nose+0.5, h*0.42); smoke.scale.set(1.4,1.8,1); smoke.visible=false; g.add(smoke);
-  g.userData = { wheels, tailMat, flame, len: S.l, S, driver: null, damageMarks, damageSmoke: smoke, damageBumper: bentBumper, damageChip: chip };
+  g.userData = {
+    wheels, tailMat, flame, len: S.l, S, driver: null, damageMarks,
+    damageSmoke: smoke, damageBumper: bentBumper, damageChip: chip,
+    carId: def.id, carIndex: Math.max(0, CARS.findIndex(c => c.id === def.id)),
+    baseParts: g.children.slice(), externalCarRoot: null, externalWheels: []
+  };
+  if (window.TRModels) window.TRModels.registerCar(g, def.id, g.userData.carIndex);
   return g;
 }
 
@@ -337,6 +343,7 @@ function makeCharacter(gender, outfit, skinIdx, bust) {
       add(B(0.1, 0.012, 0.06), top2, s * 0.1, 0.09, 0.1);
     });
   }
+  if (!bust && window.TRModels) window.TRModels.registerCharacter(g);
   return g;
 }
 function makeDriver(gender, outfit, skinIdx) {
