@@ -25,100 +25,31 @@
     });
   }
 
-  // GitHub's browser uploader limits individual files, so New York is stored
-  // in four binary parts. Fetch them strictly one-by-one, report progress and
-  // yield between parts so mobile browsers can render the loading screen.
-  let cityLoadingUI = null;
-  function ensureCityLoadingUI() {
-    if (cityLoadingUI) return cityLoadingUI;
-    const style = document.createElement('style');
-    style.textContent = `
-      #trCityLoader{position:fixed;inset:0;z-index:100000;display:none;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at top,#20334d 0%,#090d14 72%);color:#f4f7ff;font:15px/1.45 system-ui,-apple-system,sans-serif;text-align:center}
-      #trCityLoader .tr-card{width:min(440px,100%);padding:28px 22px;border:1px solid #ffffff24;border-radius:22px;background:#101722ed;box-shadow:0 24px 80px #0009}
-      #trCityLoader .tr-title{font-size:24px;font-weight:850;letter-spacing:.04em;margin:0 0 8px}
-      #trCityLoader .tr-sub{color:#b6c4d9;margin:0 0 20px}
-      #trCityLoader .tr-track{height:12px;border-radius:99px;background:#273345;overflow:hidden}
-      #trCityLoader .tr-fill{height:100%;width:0;background:linear-gradient(90deg,#27d7ff,#6af5a5);border-radius:99px;transition:width .18s ease}
-      #trCityLoader .tr-percent{font-size:28px;font-weight:800;margin:13px 0 2px;font-variant-numeric:tabular-nums}
-      #trCityLoader .tr-status{color:#d3deee;min-height:22px}
-      #trCityLoader .tr-note{font-size:12px;color:#8294ad;margin:16px 0 0}
-    `;
-    document.head.appendChild(style);
-    const el = document.createElement('div');
-    el.id = 'trCityLoader';
-    el.innerHTML = '<div class="tr-card" role="status" aria-live="polite"><p class="tr-title">NEW YORK</p><p class="tr-sub">Подготовка открытого мира</p><div class="tr-track"><div class="tr-fill"></div></div><div class="tr-percent">0%</div><div class="tr-status">Подготовка загрузки…</div><p class="tr-note">Части загружаются по очереди, чтобы снизить нагрузку на телефон.</p></div>';
-    document.body.appendChild(el);
-    cityLoadingUI = { el, fill: el.querySelector('.tr-fill'), percent: el.querySelector('.tr-percent'), status: el.querySelector('.tr-status') };
-    return cityLoadingUI;
-  }
-  function setCityLoading(percent, status, visible = true) {
-    const ui = ensureCityLoadingUI();
-    ui.el.style.display = visible ? 'flex' : 'none';
-    ui.fill.style.width = Math.max(0, Math.min(100, percent)) + '%';
-    ui.percent.textContent = Math.round(Math.max(0, Math.min(100, percent))) + '%';
-    ui.status.textContent = status || '';
-  }
-  function yieldToBrowser(ms = 180) {
-    return new Promise(resolve => setTimeout(() => {
-      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => resolve());
-      else resolve();
-    }, ms));
-  }
-  async function loadSplitCityGLB() {
-    if (!loader) throw new Error('GLTFLoader CDN недоступен');
+  // GitHub web uploader rejects individual files over 25 MB. The New York GLB
+  // is stored as small binary parts in the repository root and reassembled here.
+  function loadSplitCityGLB() {
+    if (!loader) return Promise.reject(new Error('GLTFLoader CDN недоступен'));
     const parts = [
-      { file: 'new_york_city.glb.part1', label: 'Часть 1 из 4', size: 16777216 },
-      { file: 'new_york_city.glb.part2', label: 'Часть 2 из 4', size: 16777216 },
-      { file: 'new_york_city.glb.part3', label: 'Часть 3 из 4', size: 16777216 },
-      { file: 'new_york_city.glb.part4', label: 'Часть 4 из 4', size: 12960828 }
+      'new_york_city.glb.part1',
+      'new_york_city.glb.part2',
+      'new_york_city.glb.part3',
+      'new_york_city.glb.part4'
     ];
-    const totalBytes = parts.reduce((sum, part) => sum + part.size, 0);
-    // Allocate the final buffer once; only one network part is in flight at a time.
-    const combined = new Uint8Array(totalBytes);
-    let offset = 0;
-    setCityLoading(0, 'Подключение к GitHub…');
-    await yieldToBrowser(80);
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      setCityLoading(offset / totalBytes * 88, `Загрузка ${part.label}…`);
-      const response = await fetch(MODEL_DIR + part.file, { cache: 'force-cache' });
-      if (!response.ok) throw new Error('Не удалось загрузить часть города: ' + part.file + ' (' + response.status + ')');
-      if (response.body && response.body.getReader) {
-        const reader = response.body.getReader();
-        while (true) {
-          const result = await reader.read();
-          if (result.done) break;
-          const chunk = result.value;
-          if (offset + chunk.byteLength > totalBytes) throw new Error('Размер частей Нью-Йорка больше ожидаемого.');
-          combined.set(chunk, offset);
-          offset += chunk.byteLength;
-          const pct = (offset / totalBytes) * 88;
-          setCityLoading(pct, `Загрузка ${part.label}… ${Math.round(offset / totalBytes * 100)}% города`);
-        }
-      } else {
-        const buffer = await response.arrayBuffer();
-        if (offset + buffer.byteLength > totalBytes) throw new Error('Размер частей Нью-Йорка больше ожидаемого.');
+    return Promise.all(parts.map(file => fetch(MODEL_DIR + file).then(response => {
+      if (!response.ok) throw new Error('Не удалось загрузить часть города: ' + file);
+      return response.arrayBuffer();
+    }))).then(buffers => {
+      const total = buffers.reduce((sum, buffer) => sum + buffer.byteLength, 0);
+      const combined = new Uint8Array(total);
+      let offset = 0;
+      for (const buffer of buffers) {
         combined.set(new Uint8Array(buffer), offset);
         offset += buffer.byteLength;
       }
-      if (i < parts.length - 1) {
-        setCityLoading(offset / totalBytes * 88, `${part.label} готова. Подготовка памяти…`);
-        // Give iOS Safari time to paint progress and process the previous chunk before next fetch.
-        await yieldToBrowser(260);
-      }
-    }
-    if (offset !== totalBytes) throw new Error(`Неполная модель Нью-Йорка: получено ${offset} из ${totalBytes} байт.`);
-    setCityLoading(90, 'Все части получены. Проверка и сборка модели…');
-    await yieldToBrowser(120);
-    const parsed = await new Promise((resolve, reject) => {
-      loader.parse(combined.buffer, MODEL_DIR, resolve, reject);
+      return new Promise((resolve, reject) => {
+        loader.parse(combined.buffer, MODEL_DIR, resolve, reject);
+      });
     });
-    setCityLoading(98, 'Оптимизация сцены и подготовка города…');
-    await yieldToBrowser(180);
-    setCityLoading(100, 'Нью-Йорк готов!', true);
-    await yieldToBrowser(450);
-    setCityLoading(100, '', false);
-    return parsed;
   }
   function mod(n, m) { return ((n % m) + m) % m; }
   function markSharedTree(root) {
@@ -244,21 +175,12 @@
     return makeNormalisedInstance(personTemplate, { height: 1.78, name: 'New Person — character model' });
   }
   function attachWorldCharacter(root) {
-    if (!root || !root.userData || root.userData.trNewPersonAttached || !personTemplate) return;
-    const u = root.userData;
-    const model = makePersonInstance();
-    if (!model) return;
-    const body = u.bodyGroup || root;
-    if (u.bodyGroup) {
-      body.children.forEach(child => { child.visible = false; });
-      (u.arms || []).forEach(arm => { arm.visible = false; });
-      (u.legs || []).forEach(leg => { leg.visible = false; });
-    } else {
-      (u.trOriginalCharacterParts || []).forEach(part => { if (part) part.visible = false; });
-    }
-    body.add(model);
-    u.trNewPersonAttached = true;
-    u.trNewPersonModel = model;
+    // new_person.glb is a static, non-rigged full-body model. Placing it on top of
+    // the game's animated arms/legs hid those limbs and made the player look frozen.
+    // Keep the uploaded GLB available as an asset, but preserve the game's articulated,
+    // animated character until a properly rigged player model is provided.
+    if (!root || !root.userData || root.userData.trNewPersonChecked || !personTemplate) return;
+    root.userData.trNewPersonChecked = true;
   }
   function ensurePerson() {
     if (personPromise) return personPromise;
@@ -283,9 +205,7 @@
       console.info('[Turbo Rivals] Модель открытого мира Нью-Йорк загружена.');
       return cityTemplate;
     }).catch(error => {
-      setCityLoading(0, 'Не удалось загрузить Нью-Йорк. Используется стандартный город.', true);
       console.warn('[Turbo Rivals] New York GLB не загрузился; используется процедурный город.', error);
-      setTimeout(() => setCityLoading(0, '', false), 2200);
       cityPromise = null;
       return null;
     });
@@ -301,11 +221,21 @@
     if (armsPromise) return armsPromise;
     armsPromise = loadGLB('fps_arms.glb').then(gltf => {
       armsRoot = gltf.scene;
-      armsRoot.scale.setScalar(0.18);
+      // The source FPS asset includes an opaque background card closer to the camera
+      // than the hands. Remove it or it hides the entire first-person model.
+      const backgroundMeshes = [];
+      armsRoot.traverse(o => { if (o.isMesh && /background/i.test(o.name || '')) backgroundMeshes.push(o); });
+      backgroundMeshes.forEach(mesh => {
+        if (mesh.parent) mesh.parent.remove(mesh);
+        if (mesh.geometry) mesh.geometry.dispose();
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        mats.forEach(mat => { if (mat && mat.dispose) mat.dispose(); });
+      });
+      armsRoot.scale.setScalar(0.36);
       armsOverlay = new THREE.Group();
       armsOverlay.name = 'TR first-person animated arms';
       armsOverlay.add(armsRoot);
-      armsOverlay.position.set(0, -0.54, -0.72);
+      armsOverlay.position.set(0, -0.45, -0.66);
       markSharedTree(armsOverlay);
       if (gameCamera && gameCamera.add) gameCamera.add(armsOverlay);
       armsMixer = new THREE.AnimationMixer(armsRoot);
@@ -323,9 +253,9 @@
     return armsPromise;
   }
   function wantedArmsClip() {
-    if (firstPersonContext === 'world' && characterMotion === 'sprint') return armsActions.Sprint_Type_1 ? 'Sprint_Type_1' : 'Walk';
-    if (firstPersonContext === 'world' && characterMotion === 'walk') return 'Walk';
-    return 'Idle';
+    if (characterMotion === 'sprint' && armsActions.Sprint_Type_1) return 'Sprint_Type_1';
+    if (characterMotion === 'walk' && armsActions.Walk) return 'Walk';
+    return armsActions.Idle_Fidget ? 'Idle_Fidget' : 'Idle';
   }
   function playArmsAction(name) {
     if (!armsMixer || !armsActions[name] || armsCurrent === name) return;

@@ -3,7 +3,7 @@ body.light{--bg:#e9e6dc;--bgA:#e9e6dcdd;--chalk:#1b1d22;--card:#00000010;--bd:#0
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--chalk);
   font-family:"Arial Black",Impact,"Segoe UI",sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
-#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
 [hidden]{display:none!important}
 #fx{position:fixed;inset:0;pointer-events:none;opacity:0;transition:opacity .15s;
   background:radial-gradient(ellipse at center,transparent 45%,#ff6a1a66 100%)}
@@ -341,3 +341,16 @@ body.light .account h2 { color: #a34c08; text-shadow: none; }
 .region-art.newyork:after { background:#3b4250; clip-path:polygon(0 100%,0 40%,12% 40%,12% 20%,24% 20%,24% 55%,34% 55%,34% 12%,42% 12%,42% 0,45% 0,45% 12%,52% 12%,52% 60%,64% 60%,64% 30%,78% 30%,78% 70%,100% 70%,100% 100%); }
 .region-art.newyork { background:linear-gradient(135deg,#1c2b45,#e9b872); }
 .region-art.newyork:after { background:#3b4250; clip-path:polygon(0 100%,0 40%,12% 40%,12% 20%,24% 20%,24% 55%,34% 55%,34% 12%,42% 12%,42% 0,45% 0,45% 12%,52% 12%,52% 60%,64% 60%,64% 30%,78% 30%,78% 70%,100% 70%,100% 100%); }
+
+/* New York Edition: route map, city navigation and fictional Pear Phone 18 Pro Max */
+.pear-brand{display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:1.15px;font-weight:1000;color:#132840;white-space:nowrap}
+.pear-brand svg{width:22px;height:25px;flex:0 0 auto;filter:drop-shadow(0 1px 1px #15311c33)}
+.phone-shell{background:linear-gradient(160deg,#e7f7ef 0%,#f3f8fc 64%,#d7e8e3 100%)}
+.phone-notch{background:#111a24}
+.city-map-overlay{z-index:55;padding:calc(12px + max(env(safe-area-inset-top),var(--tg-safe-top,0px))) max(12px,env(safe-area-inset-right)) calc(12px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px))) max(12px,env(safe-area-inset-left));background:linear-gradient(135deg,#07111df5,#102234f2 60%,#07121df7);overflow:auto}
+.city-map-panel{width:min(100%,980px);max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid #7feaff42;border-radius:21px;background:linear-gradient(145deg,#132538f2,#0b1726f5);box-shadow:0 22px 80px #0009;color:#edf9ff}
+.city-map-header{display:flex;align-items:center;justify-content:space-between;gap:12px}.city-map-header h2{font-size:clamp(18px,3vw,28px);letter-spacing:1px;margin:0}.city-map-header p{font-size:12px;color:#9db7cb;margin:4px 0 0}
+#worldMapCanvas{display:block;width:100%;height:auto;max-height:min(54vh,560px);aspect-ratio:3/2;object-fit:contain;border:1px solid #90cbe044;border-radius:14px;background:#0b1724;touch-action:pan-y}
+.city-map-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:11px;color:#bfd2e1}.city-map-legend span{display:flex;align-items:center;gap:6px}.city-map-legend i{display:inline-block;width:10px;height:10px;border-radius:50%}.legend-player{background:#55e7ff}.legend-route{background:#46e1ff}.legend-place{background:#f5bb58}
+.city-route-buttons{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}.city-route-buttons .btn{min-width:0;min-height:40px;padding:8px 7px;font-size:11px;color:#e5f7ff;background:#152c40;border-color:#4c7f9b;white-space:normal}.city-route-buttons .btn:active{transform:scale(.98);background:#1b4359}.city-route-status{margin:0;color:#76e9d1;font-size:12px;font-weight:800}
+@media(max-width:650px){.city-map-panel{padding:10px;border-radius:15px;gap:8px}.city-route-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}.city-route-buttons .btn{min-height:38px;font-size:11px}#worldMapCanvas{max-height:45vh}.pear-brand{font-size:9px;letter-spacing:.6px}.pear-brand svg{width:20px;height:23px}}

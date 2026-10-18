@@ -98,12 +98,7 @@ const THEMES = [
   { name: 'Морской порт', sky: [0x244c70, 0xc2d9df], fog: 0x9bb6c3, ground: 0x4b565f, bh: [10, 58], bcol: [0x53626a, 0x7b8588, 0x3b4b59, 0x9d795c], lit: 0.32, lamp: 0xffd59b, hemi: [0xc5e3fa, 0x293b49, 0.85], sun: [0xffdfb7, 0.76], stars: 0, moon: '#eef7ff', rain: 0 }
 ];
 const WORLD_REGIONS = {
-  newyork: { id:'newyork', name:'США · Нью-Йорк', short:'NEW YORK', style:'manhattan', landmark:'empire', ground:0x6f7a68, asphalt:0x2f3236, concrete:0xb9b7b0, lane:0xf2d36b, window:0xb5d9f2, windowGlow:0x2c4a63, lamp:0xffd9a0, bcol:[0x8d9399,0x6f7882,0xa49b90,0x7c8791,0x5f6a75,0x9a8f84,0x838d98,0xb0a79b], palm:false, sky:[0x7d9fc0,0xcfd7de], fog:0xaab3ba, landmarkAt:{x:0,z:-190}, welcome:'MANHATTAN · NEW YORK', roadW:20 },
-  tashkent: { id:'tashkent', name:'Узбекистан · Ташкент', short:'ТАШКЕНТ', style:'central-asian', landmark:'bazaar', ground:0x6a8064, asphalt:0x353a3c, concrete:0xc1b9a7, lane:0xf0e2b6, window:0x8de9ed, windowGlow:0x236e79, lamp:0xffd48a, bcol:[0xd4b995,0xb79d7b,0xceb991,0x93a6a4,0xd9c9a5,0x8f9d9b,0xb8a58a,0xa3b5b3], palm:false, sky:[0x96bad4,0xd8c4a1], fog:0xc6b69c, landmarkAt:{x:-130,z:-180}, welcome:'ШАҲАР · ТАШКЕНТ', roadW:24 },
-  paris: { id:'paris', name:'Франция · Париж', short:'PARIS', style:'haussmann', landmark:'eiffel', ground:0x6f8560, asphalt:0x35383d, concrete:0xc9c7c1, lane:0xf3e6b9, window:0xd5e8f4, windowGlow:0x263d58, lamp:0xffdca1, bcol:[0xd1c3ad,0xb6a48d,0xe0d5c1,0x9e8f7f,0xc6b8a3,0x8f969d,0xe6dcc9,0xb6aaa0], palm:false, sky:[0x829bb2,0xd3c1ae], fog:0xb7b5b0, landmarkAt:{x:0,z:-190}, welcome:'RIVE GAUCHE · PARIS', roadW:17 },
-  italy: { id:'italy', name:'Италия · Рим', short:'ROMA', style:'roman', landmark:'colosseum', ground:0x81825a, asphalt:0x393938, concrete:0xd2c3aa, lane:0xe8d5a6, window:0xd9edee, windowGlow:0x56453a, lamp:0xffd19a, bcol:[0xc58d69,0xd5ae8c,0xb98161,0xe1c4a3,0xbfa58a,0x9f775b,0xd9b797,0xc5a78a], palm:false, sky:[0x9cbdd3,0xe8c9a4], fog:0xd4b08e, landmarkAt:{x:0,z:-190}, welcome:'CENTRO STORICO · ROMA', roadW:18 },
-  losangeles: { id:'losangeles', name:'США · Лос-Анджелес', short:'LOS ANGELES', style:'california', landmark:'hollywood', ground:0x7b8758, asphalt:0x31363a, concrete:0xc8c6bd, lane:0xf5e8b3, window:0xb8e9f1, windowGlow:0x214c60, lamp:0xffdb99, bcol:[0xb7b5a6,0x9b9b91,0xd6c8ad,0x8b969b,0xc2b6a2,0xa9b5b5,0xd5d2c4,0x929eaa], palm:true, sky:[0x8fc8e8,0xf1c8a4], fog:0xd7c2a1, landmarkAt:{x:-170,z:-220}, welcome:'SUNSET BOULEVARD · LOS ANGELES', roadW:27 },
-  miami: { id:'miami', name:'США · Майами', short:'MIAMI', style:'art-deco', landmark:'ocean', ground:0xd6c09b, asphalt:0x3c4247, concrete:0xf0dfc4, lane:0xf8efcc, window:0x9cf4f0, windowGlow:0x255c76, lamp:0xffb8a1, bcol:[0xf0bcae,0x9dd6d2,0xe7c7a2,0xf1d5b7,0xa7c7d8,0xf4b1b1,0xc0ded0,0xe4b8cf], palm:true, sky:[0x64b6df,0xffc3a2], fog:0xb6d8de, landmarkAt:{x:770,z:0}, welcome:'OCEAN DRIVE · MIAMI', roadW:22 }
+  newyork: { id:'newyork', name:'США · Нью-Йорк', short:'NEW YORK', style:'manhattan', landmark:'empire', ground:0x6f7a68, asphalt:0x2f3236, concrete:0xb9b7b0, lane:0xf2d36b, window:0xb5d9f2, windowGlow:0x2c4a63, lamp:0xffd9a0, bcol:[0x8d9399,0x6f7882,0xa49b90,0x7c8791,0x5f6a75,0x9a8f84,0x838d98,0xb0a79b], palm:false, sky:[0x7d9fc0,0xcfd7de], fog:0xaab3ba, landmarkAt:{x:0,z:-190}, welcome:'MANHATTAN · NEW YORK', roadW:20 }
 };
 const themeFor = L => Math.floor((L - 1) / 5) % THEMES.length;
 const SHAPES_PTS = [
@@ -717,7 +712,8 @@ $('setBtn').onclick = () => openScreen('settings');
 $('helpBtn').onclick = () => openScreen('help');
 function showWorldSelect(){
   requestGameFullscreen();const box=$('worldRegionCards');
-  box.innerHTML=Object.values(WORLD_REGIONS).map(r=>`<button class="world-region-card" data-region="${r.id}"><span class="region-art ${r.id}"><i></i><b>${r.short}</b></span><strong>${r.name}</strong><small>${({newyork:'Небоскрёбы, Таймс-сквер и жёлтые улицы',tashkent:'Восточные купола, базар и широкие проспекты',paris:'Классические фасады и Эйфелева башня',italy:'Каменные площади и древний амфитеатр',losangeles:'Пальмы, холмы и широкие автострады',miami:'Океан, пальмы и пастельный Art Deco'})[r.id]}</small></button>`).join('');
+  const r=WORLD_REGIONS.newyork;
+  box.innerHTML=`<button class="world-region-card" data-region="newyork"><span class="region-art newyork"><i></i><b>NEW YORK</b></span><strong>США · Нью-Йорк</strong><small>Единый открытый мир: Манхэттен, небоскрёбы, люди, светофоры, магазины, дом и свободный вызов машины.</small></button>`;
   $('worldSelect').hidden=false;
 }
 $('worldRegionCards').addEventListener('click',e=>{const b=e.target.closest('[data-region]');if(!b)return;$('worldSelect').hidden=true;startOpenWorld(b.dataset.region);});
@@ -1176,13 +1172,13 @@ function updateRemotes(dt) {
 }
 
 let collisionCooldown = 0, impactBursts = [];
-function spawnSparks(x,y,z,count=12) {
+function spawnSparks(x,y,z,count=12,color=0xffb348) {
   if (resolvedGfx()==='verylow' || resolvedGfx()==='low') count=Math.min(count,8);
   while(impactBursts.length>=7){const old=impactBursts.shift();scene.remove(old.points);old.geometry.dispose();old.material.dispose();}
   const positions=new Float32Array(count*3), velocities=[];
   for(let i=0;i<count;i++){positions[i*3]=x;positions[i*3+1]=y;positions[i*3+2]=z;const a=Math.random()*Math.PI*2,sp=4+Math.random()*15;velocities.push([Math.cos(a)*sp,2+Math.random()*8,Math.sin(a)*sp]);}
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));
-  const material=new THREE.PointsMaterial({color:0xffb348,size:resolvedGfx()==='rt'?0.36:0.27,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
+  const material=new THREE.PointsMaterial({color,size:resolvedGfx()==='rt'?0.36:0.27,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
   const points=new THREE.Points(geometry,material);points.frustumCulled=false;scene.add(points);impactBursts.push({points,geometry,material,velocities,life:0.38,age:0});
 }
 function updateImpactBursts(dt){
@@ -1390,7 +1386,7 @@ function loop(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(rawDt, 0.05); last = now; tAcc += dt; fixCool -= dt;
   fpsSamples += 1; fpsTime += rawDt; if (fpsTime >= 2) { const fps=fpsSamples/fpsTime; { if (fps<49) lowFpsWindows++; else lowFpsWindows=Math.max(0,lowFpsWindows-1); if (lowFpsWindows>=2 && adaptiveScale>0.56) { adaptiveScale=Math.max(0.56,adaptiveScale-0.1); applyGfx(); lowFpsWindows=0; } else if (fps>59 && adaptiveScale<1) { adaptiveScale=Math.min(1,adaptiveScale+0.035); applyGfx(); } } fpsSamples=0; fpsTime=0; }
   if (state === 'world') {
-    updateOpenWorld(dt); $('minimap').hidden = true;
+    updateOpenWorld(dt); $('minimap').hidden = true; if(!$('worldMapOverlay').hidden)drawWorldMap();
   } else if (inRace()) {
     updatePlayer(dt);
     ais.forEach(a => updateAI(a, dt));
@@ -1417,6 +1413,10 @@ function loop(now) {
     const firstWorld=state==='world'&&worldCamMode===0&&!worldInterior;
     const context=state==='world'?(worldDriving?'drive':'world'):'race';
     window.TRModels.setFirstPerson(firstRace||firstWorld,context);
+    if((firstRace||(state==='world'&&worldDriving&&worldCamMode===0))&&typeof window.TRModels.setCharacterMotion==='function'){
+      const speedNow=Math.abs(player.speed||0);
+      window.TRModels.setCharacterMotion(speedNow>2.5,speedNow>34||!!player.boosting);
+    }
     window.TRModels.update(dt);
   }
   if (starsG) starsG.position.copy(cam.position);
@@ -1429,31 +1429,91 @@ function loop(now) {
 
 // ================= открытый мир: город, квартира, пешеходы, магазины и телефон =================
 let worldG = null, apartmentG = null, worldPedestrians = [], worldTraffic = [], worldBuildings = [], worldInteractables = [];
-let worldRegionId = 'tashkent', worldBuiltRegion = null, raceCamMode = 2, criticalRespawnAt = 0, criticalRespawnReady = false;
+let worldRegionId = 'newyork', worldBuiltRegion = null, raceCamMode = 2, criticalRespawnAt = 0, criticalRespawnReady = false;
 let worldInterior = false, worldDriving = false, worldYaw = 0, worldCamMode = 2, worldNear = null, worldCollisionTimer = 0, worldAnimT = 0, worldWeather = 'Ясно', worldTime = 'День';
-let worldCarVisibleBeforeInterior = false;
+let worldCarVisibleBeforeInterior = false, worldInteriorLabel = 'МОЙ ДОМ';
 let worldJumpRemaining = 0, worldJumpCooldown = 0, worldJumpWasHeld = false;
-let worldCamOrbitYaw = 0, worldCamOrbitPitch = 0, worldLookDrag = null;
+let worldCamOrbitYaw = 0, worldCamOrbitPitch = 0, worldLookDrag = null, worldSwipeMove = null;
+let cityTrafficSignals = [], cityHomePoi = {id:'home',name:'Мой дом',x:-160,z:145,type:'apartment'};
+let worldRouteTarget = 'home';
 const WORLD_RANGE = 650;
+// Approximate centre lines of Manhattan streets used by traffic, the route map and wayfinding.
+const NY_ROAD_X = [-490,-160,-100,130,310,480];
+const NY_ROAD_Z = [-370,-135,-100,100,140,370];
+const CITY_POIS = [
+  {id:'garage',name:'Pear Auto Lab',x:130,z:-100,type:'garage',icon:'🔧'},
+  {id:'market',name:'Market 24/7',x:-160,z:-100,type:'market',icon:'🛍'},
+  {id:'times-square',name:'Таймс-сквер',x:-85,z:100,type:'plaza',icon:'🌆'},
+  {id:'street-race',name:'Клуб уличных гонок',x:310,z:140,type:'raceboard',icon:'🏁'}
+];
+function cityPoi(id){return id==='home'?cityHomePoi:CITY_POIS.find(p=>p.id===id)||cityHomePoi;}
+function setWorldRoute(id){const poi=cityPoi(id);worldRouteTarget=poi.id;$('worldRouteStatus').textContent=`Маршрут: ${poi.name} · примерно ${Math.round(Math.hypot(worldPos().x-poi.x,worldPos().z-poi.z))} м`;$('worldMapOverlay').hidden=true;toast('Маршрут проложен: '+poi.name);}
+function openCityMap(){if(state!=='world')return;$('worldPhone').hidden=true;$('worldShop').hidden=true;$('worldMapOverlay').hidden=false;drawWorldMap();}
+function closeCityMap(){$('worldMapOverlay').hidden=true;}
+function callWorldCar(){
+  if(state!=='world')return;
+  if(worldInterior){toast('Сначала выйди из здания, затем вызови машину.');return;}
+  if(worldDriving){toast('Ты уже за рулём.');return;}
+  const a=charMesh?charMesh.position:new THREE.Vector3(150,0,160), yaw=worldYaw;
+  const spot=findFreeWorldSpot(a.x+Math.sin(yaw+Math.PI)*8,a.z+Math.cos(yaw+Math.PI)*8,3.2);
+  player.mesh.position.set(spot.x,0,spot.z);player.mesh.rotation.set(0,yaw,0);player.h=yaw;player.speed=0;player.vx=0;player.vz=0;player.mesh.visible=true;
+  toast('Твоя машина прибыла рядом. Подойди и нажми «Сесть в машину».');
+}
+function drawWorldMap(){
+  const canvas=$('worldMapCanvas');if(!canvas||$('worldMapOverlay').hidden)return;
+  const ctx=canvas.getContext('2d');if(!ctx)return;const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h);ctx.fillStyle='#0b1724';ctx.fillRect(0,0,w,h);
+  const mx=x=>(x+540)/1080*w, mz=z=>(z+430)/860*h;
+  // City blocks and street grid (schematic, keeps the map responsive on mobile).
+  const xs=[-540,...NY_ROAD_X,540].sort((a,b)=>a-b),zs=[-430,...NY_ROAD_Z,430].sort((a,b)=>a-b);
+  for(let ix=0;ix<xs.length-1;ix++)for(let iz=0;iz<zs.length-1;iz++){
+    const x1=mx(xs[ix]),x2=mx(xs[ix+1]),y1=mz(zs[iz]),y2=mz(zs[iz+1]);
+    ctx.fillStyle=((ix+iz)%2)?'#1a2b39':'#20313f';ctx.fillRect(x1+4,y1+4,Math.max(0,x2-x1-8),Math.max(0,y2-y1-8));
+    ctx.strokeStyle='#31485a';ctx.lineWidth=2;ctx.strokeRect(x1+7,y1+7,Math.max(0,x2-x1-14),Math.max(0,y2-y1-14));
+  }
+  ctx.strokeStyle='#536271';ctx.lineWidth=13;for(const x of NY_ROAD_X){ctx.beginPath();ctx.moveTo(mx(x),0);ctx.lineTo(mx(x),h);ctx.stroke();}for(const z of NY_ROAD_Z){ctx.beginPath();ctx.moveTo(0,mz(z));ctx.lineTo(w,mz(z));ctx.stroke();}
+  ctx.strokeStyle='#a2b2bf';ctx.lineWidth=1.5;ctx.setLineDash([7,8]);for(const x of NY_ROAD_X){ctx.beginPath();ctx.moveTo(mx(x),0);ctx.lineTo(mx(x),h);ctx.stroke();}for(const z of NY_ROAD_Z){ctx.beginPath();ctx.moveTo(0,mz(z));ctx.lineTo(w,mz(z));ctx.stroke();}ctx.setLineDash([]);
+  const target=cityPoi(worldRouteTarget),p=worldPos();
+  ctx.strokeStyle='#46e1ff';ctx.lineWidth=5;ctx.setLineDash([11,8]);ctx.beginPath();ctx.moveTo(mx(p.x),mz(p.z));ctx.lineTo(mx(target.x),mz(p.z));ctx.lineTo(mx(target.x),mz(target.z));ctx.stroke();ctx.setLineDash([]);
+  for(const poi of [cityHomePoi,...CITY_POIS]){const x=mx(poi.x),y=mz(poi.z);ctx.beginPath();ctx.fillStyle=poi.id===worldRouteTarget?'#61f4cc':'#f5bb58';ctx.arc(x,y,poi.id===worldRouteTarget?10:7,0,Math.PI*2);ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#07111d';ctx.stroke();ctx.fillStyle='#f5f8fc';ctx.font='bold 19px system-ui';ctx.textBaseline='bottom';ctx.fillText(poi.name,x+10,y-8);}
+  ctx.beginPath();ctx.fillStyle='#55e7ff';ctx.strokeStyle='#e9ffff';ctx.lineWidth=3;ctx.arc(mx(p.x),mz(p.z),10,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#dce9f4';ctx.font='bold 18px system-ui';ctx.textBaseline='top';ctx.fillText('MANHATTAN · NORTH ↑',18,14);
+  const dist=Math.round(Math.hypot(p.x-target.x,p.z-target.z));$('worldRouteStatus').textContent=`Маршрут: ${target.name} · примерно ${dist} м`;
+}
+function findFreeWorldSpot(x,z,pad=2.5){
+  const free=(px,pz)=>px>-522&&px<522&&pz>-410&&pz<410&&!worldBuildings.some(b=>Math.abs(px-b.x)<b.hw+pad&&(Math.abs(pz-b.z)<b.hd+pad));
+  if(free(x,z))return new THREE.Vector3(x,0,z);
+  for(let r=4;r<=100;r+=4)for(let i=0;i<32;i++){const a=i*Math.PI/16,px=x+Math.cos(a)*r,pz=z+Math.sin(a)*r;if(free(px,pz))return new THREE.Vector3(px,0,pz);}
+  return new THREE.Vector3(150,0,160);
+}
+// Drag the scene to look around in the open world. Mouse right-drag rotates the view;
+// on touchscreens, swipes intentionally move the character/car in the same direction.
 // Drag the scene to look around in the open world. Desktop uses right-drag; touchscreens use a one-finger drag on empty scene space.
 const worldCanvas = $('c');
 worldCanvas.addEventListener('contextmenu', e => { if (state === 'world') e.preventDefault(); });
 worldCanvas.addEventListener('pointerdown', e => {
-  if (state !== 'world' || !$('worldPhone').hidden || !$('worldShop').hidden) return;
+  if (state !== 'world' || $('worldPhone').hidden === false || $('worldShop').hidden === false || $('worldMapOverlay').hidden === false) return;
   if (e.pointerType === 'mouse' && e.button !== 2) return;
-  // Don't start a camera gesture if a top-level UI panel overlaps this pointer's screen point.
   const ui = document.elementFromPoint(e.clientX, e.clientY);
-  if (ui && ui !== worldCanvas && ui.closest && ui.closest('#worldHud, #worldPhone, #worldShop, #touch, #touchEditPanel, #touchEditDone')) return;
-  worldLookDrag = { id:e.pointerId, x:e.clientX, y:e.clientY, type:e.pointerType };
+  if (ui && ui !== worldCanvas && ui.closest && ui.closest('#worldHud, #worldPhone, #worldShop, #worldMapOverlay, #touch, #touchEditPanel, #touchEditDone')) return;
+  worldLookDrag = { id:e.pointerId, x:e.clientX, y:e.clientY, startX:e.clientX, startY:e.clientY, type:e.pointerType };
   try { worldCanvas.setPointerCapture(e.pointerId); } catch (_) {}
   e.preventDefault();
 });
 worldCanvas.addEventListener('pointermove', e => {
   if (!worldLookDrag || worldLookDrag.id !== e.pointerId || state !== 'world') return;
   const dx=e.clientX-worldLookDrag.x, dy=e.clientY-worldLookDrag.y; worldLookDrag.x=e.clientX; worldLookDrag.y=e.clientY;
-  worldCamOrbitYaw -= dx*0.006; worldCamOrbitPitch=clamp(worldCamOrbitPitch-dy*0.004,-0.36,0.38); e.preventDefault();
+  if(worldLookDrag.type==='mouse'){worldCamOrbitYaw -= dx*0.006; worldCamOrbitPitch=clamp(worldCamOrbitPitch-dy*0.004,-0.36,0.38);}
+  e.preventDefault();
 });
-['pointerup','pointercancel','lostpointercapture'].forEach(type => worldCanvas.addEventListener(type, e => { if(worldLookDrag&&worldLookDrag.id===e.pointerId)worldLookDrag=null; }));
+['pointerup','pointercancel','lostpointercapture'].forEach(type => worldCanvas.addEventListener(type, e => {
+  if(!worldLookDrag||worldLookDrag.id!==e.pointerId)return;
+  const drag=worldLookDrag;worldLookDrag=null;
+  if(type==='pointerup'&&drag.type==='touch'&&state==='world'){
+    const dx=e.clientX-drag.startX,dy=e.clientY-drag.startY;
+    if(Math.hypot(dx,dy)>28)worldSwipeMove={x:Math.abs(dx)>22?Math.sign(dx):0,y:Math.abs(dy)>22?Math.sign(dy):0,until:performance.now()+560};
+  }
+}));
 const WORLD_NAMES = ['Артём','Саша','Мира','Даня','Ника','Рустам','Лейла','Тимур','Алиса','Марк','Илья','Зара','Амир','Ева','Матвей','Амина','Дамир','Лина','Рома','Самира','Эмир','Даша','Камиль','Яна','Тим','Адель','Ренат','Малика','Вадим','Алия','Женя','Марат'];
 const WORLD_LINES = ['Классная машина!','Сегодня в городе настоящий движ.','На площади скоро стартует турнир.','Заедь в мастерскую — там хорошие детали.','Неплохой дрифт видел на южной улице!','Добро пожаловать в наш район.','У меня сегодня выходной — гуляю по городу.','Говорят, ночной заезд будет сложным.'];
 function wmat(color, roughness=0.8, metalness=0){return new THREE.MeshStandardMaterial({color,roughness,metalness});}
@@ -1663,21 +1723,23 @@ const crashDebris=[];const debrisGeoCache={};
 function debrisGeo(w,h,d){const k=w.toFixed(3)+'_'+h.toFixed(3)+'_'+d.toFixed(3);return debrisGeoCache[k]||(debrisGeoCache[k]=new THREE.BoxGeometry(w,h,d));}
 function removeDebris(d){scene.remove(d.mesh);d.mesh.material.dispose();}
 function spawnCrashDebris(amount){
-  if(!player.mesh||!player.mesh.visible)return;
+  if(!player.mesh)return;
   const S=player.mesh.userData.S||{}, sw=S.w||2, sl=S.l||4.4;
-  const count=clamp(Math.round(amount*0.8),2,8);
+  const count=clamp(Math.round(amount*1.15),4,14);
   const fx=Math.sin(player.h), fz=Math.cos(player.h), p=player.mesh.position;
   let bodyC=null;player.mesh.traverse(o=>{if(bodyC===null&&o.isMesh&&o.material&&o.material.color&&o.material.metalness!==undefined){const c=o.material.color;if(c.r+c.g+c.b>0.6)bodyC=c.getHex();}});
   const kinds=[
     {w:sw*0.92,h:0.2,d:0.42,c:0x1d2126,rough:0.8,body:true},
     {w:0.32,h:0.22,d:0.3,c:0x1a1d21,rough:0.7,body:false},
-    {w:0.5,h:0.14,d:0.3,c:0xcfe9ff,rough:0.15,body:false},
+    {w:0.5,h:0.14,d:0.3,c:0xcfe9ff,rough:0.15,body:false,glow:0x67dfff},
+    {w:0.34,h:0.18,d:0.22,c:0xf4b74e,rough:0.32,body:false,glow:0xff6f35},
     {w:sw*0.62,h:0.06,d:sl*0.34,c:0xffffff,rough:0.45,body:true},
     {w:0.42,h:0.36,d:0.4,c:0x2b2f35,rough:0.9,body:false}
   ];
   for(let i=0;i<count;i++){
     const k=kinds[i%kinds.length];
     const mat=new THREE.MeshStandardMaterial({color:(k.body&&bodyC!==null)?bodyC:k.c,roughness:k.rough,metalness:0.15});
+    if(k.glow&&mat.emissive){mat.emissive.setHex(k.glow);mat.emissiveIntensity=1.2;}
     const mesh=new THREE.Mesh(debrisGeo(k.w,k.h,k.d),mat);
     const lat=rr(-sw*0.4,sw*0.4);
     mesh.position.set(p.x+fx*sl*0.42+fz*lat,0.6+Math.random()*0.5,p.z+fz*sl*0.42-fx*lat);
@@ -1686,7 +1748,10 @@ function spawnCrashDebris(amount){
     const spin=new THREE.Vector3(rr(-9,9),rr(-9,9),rr(-9,9));
     scene.add(mesh);crashDebris.push({mesh,vel,spin,life:0,ttl:4+Math.random()*2});
   }
-  while(crashDebris.length>40)removeDebris(crashDebris.shift());
+  // High-energy impact: metal sparks, glass glints and extra fragments.
+  if(amount>=1.6){spawnSparks(p.x+fx*1.1,0.7,p.z+fz*1.1,clamp(Math.round(16+amount*2.1),16,38),0xffa62b);}
+  if(amount>=3.5){spawnSparks(p.x-fx*0.8,0.8,p.z-fz*0.8,clamp(Math.round(10+amount*1.2),10,25),0x57dcff);}
+  while(crashDebris.length>64)removeDebris(crashDebris.shift());
 }
 function updateCrashDebris(dt){
   for(let i=crashDebris.length-1;i>=0;i--){
@@ -1775,7 +1840,7 @@ function updateWorldSnow(dt){
   snowG.position.set(cam.position.x,cam.position.y-12,cam.position.z);
 }
 function applyWorldAtmosphere(){
-  const cfg=WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.tashkent;
+  const cfg=WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.newyork;
   const T={
     'Утро':{bg:0x9db8d8,fog:0xdcc6aa,hemi:0.85,sun:0.85,sunC:0xffdcae},
     'День':{bg:cfg.sky[0],fog:cfg.sky[1],hemi:1.15,sun:1.12,sunC:0xffffff},
@@ -1810,16 +1875,14 @@ function ensureWorldAtmoButtons(){
   }
 }
 // ---- Аэропорт и перелёты ----
-const AIRPORT_DESTS=[['tashkent','🇺🇿 Ташкент'],['newyork','🗽 Нью-Йорк'],['paris','🇫🇷 Париж'],['italy','🇮🇹 Рим'],['losangeles','🌴 Лос-Анджелес'],['miami','🏖 Майами']];
-function openAirportMenu(){
-  $('worldPhone').hidden=false;
-  $('worldPhoneContent').innerHTML='<h2>✈ Аэропорт · вылеты</h2><p>Выберите город. Перелёт бесплатный, время суток и погода сохранятся.</p>'+AIRPORT_DESTS.filter(d=>d[0]!==worldRegionId).map(d=>`<div class="card"><b>${d[1]}</b><button class="btn" data-travel="${d[0]}">Лететь</button></div>`).join('');
-}
+function openAirportMenu(){openWorldPhone('map');toast('Выбери район Нью-Йорка на карте — старые карты удалены.');}
+
 function travelTo(dest){
+  if(dest!=='newyork'){setWorldRoute(dest);return;}
   closeWorldPhone();
   let f=$('flightFade');if(!f){f=document.createElement('div');f.id='flightFade';f.style.cssText='position:fixed;inset:0;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;font:700 26px sans-serif;z-index:9999;opacity:0;transition:opacity .5s;pointer-events:none;';document.body.appendChild(f);}
   f.textContent='✈ Перелёт…';f.style.opacity='1';
-  setTimeout(()=>{worldKeepAtmo=true;startOpenWorld(dest);toast('Добро пожаловать: '+WORLD_REGIONS[dest].name);setTimeout(()=>{f.style.opacity='0';},300);},650);
+  setTimeout(()=>{worldKeepAtmo=true;startOpenWorld('newyork');toast('Добро пожаловать в Нью-Йорк');setTimeout(()=>{f.style.opacity='0';},300);},650);
 }
 function addAirportApron(parent,x,z){
   const tarmac=wmat(0x2b2e33,0.95),white=wmat(0xf1f3f5,0.5,0.2),blue=wmat(0x1c5aa6,0.5),dark=wmat(0x14181d,0.6);
@@ -1888,7 +1951,7 @@ function disposeWorldGroup(group){
   if(group.parent)group.parent.remove(group);
 }
 function buildOpenWorld(regionId=worldRegionId){
-  const cfg=WORLD_REGIONS[regionId]||WORLD_REGIONS.tashkent;
+  const cfg=WORLD_REGIONS[regionId]||WORLD_REGIONS.newyork;
   if(worldG&&worldBuiltRegion===cfg.id)return;
   if(worldG)disposeWorldGroup(worldG); if(apartmentG)disposeWorldGroup(apartmentG);
   worldG=new THREE.Group();worldG.name='TurboRivals_'+cfg.id;scene.add(worldG);worldBuildings=[];worldPedestrians=[];worldTraffic=[];worldInteractables=[];worldBuiltRegion=cfg.id;
@@ -1994,13 +2057,16 @@ function buildOpenWorld(regionId=worldRegionId){
     wbox(worldG,0.2,12,0.2,wmat(0x8d939a,0.5,0.4),228,6,224);wbox(worldG,3.2,0.9,0.05,wmat(0x1d9bd7,0.6),229.7,11.4,224);wbox(worldG,3.2,0.9,0.05,wmat(0xffffff,0.6),229.7,10.5,224);wbox(worldG,3.2,0.9,0.05,wmat(0x2fa05b,0.6),229.7,9.6,224);
   }
   // Личная машина на парковочном кармане рядом с персонажем.
-  if(!player.mesh){showCar(save.cur);}player.mesh.position.set(9,0,8);player.mesh.rotation.set(0,0,0);player.mesh.visible=false;worldYaw=0;
+  if(!player.mesh){showCar(save.cur);}player.mesh.position.set(159,0,160);player.mesh.rotation.set(0,0,0);player.mesh.visible=false;worldYaw=0;
   worldInteractables.push({type:'raceboard',x:-28,z:12,r:10,name:'Городские заезды'},{type:'plaza',x:0,z:50,r:12,name:'Центральная площадь'});
   // Пешеходы: разнообразные лица, куртки и обувь; прохожие гуляют, машут рукой и радуются рядом с гонщиком.
   const pedCount=quality==='verylow'?6:quality==='low'?10:quality==='med'?14:quality==='high'?20:quality==='veryhigh'?26:32;
   for(let i=0;i<pedCount;i++){
-    const axis=Math.random()<0.5?'x':'z',road=Math.floor(Math.random()*9-4)*100+(Math.random()<0.5?-1:1)*13;
-    const centerX=axis==='x'?road:(Math.random()*850-425),centerZ=axis==='z'?road:(Math.random()*850-425);
+    const axis=Math.random()<0.5?'x':'z',side=Math.random()<0.5?-1:1;
+    const roadX=NY_ROAD_X[1+Math.floor(Math.random()*(NY_ROAD_X.length-2))];
+    const roadZ=NY_ROAD_Z[1+Math.floor(Math.random()*(NY_ROAD_Z.length-2))];
+    const centerX=axis==='x'?(Math.random()*960-480):roadX+side*10;
+    const centerZ=axis==='x'?roadZ+side*10:(Math.random()*720-360);
     const ped=makeWorldPedestrian(Math.random()<0.42?'girl':'boy',Math.floor(Math.random()*OUTFITS.length),Math.floor(Math.random()*SKINS.length));
     ped.position.set(centerX,0,centerZ);ped.rotation.y=Math.random()*Math.PI*2;worldG.add(ped);
     const rec={mesh:ped,name:WORLD_NAMES[i%WORLD_NAMES.length],centerX,centerZ,axis,phase:Math.random()*6.28,amp:2+Math.random()*5,walk:0.45+Math.random()*0.7,waveT:Math.random()*2,jumpT:0,nextCheer:2+Math.random()*6,baseYaw:ped.rotation.y};worldPedestrians.push(rec);
@@ -2009,7 +2075,7 @@ function buildOpenWorld(regionId=worldRegionId){
   const trafficCount=quality==='verylow'?2:quality==='low'?3:quality==='med'?4:quality==='high'?6:quality==='veryhigh'?7:8;
   for(let i=0;i<trafficCount;i++){
     const def=CARS[Math.floor(Math.random()*Math.min(7,CARS.length))],mesh=makeCarModel(def,Math.random()<0.5?undefined:Math.floor(Math.random()*0xffffff),{neon:false,rimStyle:Math.floor(Math.random()*3)});seatDriver(mesh,Math.random()<0.5?'boy':'girl',Math.floor(Math.random()*6),Math.floor(Math.random()*3));
-    const dir=Math.random()<0.5?1:-1,z=Math.floor(Math.random()*9-4)*100+(Math.random()<0.5?-5:5),x=Math.random()*1200-600;mesh.position.set(x,0,z);mesh.rotation.y=dir>0?Math.PI/2:-Math.PI/2;worldG.add(mesh);worldTraffic.push({mesh,x,z,dir,speed:6+Math.random()*8,axis:'x',phase:Math.random()*6.28});
+    const dir=Math.random()<0.5?1:-1,baseZ=NY_ROAD_Z[1+Math.floor(Math.random()*(NY_ROAD_Z.length-2))],z=baseZ+(Math.random()<0.5?-4:4),x=Math.random()*960-480;mesh.position.set(x,0,z);mesh.rotation.y=dir>0?Math.PI/2:-Math.PI/2;worldG.add(mesh);worldTraffic.push({mesh,x,z,dir,speed:6+Math.random()*8,axis:'x',phase:Math.random()*6.28});
   }
   // Уютная квартира с окном, гостиной, кухней и спальней.
   apartmentG=createApartmentInterior();
@@ -2017,31 +2083,104 @@ function buildOpenWorld(regionId=worldRegionId){
 function activateImportedNewYork(){
   if(!window.TRModels||!worldG||worldRegionId!=='newyork'||worldG.userData.importedCityActive)return;
   const city=window.TRModels.createCityInstance();if(!city)return;
-  // Сохраняем живых пешеходов, городской трафик и входы в сервисы; геометрию города берём из GLB.
+  // Only keep living actors and weather cover from the procedural prototype. Old roads,
+  // ground and facades were misaligned with the supplied GLB and are intentionally removed.
   const keep=new Set([...worldPedestrians.map(r=>r.mesh),...worldTraffic.map(r=>r.mesh)]);
-  worldG.children.forEach(child=>{if(keep.has(child)||child.userData.keepForNY)return;child.visible=false;});
+  worldG.children.forEach(child=>{if(keep.has(child)||child===worldG.userData.snowCover)return;child.visible=false;});
+  city.position.y-=0.025;
   city.userData.trSharedAsset=true;city.userData.importedNYCity=true;worldG.add(city);worldG.userData.importedCityActive=true;worldG.userData.importedCityRoot=city;
-  // Простые AABB-коллайдеры строятся по крупным импортированным частям зданий.
-  city.updateMatrixWorld(true);const boxes=[];
-  city.traverse(o=>{if(!o.isMesh)return;const b=new THREE.Box3().setFromObject(o);if(b.isEmpty())return;const sz=b.getSize(new THREE.Vector3()),c=b.getCenter(new THREE.Vector3());
-    if(sz.y>7&&sz.x>8&&sz.z>8&&sz.x<180&&sz.z<180&&sz.y<520)boxes.push({x:c.x,z:c.z,hw:sz.x/2+0.4,hd:sz.z/2+0.4,h:sz.y});
+  city.updateMatrixWorld(true);
+  const boxes=[],addBox=(obj)=>{
+    const b=new THREE.Box3().setFromObject(obj);if(b.isEmpty())return;
+    const sz=b.getSize(new THREE.Vector3()),c=b.getCenter(new THREE.Vector3());
+    if(sz.y<9||sz.x<5||sz.z<5||sz.x>190||sz.z>190||sz.y>520)return;
+    if(boxes.some(q=>Math.abs(q.x-c.x)<3&&Math.abs(q.z-c.z)<3&&Math.abs(q.hw-sz.x/2)<5&&Math.abs(q.hd-sz.z/2)<5))return;
+    boxes.push({x:c.x,z:c.z,hw:sz.x/2+0.65,hd:sz.z/2+0.65,h:sz.y,type:'building',sourceName:obj.name||'NY building'});
+  };
+  // The GLB groups are individual building objects; using their full AABBs prevents
+  // cars and pedestrians from walking through walls, rather than checking only small meshes.
+  city.traverse(o=>{
+    if(o.children&&o.children.length&&/^CityGen Buildings(?:\.|_)/i.test(o.name||''))o.children.forEach(addBox);
   });
-  worldBuildings=boxes;
-  toast('Нью-Йорк загружен: импортированная 3D-карта активна');
+  if(boxes.length<12){
+    city.traverse(o=>{if(o.isMesh)addBox(o);});
+  }
+  const importedBuildingBoxes=boxes;
+  // The GLB combines some city blocks into large multi-mesh groups. Use a precomputed
+  // roof-footprint grid for reliable ground-level collision, instead of oversized group AABBs.
+  const footprintColliders=Array.isArray(window.NY_BUILDING_COLLIDERS)?window.NY_BUILDING_COLLIDERS.map(b=>({x:b.x,z:b.z,hw:b.hw,hd:b.hd,h:0,type:'city-roof-collider'})):[];
+  worldBuildings=footprintColliders.length?footprintColliders:importedBuildingBoxes;
+  worldInteractables=[];cityTrafficSignals=[];
+  // Most close and clearly reachable imported building door becomes the player's home.
+  const staticEntrances=Array.isArray(window.NY_BUILDING_ENTRANCES)?window.NY_BUILDING_ENTRANCES:[];
+  const entrances=(staticEntrances.length?staticEntrances.map(e=>({
+    box:{x:e.buildingX,z:e.buildingZ,hw:e.hw,hd:e.hd,h:30,type:'imported-building'},
+    x:e.x,z:e.z,d:Math.hypot(e.x-150,e.z-160)
+  })):importedBuildingBoxes.map(b=>{
+    const edgeCandidates=[
+      {x:b.x-b.hw-1.8,z:b.z,d:Math.min(...NY_ROAD_X.map(r=>Math.abs(r-(b.x-b.hw))))},
+      {x:b.x+b.hw+1.8,z:b.z,d:Math.min(...NY_ROAD_X.map(r=>Math.abs(r-(b.x+b.hw))))},
+      {x:b.x,z:b.z-b.hd-1.8,d:Math.min(...NY_ROAD_Z.map(r=>Math.abs(r-(b.z-b.hd))) )},
+      {x:b.x,z:b.z+b.hd+1.8,d:Math.min(...NY_ROAD_Z.map(r=>Math.abs(r-(b.z+b.hd))) )}
+    ].sort((a,b)=>a.d-b.d);
+    return {box:b,x:edgeCandidates[0].x,z:edgeCandidates[0].z,d:Math.hypot(edgeCandidates[0].x-150,edgeCandidates[0].z-160)};
+  })).filter(e=>e.box.h>12&&Math.abs(e.x)<510&&Math.abs(e.z)<400&&e.d>7);
+  entrances.sort((a,b)=>a.d-b.d);
+  const homeEntry=entrances.shift();
+  if(homeEntry){cityHomePoi={id:'home',name:'Мой дом',x:homeEntry.x,z:homeEntry.z,type:'apartment',icon:'🏠',exit:{x:homeEntry.x,z:homeEntry.z}};worldInteractables.push({type:'apartment',x:homeEntry.x,z:homeEntry.z,r:6.5,name:'Мой дом',exit:{x:homeEntry.x,z:homeEntry.z}});}
+  else cityHomePoi={id:'home',name:'Мой дом',x:-160,z:145,type:'apartment',icon:'🏠'};
+  // Each imported building has a reachable entrance that opens the furnished interior.
+  for(const e of entrances){worldInteractables.push({type:'citybuilding',x:e.x,z:e.z,r:5.7,name:'Здание Нью-Йорка',exit:{x:e.x,z:e.z},building:e.box});}
+  for(const poi of CITY_POIS)worldInteractables.push({type:poi.type,x:poi.x,z:poi.z,r:12,name:poi.name});
+  addNYTrafficLights();
+  addNYLandmarkMarkers();
+  const spawn=findFreeWorldSpot(150,160,3);
+  if(charMesh&&!worldInterior&&!worldDriving){charMesh.position.set(spawn.x,0,spawn.z);}
+  const carSpot=findFreeWorldSpot(spawn.x+9,spawn.z,3.1);
+  if(player.mesh&&!worldDriving){player.mesh.position.set(carSpot.x,0,carSpot.z);player.speed=0;}
+  // Route to the home is the default, but players can select any neighborhood in the map.
+  worldRouteTarget='home';
+  toast('Нью-Йорк загружен: здания, коллизии и городская карта активны');
+}
+function addNYLandmarkMarkers(){
+  if(!worldG||worldG.userData.nyMarkersAdded)return;worldG.userData.nyMarkersAdded=true;
+  for(const poi of [cityHomePoi,...CITY_POIS]){
+    const g=new THREE.Group();g.name='Map POI '+poi.id;g.position.set(poi.x,0,poi.z);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.25,0.12,7,24),new THREE.MeshBasicMaterial({color:poi.id===worldRouteTarget?0x53e8c0:0x5bd9ff,transparent:true,opacity:0.86}));ring.rotation.x=-Math.PI/2;ring.position.y=0.22;g.add(ring);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.12,2.5,7),new THREE.MeshStandardMaterial({color:0xb8f6ff,emissive:0x238fb8,emissiveIntensity:1.1}));stem.position.y=1.25;g.add(stem);
+    const ball=new THREE.Mesh(new THREE.SphereGeometry(0.4,12,8),new THREE.MeshStandardMaterial({color:0x81fff0,emissive:0x22cfff,emissiveIntensity:1.4}));ball.position.y=2.7;g.add(ball);worldG.add(g);
+  }
+}
+function addNYTrafficLights(){
+  if(!worldG)return;cityTrafficSignals=[];
+  const laneX=[-160,-100,130,310],laneZ=[-370,-135,-100,100,140,370];
+  let index=0;
+  for(const x of laneX)for(const z of laneZ)for(const side of [-1,1]){
+    const gx=x+side*11,gz=z+(side>0?9:-9),g=new THREE.Group();g.name='NY traffic light';g.position.set(gx,0,gz);
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.16,5.4,8),wmat(0x37424c,0.45,0.5));pole.position.y=2.7;g.add(pole);
+    const head=wbox(g,0.72,1.85,0.58,wmat(0x141b24,0.35,0.35),0,4.2,0,{shadow:false});
+    const bulbs=[0xff3e49,0xffc247,0x38ee89].map((color,i)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,8),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:0.08,roughness:0.25}));m.position.set(0,4.78-i*0.56,0.31);g.add(m);return m;});
+    worldG.add(g);cityTrafficSignals.push({bulbs,elapsed:index*1.7});worldBuildings.push({x:gx,z:gz,hw:0.34,hd:0.34,h:5.4,type:'prop'});index++;
+  }
+}
+function updateCityTrafficLights(dt){
+  for(const s of cityTrafficSignals){s.elapsed+=dt;const phase=Math.floor(s.elapsed/6)%3;const active=phase===0?0:phase===1?2:1;
+    s.bulbs.forEach((b,i)=>{b.material.emissiveIntensity=i===active?2.8:0.08;});
+  }
 }
 function currentWorldActor(){return worldDriving?player.mesh:charMesh;}
 function worldPos(){const a=currentWorldActor();return a?a.position:new THREE.Vector3();}
 function startOpenWorld(regionId=worldRegionId){
-  requestGameFullscreen(); worldRegionId=WORLD_REGIONS[regionId]?regionId:'tashkent';const cfg=WORLD_REGIONS[worldRegionId];
-  held.clear(); buildOpenWorld(worldRegionId);state='world';worldInterior=false;worldDriving=false;worldJumpRemaining=0;worldJumpCooldown=0;worldJumpWasHeld=false;worldCamMode=2;worldCamOrbitYaw=0;worldCamOrbitPitch=0;worldLookDrag=null;worldNear=null;worldCollisionTimer=0;
+  requestGameFullscreen(); worldRegionId=WORLD_REGIONS[regionId]?regionId:'newyork';const cfg=WORLD_REGIONS[worldRegionId];
+  held.clear(); buildOpenWorld(worldRegionId);state='world';worldInterior=false;worldDriving=false;worldJumpRemaining=0;worldJumpCooldown=0;worldJumpWasHeld=false;worldCamMode=2;worldCamOrbitYaw=0;worldCamOrbitPitch=0;worldLookDrag=null;worldSwipeMove=null;worldNear=null;worldCollisionTimer=0;
   if(worldRegionId==='newyork'&&window.TRModels){window.TRModels.ensureCity().then(()=>{if(state==='world'&&worldRegionId==='newyork')activateImportedNewYork();});}
   if(!worldKeepAtmo){worldTime=WORLD_TIMES[Math.floor(Math.random()*WORLD_TIMES.length)];worldWeather=WORLD_WEATHERS[Math.floor(Math.random()*WORLD_WEATHERS.length)];}worldKeepAtmo=false;applyWorldAtmosphere();ensureWorldAtmoButtons();
   if(trackG)trackG.visible=false;worldG.visible=true;apartmentG.visible=false;if(schoolG)schoolG.visible=false;activeInteriorG=null;
   // Clear race entities and place the selected car beside the player as a usable vehicle.
   clearRemotes();ais.forEach(a=>{scene.remove(a.mesh);disposeModel(a.mesh);});ais=[];
-  if(charMesh){scene.remove(charMesh);disposeModel(charMesh);}charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.set(9,0,1.8);charMesh.rotation.y=0;scene.add(charMesh);worldYaw=0;
-  player.mesh.position.set(9,0,8);player.mesh.rotation.set(0,0,0);player.h=0;player.mesh.visible=true;player.speed=0;player.vx=0;player.vz=0;player.dmg=save.cars[save.cur]?.dmg||0;player.immobilized=player.dmg>=100;phys=physFor(save.cur);applyDamageVisual();
-  show(null);$('hud').hidden=true;$('minimap').hidden=true;$('worldHud').hidden=false;$('worldPhone').hidden=true;$('worldShop').hidden=true;$('touch').hidden=!isTouch;$('fixBtn').hidden=true;$('worldLocation').textContent=cfg.welcome+' · СВОБОДНАЯ ЕЗДА';$('worldActionHint').textContent=isTouch?'Экранные кнопки: поворот, вперёд/назад, БЕГ и ПРЫЖОК · свайп по свободной области — камера':'WASD — движение · E — взаимодействие · V — камера';Snd.music('menu');applyTouchSettings();updateWorldCameraLabel();toast(cfg.name+' · E — взаимодействовать');
+  if(charMesh){scene.remove(charMesh);disposeModel(charMesh);}charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.set(150,0,160);charMesh.rotation.y=0;scene.add(charMesh);worldYaw=0;
+  player.mesh.position.set(159,0,160);player.mesh.rotation.set(0,0,0);player.h=0;player.mesh.visible=true;player.speed=0;player.vx=0;player.vz=0;player.dmg=save.cars[save.cur]?.dmg||0;player.immobilized=player.dmg>=100;phys=physFor(save.cur);applyDamageVisual();
+  show(null);$('hud').hidden=true;$('minimap').hidden=true;$('worldHud').hidden=false;$('worldPhone').hidden=true;$('worldShop').hidden=true;$('touch').hidden=!isTouch;$('fixBtn').hidden=true;$('worldLocation').textContent=cfg.welcome+' · СВОБОДНАЯ ЕЗДА';$('worldActionHint').textContent=isTouch?'Свайп в сторону — движение в эту сторону; свайп вверх — вперёд · кнопки для точного управления':'WASD — движение · E — взаимодействие · V — камера';Snd.music('menu');applyTouchSettings();updateWorldCameraLabel();toast(cfg.name+' · E — взаимодействовать');
 }
 function updateWorldCameraLabel(){const labels=['1-е лицо','2-е лицо · плечо','3-е лицо'];$('worldCamBtn').textContent='Камера: '+labels[worldCamMode];}
 function cycleWorldCamera(){worldCamMode=(worldCamMode+1)%3;updateWorldCameraLabel();toast('Камера: '+['от первого лица','с плеча','от третьего лица'][worldCamMode]);}
@@ -2049,13 +2188,13 @@ function openWorldPhone(tab='home'){$('worldPhone').hidden=false;renderWorldPhon
 function closeWorldPhone(){$('worldPhone').hidden=true;}
 function renderWorldPhone(tab='home'){
   const el=$('worldPhoneContent'),p=worldPos(),loc=worldInterior?'Квартира':Math.hypot(p.x,p.z)<100?'Центр города':p.x<0?'Западный район':'Восточный район';
-  if(tab==='map')el.innerHTML=`<h2>Карта · ${(WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.tashkent).name}</h2><p>Ты находишься: <b>${loc}</b></p><div class="card"><b>🏠 Апартаменты</b><div class="muted">${worldRegionId==='tashkent'?'Катта Чиланзар 1, дом 11А, подъезд 4 · X −126 / Z −40':'Запад, около X −50 / Z −25'}</div></div><div class="card"><b>🛠 AUTO LAB</b><div class="muted">Восток, около X 150 / Z 20</div></div><div class="card"><b>🏁 Городской клуб</b><div class="muted">Рядом с центральным перекрёстком</div></div><p>В городе можно свободно ходить, садиться в свою машину, посещать магазины и запускать заезды.</p>`;
+  if(tab==='map')el.innerHTML=`<h2>Карта Манхэттена</h2><p>Ты находишься: <b>${loc}</b></p><div class="card"><b>🗺 Районы, улицы и маршрут</b><p>Открой карту, выбери цель — линия маршрута появится на карте.</p><button class="btn" data-phone-action="map">Открыть большую карту</button></div><div class="card"><b>🏠 ${cityHomePoi.name}</b><button class="btn" data-route="home">Маршрут домой</button></div>${CITY_POIS.map(q=>`<div class="card"><b>${q.icon} ${q.name}</b><button class="btn" data-route="${q.id}">Построить маршрут</button></div>`).join('')}<p>Дома и здания можно посещать у входа; машина вызывается с любой улицы.</p>`;
   else if(tab==='services')el.innerHTML=`<h2>Сервисы</h2><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>монет на счету</span></div><div><b>${Math.round(player.dmg)}%</b><span>повреждение машины</span></div></div><div class="card"><b>Эвакуатор и механик</b><p>Вызвать сервис, сбросить критическую поломку или заказать ремонт.</p><button class="btn" data-phone-action="tow">Вызвать эвакуатор · 600</button></div><div class="card"><b>Автосервис</b><p>Улучшить двигатель, ускорение и нитро за игровые монеты.</p><button class="btn" data-phone-action="garage">Открыть магазин тюнинга</button></div>`;
   else if(tab==='events')el.innerHTML=`<h2>События</h2><div class="card"><b>🏁 Уличный спринт</b><p>Короткий заезд против соперников, которые ускоряются, используют нитро и пытаются объезжать ловушки.</p><button class="btn" data-phone-action="race">Начать заезд</button></div><div class="card"><b>🏆 Турниры</b><p>Открывай турниры в главном меню: дождевой кубок, дрифт, марафон и Hyper League.</p><button class="btn" data-phone-action="menu-tours">Список турниров</button></div>`;
   else el.innerHTML=`<h2>Добро пожаловать</h2><p>Город открыт для исследования. Жители гуляют, машут руками, прыгают от радости, читают телефон и реагируют на твою машину.</p><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>баланс · монеты</span></div><div><b>${Math.round(player.dmg)}%</b><span>состояние авто</span></div></div><div class="card"><b>Подсказки</b><p>WASD — ходить/ехать · E — взаимодействие · V — смена камеры · P — телефон · Esc — в меню.</p></div><button class="btn" data-phone-action="tow">Эвакуатор / ремонт</button><button class="btn" data-phone-action="race">Быстрый уличный заезд</button>`;
 }
-$('worldPhoneContent').addEventListener('click',e=>{const b=e.target.closest('[data-travel]');if(b)travelTo(b.dataset.travel);});
-$('worldPhoneBtn').onclick=()=>openWorldPhone('home');$('worldPhoneClose').onclick=closeWorldPhone;$('worldCamBtn').onclick=cycleWorldCamera;$('worldExitBtn').onclick=toMenu;$('worldInteractBtn').onclick=interactWorld;$('worldPhone').addEventListener('click',e=>{const t=e.target.closest('[data-phone-tab]');if(t){renderWorldPhone(t.dataset.phoneTab);return;}const a=e.target.closest('[data-phone-action]');if(!a)return;const act=a.dataset.phoneAction;if(act==='tow'){if(save.coins<600){toast('Не хватает 600 монет на выезд механика');return;}save.coins-=600;setDamage(Math.max(0,player.dmg-45));player.immobilized=false;player.engineStall=0;player.speed=0;player.mesh.position.set(9,0,8);store();renderWorldPhone('services');toast('Механик прибыл: восстановлено 45% прочности');}else if(act==='garage'){closeWorldPhone();openWorldShop('garage');}else if(act==='race'){closeWorldPhone();toMenu();setTimeout(startCareer,20);}else if(act==='menu-tours'){closeWorldPhone();toMenu();setTimeout(()=>openScreen('tour'),20);}});
+$('worldPhoneContent').addEventListener('click',e=>{const b=e.target.closest('[data-travel]');if(b)travelTo(b.dataset.travel);const route=e.target.closest('[data-route]');if(route){setWorldRoute(route.dataset.route);return;}});
+$('worldPhoneBtn').onclick=()=>openWorldPhone('home');$('worldPhoneClose').onclick=closeWorldPhone;$('worldCamBtn').onclick=cycleWorldCamera;$('worldExitBtn').onclick=toMenu;$('worldInteractBtn').onclick=interactWorld;$('worldMapBtn').onclick=openCityMap;$('worldMapClose').onclick=closeCityMap;$('worldCallCarBtn').onclick=callWorldCar;$('worldRouteButtons').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(b)setWorldRoute(b.dataset.route);});$('worldPhone').addEventListener('click',e=>{const t=e.target.closest('[data-phone-tab]');if(t){renderWorldPhone(t.dataset.phoneTab);return;}const a=e.target.closest('[data-phone-action]');if(!a)return;const act=a.dataset.phoneAction;if(act==='map'){openCityMap();return;}if(act==='tow'){if(save.coins<600){toast('Не хватает 600 монет на выезд механика');return;}save.coins-=600;setDamage(Math.max(0,player.dmg-45));player.immobilized=false;player.engineStall=0;player.speed=0;const here=worldPos(),tow=findFreeWorldSpot(here.x+7,here.z,3);player.mesh.position.set(tow.x,0,tow.z);store();renderWorldPhone('services');toast('Механик прибыл: восстановлено 45% прочности');}else if(act==='garage'){closeWorldPhone();openWorldShop('garage');}else if(act==='race'){closeWorldPhone();toMenu();setTimeout(startCareer,20);}else if(act==='menu-tours'){closeWorldPhone();toMenu();setTimeout(()=>openScreen('tour'),20);}});
 document.querySelectorAll('[data-phone-tab]').forEach(()=>{});
 function openWorldShop(kind){
   const title=kind==='market'?'MARKET 24/7':kind==='fashion'?'CITY MODA':'AUTO LAB';$('worldShopTitle').textContent=title;$('worldShopDesc').textContent=kind==='market'?'Городской магазин и полезные вещи':kind==='fashion'?'Одежда и внешний вид персонажа':'Ремонт, двигатель и спортивные детали';
@@ -2069,8 +2208,8 @@ function openWorldShop(kind){
     if(act==='repair'){cost=repairCost;if(own.dmg<=0){toast('Машина уже в отличном состоянии');return;}if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;setDamage(0);player.immobilized=false;player.engineStall=0;}
     else if(['engine','accel','nitro'].includes(act)){const i=act==='engine'?0:act==='accel'?1:5,base=act==='engine'?1100:act==='accel'?900:1300;cost=Math.round((own.up[i]+1)*(base+carIdx(save.cur)*280));if(own.up[i]>=5){toast('Улучшение уже максимальное');return;}if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;own.up[i]++;phys=physFor(save.cur);}
     else if(act==='outfit'){cost=850;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.char.col=(save.char.col+1+Math.floor(Math.random()*5))%OUTFITS.length;replaceWorldPlayer();}
-    else if(act==='style'){cost=2500;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.style[save.cur]=((save.style[save.cur]||0)+1)%STYLE_SHAPES.length;showCar(save.cur);player.mesh.position.set(9,0,8);player.mesh.visible=!worldDriving;}
-    else if(act==='neon'){cost=1800;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.neon[save.cur]=save.neon[save.cur]===false;showCar(save.cur);player.mesh.position.set(9,0,8);player.mesh.visible=!worldDriving;}
+    else if(act==='style'){cost=2500;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.style[save.cur]=((save.style[save.cur]||0)+1)%STYLE_SHAPES.length;refreshPlayerCarPreservingTransform();}
+    else if(act==='neon'){cost=1800;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.neon[save.cur]=save.neon[save.cur]===false;refreshPlayerCarPreservingTransform();}
     else if(act==='repair-kit'){cost=500;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;setDamage(Math.max(0,player.dmg-20));player.immobilized=player.dmg>=100;}
     else if(act==='snack'){cost=150;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;toast('Вкусный перерыв!');}
     else if(act==='event'){ $('worldShop').hidden=true;closeWorldPhone();toMenu();setTimeout(startCareer,20);return;}
@@ -2079,19 +2218,30 @@ function openWorldShop(kind){
 }
 $('worldShopClose').onclick=()=>{$('worldShop').hidden=true;};
 function replaceWorldPlayer(){if(!charMesh)return;const p=charMesh.position.clone(),r=charMesh.rotation.y;scene.remove(charMesh);disposeModel(charMesh);charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.copy(p);charMesh.rotation.y=r;scene.add(charMesh);}
-function enterApartment(){
+function refreshPlayerCarPreservingTransform(){
+  const old=player.mesh;
+  const pos=old?old.position.clone():new THREE.Vector3(159,0,160);
+  const rot=old?old.rotation.clone():new THREE.Euler(0,0,0);
+  const visible=old?old.visible:true;
+  showCar(save.cur);
+  player.mesh.position.copy(pos);player.mesh.rotation.copy(rot);player.mesh.visible=visible;
+  player.h=rot.y;
+}
+function enterApartment(target=null){
   worldCarVisibleBeforeInterior=!!player.mesh.visible;
-  worldInterior=true;worldJumpRemaining=0;worldJumpWasHeld=held.has('drift');if(charMesh)charMesh.position.y=0;worldG.visible=false;apartmentG.visible=true;activeInteriorG=apartmentG;interiorExit={x:-50,z:-23};
+  worldInteriorLabel=target&&target.type==='citybuilding'?'ЗДАНИЕ НЬЮ-ЙОРКА':'МОЙ ДОМ';
+  interiorExit=target&&target.exit?{x:target.exit.x,z:target.exit.z}:{x:-50,z:-23};
+  worldInterior=true;worldJumpRemaining=0;worldJumpWasHeld=held.has('drift');if(charMesh)charMesh.position.y=0;worldG.visible=false;apartmentG.visible=true;activeInteriorG=apartmentG;
   charMesh.position.set(-2,0,2);charMesh.rotation.y=Math.PI;
   player.mesh.visible=false;worldLookDrag=null;
-  $('worldLocation').textContent='МОЯ КВАРТИРА · ГОСТИНАЯ';toast('Ты дома. Нажми E у двери, чтобы выйти.');
+  $('worldLocation').textContent=worldInteriorLabel+' · ГОСТИНАЯ';toast(worldInteriorLabel==='МОЙ ДОМ'?'Ты дома. Нажми E у двери, чтобы выйти.':'Ты внутри здания. Нажми E, чтобы вернуться на улицу.');
 }
 function leaveApartment(){
   worldInterior=false;worldJumpRemaining=0;worldJumpWasHeld=held.has('drift');if(charMesh)charMesh.position.y=0;(activeInteriorG||apartmentG).visible=false;activeInteriorG=null;worldG.visible=true;
   charMesh.position.set(interiorExit.x,0,interiorExit.z);charMesh.rotation.y=Math.PI;worldYaw=Math.PI;
   // Restore the parked car's previous visibility; otherwise entering/leaving home made the car disappear.
   player.mesh.visible=worldCarVisibleBeforeInterior;worldLookDrag=null;
-  $('worldLocation').textContent='ЗАПАДНЫЙ РАЙОН · АПАРТАМЕНТЫ';
+  $('worldLocation').textContent='НЬЮ-ЙОРК · УЛИЦЫ МАНХЭТТЕНА';
 }
 function worldActorNear(x,z){const p=worldPos();return Math.hypot(p.x-x,p.z-z);}
 function worldInteractablesAt(){const p=worldPos();let best=null,dist=Infinity;
@@ -2104,7 +2254,7 @@ function interactWorld(){
   if(state!=='world')return;if(worldInterior){leaveApartment();return;}
   const target=worldInteractablesAt();if(!target){toast('Поблизости нет объектов для взаимодействия');return;}worldNear=target;
   if(worldDriving && target.type!=='car'){toast('Сначала выйди из машины, чтобы взаимодействовать');return;}
-  if(target.type==='apartment'){enterApartment();if(target.exit)interiorExit=target.exit;return;}
+  if(target.type==='apartment'||target.type==='citybuilding'){enterApartment(target);return;}
   if(target.type==='airport'){openAirportMenu();return;}
   if(target.type==='school'){enterSchool(target);return;}
   if(target.type==='market'||target.type==='garage'||target.type==='fashion'){openWorldShop(target.type);return;}
@@ -2117,8 +2267,8 @@ function interactWorld(){
   if(target.type==='raceboard'||target.type==='plaza'){openWorldPhone('events');return;}
 }
 function updateOpenWorld(dt){
-  if($('worldPhone').hidden===false||$('worldShop').hidden===false)return;
-  worldAnimT+=dt;worldCollisionTimer=Math.max(0,worldCollisionTimer-dt);
+  if($('worldPhone').hidden===false||$('worldShop').hidden===false||$('worldMapOverlay').hidden===false)return;
+  worldAnimT+=dt;worldCollisionTimer=Math.max(0,worldCollisionTimer-dt);updateCityTrafficLights(dt);
   worldJumpCooldown=Math.max(0,worldJumpCooldown-dt);
   const jumpHeld=held.has('drift');
   if(!worldDriving&&!worldInterior&&jumpHeld&&!worldJumpWasHeld&&worldJumpCooldown<=0){worldJumpRemaining=0.62;worldJumpCooldown=0.88;}
@@ -2141,11 +2291,13 @@ function updateOpenWorld(dt){
       p.position.y=rec.jumpT>0?Math.sin((1-rec.jumpT/.7)*Math.PI)*0.85:0;
       if(u.bodyGroup){u.bodyGroup.position.y=Math.abs(Math.sin(rec.phase*2))*0.022;u.bodyGroup.rotation.z=cheering?Math.sin(worldAnimT*3+rec.phase)*0.025:Math.sin(rec.phase)*0.008;}
     }
-    for(const car of worldTraffic){car.x+=car.speed*car.dir*dt;if(car.x>WORLD_RANGE)car.x=-WORLD_RANGE;if(car.x< -WORLD_RANGE)car.x=WORLD_RANGE;car.mesh.position.set(car.x,0,car.z);car.mesh.userData.wheels.forEach(w=>w.rotation.x+=car.speed*dt/0.4);(car.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=car.speed*dt/0.4);}
+    const trafficRange=worldG&&worldG.userData&&worldG.userData.importedCityActive?510:WORLD_RANGE;
+    for(const car of worldTraffic){car.x+=car.speed*car.dir*dt;if(car.x>trafficRange)car.x=-trafficRange;if(car.x< -trafficRange)car.x=trafficRange;car.mesh.position.set(car.x,0,car.z);(car.mesh.userData.wheels||[]).forEach(w=>w.rotation.x+=car.speed*dt/0.4);(car.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=car.speed*dt/0.4);}
   }
   const actor=worldDriving?player.mesh:charMesh;if(!actor)return;
   if(worldDriving){
-    const gas=held.has('gas')&&!player.immobilized&&player.engineStall<=0,brake=held.has('brake'),steer=(held.has('right')?1:0)-(held.has('left')?1:0);player.engineStall=Math.max(0,player.engineStall-dt);
+    const swipeActive=!!(worldSwipeMove&&performance.now()<worldSwipeMove.until);if(worldSwipeMove&&!swipeActive)worldSwipeMove=null;
+    const gas=(held.has('gas')||(swipeActive&&worldSwipeMove.y<0))&&!player.immobilized&&player.engineStall<=0,brake=held.has('brake')||(swipeActive&&worldSwipeMove.y>0),steer=clamp((held.has('right')?1:0)-(held.has('left')?1:0)+(swipeActive?worldSwipeMove.x:0),-1,1);player.engineStall=Math.max(0,player.engineStall-dt);
     const max=player.immobilized?0:Math.max(18,phys.max*0.92);if(gas)player.speed+=phys.acc*0.82*dt;if(brake)player.speed-=phys.brk*dt;if(!gas&&!brake)player.speed-=player.speed*0.48*dt;player.speed=player.immobilized?0:clamp(player.speed,-8,max);
     player.h-=steer*(0.4+Math.min(Math.abs(player.speed)/45,1)*0.85)*dt*Math.sign(player.speed||1);player.mesh.rotation.y=player.h;
     const oldX=player.mesh.position.x,oldZ=player.mesh.position.z;player.mesh.position.x+=Math.sin(player.h)*player.speed*dt;player.mesh.position.z+=Math.cos(player.h)*player.speed*dt;player.mesh.userData.wheels.forEach(w=>w.rotation.x+=player.speed*dt/0.4);(player.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=player.speed*dt/0.4);
@@ -2154,10 +2306,18 @@ function updateOpenWorld(dt){
     let struck=false,wallNX=0,wallNZ=0;for(const b of worldBuildings){const dx=player.mesh.position.x-b.x,dz=player.mesh.position.z-b.z,ox=b.hw+radX-Math.abs(dx),oz=b.hd+radZ-Math.abs(dz);if(ox>0&&oz>0){if(ox<oz){wallNX=Math.sign(dx||1);player.mesh.position.x=b.x+wallNX*(b.hw+radX);player.speed*=0.72;player.h+=wallNX*0.035;}else{wallNZ=Math.sign(dz||1);player.mesh.position.z=b.z+wallNZ*(b.hd+radZ);player.speed*=0.72;player.h-=wallNZ*0.035;}struck=true;break;}}
     if(struck&&worldCollisionTimer<=0){worldCollisionTimer=0.34;const impact=Math.abs(player.speed)/0.72;const normal=wallNX||wallNZ;player.speed*=-0.34;player.vx*=0.58;player.vz*=0.58;addDmg(clamp(impact*0.095,0.8,9));if(impact>8)spawnSparks(player.mesh.position.x,0.7,player.mesh.position.z,clamp(Math.floor(impact*.3),6,18));Snd.bump();toast('Удар о препятствие · повреждения '+Math.round(player.dmg)+'%');}
     for(const tr of worldTraffic){const dx=player.mesh.position.x-tr.mesh.position.x,dz=player.mesh.position.z-tr.mesh.position.z,d=Math.hypot(dx,dz);if(d<4.4&&worldCollisionTimer<=0){worldCollisionTimer=0.5;const impact=Math.abs(player.speed),nx=d>0.1?dx/d:Math.cos(player.h),nz=d>0.1?dz/d:-Math.sin(player.h);player.mesh.position.x=tr.mesh.position.x+nx*4.65;player.mesh.position.z=tr.mesh.position.z+nz*4.65;player.speed*=0.58;player.vx*=0.58;player.vz*=0.58;addDmg(clamp(impact*0.085,1.4,7));tr.dir*=-1;tr.speed=Math.max(4,tr.speed*0.78);spawnSparks(player.mesh.position.x,0.7,player.mesh.position.z,clamp(Math.floor(impact*.28),6,14));Snd.bump();toast('Столкновение с городским транспортом');break;}}
+    for(const rec of worldPedestrians){const dx=player.mesh.position.x-rec.mesh.position.x,dz=player.mesh.position.z-rec.mesh.position.z,d=Math.hypot(dx,dz);if(d<3.1&&worldCollisionTimer<=0){worldCollisionTimer=0.4;const nx=d>0.1?dx/d:Math.cos(player.h),nz=d>0.1?dz/d:-Math.sin(player.h);player.mesh.position.x=rec.mesh.position.x+nx*3.5;player.mesh.position.z=rec.mesh.position.z+nz*3.5;player.speed*=0.52;addDmg(clamp(Math.abs(player.speed)*0.04,0.8,3.5));rec.waveT=1.8;rec.jumpT=0.45;spawnSparks(player.mesh.position.x,0.65,player.mesh.position.z,8,0xffbc67);Snd.bump();toast('Столкновение: машина остановилась.');break;}}
     if(Math.abs(player.speed)>0.7){player.vx=Math.sin(player.h)*player.speed;player.vz=Math.cos(player.h)*player.speed;}
   }else{
-    const oldX=charMesh.position.x,oldZ=charMesh.position.z;const turn=(held.has('right')?1:0)-(held.has('left')?1:0);worldYaw-=turn*2.15*dt;const forward=(held.has('gas')?1:0)-(held.has('brake')?1:0),walkSpeed=held.has('nitro')?14:8.3;
-    charMesh.position.x+=Math.sin(worldYaw)*forward*walkSpeed*dt;charMesh.position.z+=Math.cos(worldYaw)*forward*walkSpeed*dt;charMesh.rotation.y=worldYaw;
+    const oldX=charMesh.position.x,oldZ=charMesh.position.z;
+    const swipeActive=!!(worldSwipeMove&&performance.now()<worldSwipeMove.until);if(worldSwipeMove&&!swipeActive)worldSwipeMove=null;
+    let moveX=0,moveZ=0,forward=(held.has('gas')?1:0)-(held.has('brake')?1:0),turn=(held.has('right')?1:0)-(held.has('left')?1:0);
+    if(swipeActive){const yaw=worldYaw+worldCamOrbitYaw,fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);moveX=rx*worldSwipeMove.x-fx*worldSwipeMove.y;moveZ=rz*worldSwipeMove.x-fz*worldSwipeMove.y;const len=Math.hypot(moveX,moveZ)||1;moveX/=len;moveZ/=len;}
+    else {worldYaw-=turn*2.15*dt;moveX=Math.sin(worldYaw)*forward;moveZ=Math.cos(worldYaw)*forward;}
+    const walkSpeed=held.has('nitro')?14:8.3;
+    charMesh.position.x+=moveX*walkSpeed*dt;charMesh.position.z+=moveZ*walkSpeed*dt;
+    if(Math.hypot(moveX,moveZ)>0.08&&swipeActive)worldYaw=Math.atan2(moveX,moveZ);
+    charMesh.rotation.y=worldYaw;
     if(worldInterior){
       // Apartment interior has its own walkable bounds; don't let the character pass through the room's walls.
       charMesh.position.x=clamp(charMesh.position.x,-11.55,11.55);
@@ -2170,14 +2330,15 @@ function updateOpenWorld(dt){
       charMesh.position.x=clamp(charMesh.position.x,-limitX,limitX);
       charMesh.position.z=clamp(charMesh.position.z,-limitZ,limitZ);
     }
-    const moving=Math.abs(forward)>0;
+    const moving=Math.abs(forward)>0||(swipeActive&&Math.hypot(moveX,moveZ)>0.08);
     if(window.TRModels)window.TRModels.setCharacterMotion(moving,held.has('nitro'));
     const u=charMesh.userData;u.legs[0].rotation.x=moving?Math.sin(worldAnimT*10)*0.55:0;u.legs[1].rotation.x=moving?-Math.sin(worldAnimT*10)*0.55:0;u.arms[0].rotation.x=moving?-Math.sin(worldAnimT*10)*0.22:0;u.arms[1].rotation.x=moving?Math.sin(worldAnimT*10)*0.22:0;
     if(u.bodyGroup){u.bodyGroup.position.y=moving?Math.abs(Math.sin(worldAnimT*10))*0.035:Math.sin(worldAnimT*1.6)*0.012;u.bodyGroup.rotation.z=moving?Math.sin(worldAnimT*5)*0.018:Math.sin(worldAnimT*0.8)*0.008;}
   }
-  if(!worldInterior){const target=worldInteractablesAt();worldNear=target;if(target){$('worldInteractBtn').textContent='E · '+(target.type==='npc'?'Поговорить с '+target.name:target.type==='car'?(worldDriving?'Выйти из машины':'Сесть в машину'):target.type==='apartment'?'Войти домой':target.type==='market'?'Зайти в магазин':target.type==='garage'?'Тюнинг авто':target.type==='fashion'?'Магазин одежды':target.type==='raceboard'||target.type==='plaza'?'Городские события':'Взаимодействовать');$('worldActionHint').textContent='E — '+target.name+' · V — камера · P — телефон';}else{$('worldInteractBtn').textContent='E · Осмотреться';$('worldActionHint').textContent=isTouch?'Экранные кнопки · свайп по миру — камера · Телефон — сервисы':'WASD — движение · E — взаимодействие · V — камера · P — телефон';}}
+  if(!worldInterior){const target=worldInteractablesAt();worldNear=target;if(target){$('worldInteractBtn').textContent='E · '+(target.type==='npc'?'Поговорить с '+target.name:target.type==='car'?(worldDriving?'Выйти из машины':'Сесть в машину'):(target.type==='apartment'?'Войти домой':target.type==='citybuilding'?'Войти в здание':target.type==='market'?'Зайти в магазин':target.type==='garage'?'Тюнинг авто':target.type==='fashion'?'Магазин одежды':target.type==='raceboard'||target.type==='plaza'?'Городские события':'Взаимодействовать'));$('worldActionHint').textContent='E — '+target.name+' · V — камера · P — телефон';}else{$('worldInteractBtn').textContent='E · Осмотреться';$('worldActionHint').textContent=isTouch?'Свайп в сторону — движение · вверх — вперёд · Телефон — карта и сервисы':'WASD — движение · E — взаимодействие · V — камера · P — телефон';}}
   else{$('worldInteractBtn').textContent='E · Выйти из квартиры';$('worldActionHint').textContent='Квартира · E — выйти в город · P — телефон';}
-  const p=worldPos();const d=Math.hypot(p.x,p.z),cfg=WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.tashkent;$('worldLocation').textContent=worldInterior?'МОЯ КВАРТИРА · ГОСТИНАЯ':d<85?cfg.welcome:p.x<0?'ЗАПАДНЫЙ РАЙОН':'ВОСТОЧНЫЙ РАЙОН';
+  const p=worldPos();const d=Math.hypot(p.x,p.z),cfg=WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.newyork;
+  $('worldLocation').textContent=worldInterior?worldInteriorLabel+' · ГОСТИНАЯ':d<85?cfg.welcome:p.x<0?'НЬЮ-ЙОРК · ЗАПАД':'НЬЮ-ЙОРК · ВОСТОК';
 }
 function segmentAabbHitT(origin, target, b, pad=0.15) {
   const dir=target.clone().sub(origin); let tMin=0,tMax=1;
@@ -2213,7 +2374,7 @@ function updateWorldCamera(dt){
   cam.position.lerp(wanted,follow);cam.lookAt(look);cam.fov += (fov-cam.fov)*Math.min(1,7*Math.max(0,dt));cam.updateProjectionMatrix();
 }
 
-function worldKey(code){if(state!=='world')return false;if(code==='KeyE'){interactWorld();return true;}if(code==='KeyT'){cycleWorldTime();return true;}if(code==='KeyY'){cycleWorldWeather();return true;}if(code==='KeyV'){cycleWorldCamera();return true;}if(code==='KeyP'){if($('worldPhone').hidden)openWorldPhone('home');else closeWorldPhone();return true;}if(code==='Escape'){if(!$('worldPhone').hidden)closeWorldPhone();else if(!$('worldShop').hidden)$('worldShop').hidden=true;else toMenu();return true;}if(code==='KeyR'){if(worldDriving){if(player.immobilized){setDamage(Math.max(0,player.dmg-32));player.immobilized=false;player.engineStall=0;toast('Эвакуатор запустил двигатель');}player.mesh.position.set(9,0,8);player.speed=0;}return true;}return false;}
+function worldKey(code){if(state!=='world')return false;if(code==='KeyE'){interactWorld();return true;}if(code==='KeyT'){cycleWorldTime();return true;}if(code==='KeyY'){cycleWorldWeather();return true;}if(code==='KeyV'){cycleWorldCamera();return true;}if(code==='KeyP'){if($('worldPhone').hidden)openWorldPhone('home');else closeWorldPhone();return true;}if(code==='KeyM'){if($('worldMapOverlay').hidden)openCityMap();else closeCityMap();return true;}if(code==='KeyC'){callWorldCar();return true;}if(code==='Escape'){if(!$('worldMapOverlay').hidden)closeCityMap();else if(!$('worldPhone').hidden)closeWorldPhone();else if(!$('worldShop').hidden)$('worldShop').hidden=true;else toMenu();return true;}if(code==='KeyR'){if(worldDriving){if(player.immobilized){setDamage(Math.max(0,player.dmg-32));player.immobilized=false;player.engineStall=0;toast('Эвакуатор запустил двигатель');}const safe=findFreeWorldSpot(player.mesh.position.x+12,player.mesh.position.z+10,3.1);player.mesh.position.set(safe.x,0,safe.z);player.speed=0;player.vx=0;player.vz=0;}return true;}return false;}
 
 
 // ================= запуск =================

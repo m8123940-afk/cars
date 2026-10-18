@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Turbo Rivals 3D · Five Regions</title>
+<title>Turbo Rivals 3D · New York Edition</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
@@ -149,20 +149,36 @@
 
 <div id="worldSelect" class="overlay world-select" hidden>
   <h2>Открытый мир · выбор региона</h2>
-  <p class="sub">Пять отдельных районов с собственной архитектурой, освещением и декорациями. Существующие гонки и гараж сохраняются.</p>
+  <p class="sub">Один открытый мир — Нью-Йорк с предоставленной 3D-картой, городскими улицами и доступными зданиями. Гонки, гараж и улучшения машин сохранены.</p>
   <div id="worldRegionCards" class="world-region-grid"></div>
   <button id="worldSelectClose" class="btn">← Назад</button>
 </div>
 
 <div id="worldHud" hidden>
   <div class="world-location"><b id="worldLocation">Центр города</b><span id="worldWeatherTag">☀ День · Ясно</span><span id="worldActionHint">WASD — движение · E — взаимодействие · V — камера</span></div>
-  <div class="world-actions"><button id="worldPhoneBtn" class="world-action">📱 Телефон</button><button id="worldCamBtn" class="world-action">Камера: 3-е лицо</button><button id="worldInteractBtn" class="world-action">E · Осмотреться</button><button id="worldExitBtn" class="world-action">В меню</button></div>
+  <div class="world-actions"><button id="worldPhoneBtn" class="world-action">📱 Pear Phone</button><button id="worldMapBtn" class="world-action">🗺 Карта / маршрут</button><button id="worldCallCarBtn" class="world-action">🚘 Вызвать авто</button><button id="worldCamBtn" class="world-action">Камера: 3-е лицо</button><button id="worldInteractBtn" class="world-action">E · Осмотреться</button><button id="worldExitBtn" class="world-action">В меню</button></div>
 </div>
 <div id="worldPhone" class="overlay world-phone" hidden>
-  <div class="phone-shell"><div class="phone-notch"></div><div class="phone-head"><span>TR MOBILE</span><button id="worldPhoneClose" class="btn">✕</button></div>
+  <div class="phone-shell"><div class="phone-notch"></div><div class="phone-head"><span class="pear-brand"><svg viewBox="0 0 36 42" role="img" aria-label="Груша"><path d="M17 9 C18 5 18 2 21 1 C22 5 21 8 19 10" fill="#59a84f"/><path d="M17 8 C12 8 8 12 7 18 C5 25 8 34 15 38 C19 41 25 38 28 34 C34 26 31 15 25 10 C22 8 20 8 17 8 Z" fill="#59b94f"/><path d="M11 20 C10 27 13 33 17 35" fill="none" stroke="#b6f08c" stroke-width="2.4" stroke-linecap="round"/></svg><span>PEARPHONE 18 PRO MAX</span></span><button id="worldPhoneClose" class="btn">✕</button></div>
     <div id="worldPhoneContent" class="phone-content"><h2>Добро пожаловать</h2><p class="sub">Город живёт своей жизнью.</p></div>
     <div class="phone-dock"><button class="btn" data-phone-tab="home">Главная</button><button class="btn" data-phone-tab="map">Карта</button><button class="btn" data-phone-tab="services">Сервисы</button><button class="btn" data-phone-tab="events">События</button></div>
   </div>
+</div>
+
+<div id="worldMapOverlay" class="overlay city-map-overlay" hidden>
+  <section class="city-map-panel">
+    <header class="city-map-header"><div><h2>MANHATTAN MAP</h2><p>Нью-Йорк · маршрут и окрестности</p></div><button id="worldMapClose" class="btn">✕</button></header>
+    <canvas id="worldMapCanvas" width="960" height="640" aria-label="Карта Нью-Йорка"></canvas>
+    <div class="city-map-legend"><span><i class="legend-player"></i> Ты</span><span><i class="legend-route"></i> Маршрут</span><span><i class="legend-place"></i> Место</span></div>
+    <div id="worldRouteButtons" class="city-route-buttons">
+      <button class="btn" data-route="home">🏠 Мой дом</button>
+      <button class="btn" data-route="garage">🔧 Pear Auto Lab</button>
+      <button class="btn" data-route="market">🛍 Market 24/7</button>
+      <button class="btn" data-route="times-square">🌆 Таймс-сквер</button>
+      <button class="btn" data-route="street-race">🏁 Уличный клуб</button>
+    </div>
+    <p id="worldRouteStatus" class="city-route-status">Выбери место, чтобы построить маршрут.</p>
+  </section>
 </div>
 <div id="worldShop" class="overlay" hidden><h2 id="worldShopTitle">Магазин</h2><p class="sub" id="worldShopDesc">Городской сервис</p><div id="worldShopItems" class="col"></div><button id="worldShopClose" class="btn">Закрыть</button></div>
 
@@ -189,7 +205,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="assets3d.js"></script>
-<script src="cars.js"></script>
+<script src="ny-colliders.js"></script>
+<script src="vehicle-system.js"></script>
 <script src="audio.js"></script>
 <script src="net.js"></script>
 <script src="game.js"></script>
