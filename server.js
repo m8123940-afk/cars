@@ -21,6 +21,10 @@ const rooms = new Map();     // id -> room
 let queue = [];              // clients waiting
 const failed = new Map();    // ip -> {n, t}
 const ACCOUNT_FILE = path.join(__dirname, 'accounts.json');
+const WORLD_EDITS_FILE = path.join(__dirname, 'world-edits.json');
+let worldEditsState = { edits: {}, updatedAt: 0 };
+try { const saved = JSON.parse(fs.readFileSync(WORLD_EDITS_FILE, 'utf8')); if(saved && saved.edits && typeof saved.edits==='object') worldEditsState={edits:saved.edits,updatedAt:Number(saved.updatedAt)||0}; } catch (_) {}
+function saveWorldEdits(){ const tmp=WORLD_EDITS_FILE+'.tmp'; fs.writeFileSync(tmp,JSON.stringify(worldEditsState)); fs.renameSync(tmp,WORLD_EDITS_FILE); }
 let accounts = {};
 try { accounts = JSON.parse(fs.readFileSync(ACCOUNT_FILE, 'utf8')); } catch (_) {}
 function saveAccounts(){ const tmp=ACCOUNT_FILE+'.tmp'; fs.writeFileSync(tmp, JSON.stringify(accounts)); fs.renameSync(tmp, ACCOUNT_FILE); }
@@ -87,7 +91,7 @@ function authOk(req) {
 }
 function readBody(req) {
   return new Promise(res => {
-    let d = ''; req.on('data', c => { d += c; if (d.length > 65000) req.destroy(); });
+    let d = ''; req.on('data', c => { d += c; if (d.length > 1000000) req.destroy(); });
     req.on('end', () => { try { res(JSON.parse(d || '{}')); } catch (e) { res({}); } });
   });
 }
@@ -113,6 +117,23 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   const json = (code, o) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
   if (url === '/' || url === '/health') return json(200, { ok: true, online: clients.size });
+  if (url === '/api/world-edits' && req.method === 'GET') return json(200, worldEditsState);
+  if (url === '/api/world-edits/auth' && req.method === 'POST') return authOk(req) ? json(200,{ok:true}) : json(401,{error:'Неверный пароль разработчика или ADMIN_PASSWORD не задан'});
+  if (url === '/api/world-edits' && req.method === 'POST') {
+    if (!authOk(req)) return json(401,{error:'Неверный пароль разработчика или ADMIN_PASSWORD не задан'});
+    const body = await readBody(req), edits = body && body.edits;
+    if (!edits || typeof edits !== 'object' || Array.isArray(edits) || Object.keys(edits).length > 5000) return json(400,{error:'Некорректный список объектов'});
+    const safe = {};
+    for (const [key,value] of Object.entries(edits)) {
+      if (!/^(?:__city__|city:[0-9]+(?:\.[0-9]+)*)$/.test(key) || !value || typeof value !== 'object') continue;
+      const rec={}; let valid=true;
+      for (const k of ['x','y','z','sx','sy','sz']) { const n=Number(value[k]); if(!Number.isFinite(n)) {valid=false;break;} rec[k]=Math.max(k[0]==='s'?0.01:-10000,Math.min(k[0]==='s'?100:10000,n)); }
+      if(valid) safe[key]=rec;
+    }
+    worldEditsState={edits:safe,updatedAt:Date.now()};
+    try { saveWorldEdits(); } catch(e) { console.error('World edits could not persist',e); return json(500,{error:'Не удалось записать world-edits.json'}); }
+    return json(200,worldEditsState);
+  }
   if (url === '/api/register' || url === '/api/login' || url === '/api/session' || url === '/api/logout' || url === '/api/password' || url === '/api/profile') {
     if (req.method !== 'POST') return json(405, { error: 'POST only' });
     const b = await readBody(req);

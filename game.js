@@ -28,6 +28,9 @@ function requestGameFullscreen() {
 }
 if (tg) {
   tg.ready(); tg.expand(); syncTelegramSafeArea();
+  // Keep the Mini App open while the player swipes vertically to look around.
+  // Telegram still lets the player close it using the native header controls.
+  try { if (typeof tg.disableVerticalSwipes === 'function') tg.disableVerticalSwipes(); } catch (_) {}
   if (typeof tg.onEvent === 'function') {
     try { tg.onEvent('safeAreaChanged', syncTelegramSafeArea); tg.onEvent('contentSafeAreaChanged', syncTelegramSafeArea); } catch (_) {}
   }
@@ -38,7 +41,7 @@ if (tg) {
 }
 
 // ================= сохранение (localStorage: только это устройство, без серверной защиты) =================
-const defSave = () => ({ v: 4, name: 'Гонщик', coins: 0, cur: 'rust', cars: { rust: { up: [0, 0, 0, 0, 0, 0], dmg: 0 } }, level: 1, paint: {}, style: {}, neon: {}, tune: {}, char: { g: 'boy', col: 0, skin: 0 }, tour: null, set: { snd: 1, mus: 1, gfx: 'auto', theme: 'dark', server: SERVER_URL, touchLayout: 'left', touchSize: 'normal', keys: { gas: 'ArrowUp', brake: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', nitro: 'Space', drift: 'ShiftLeft' } } });
+const defSave = () => ({ v: 4, name: 'Гонщик', coins: 0, cur: 'rust', cars: { rust: { up: [0, 0, 0, 0, 0, 0], dmg: 0 } }, level: 1, paint: {}, style: {}, neon: {}, tune: {}, char: { g: 'boy', col: 0, skin: 0 }, tour: null, set: { snd: 1, mus: 1, gfx: 'auto', resolution: 'recommended', theme: 'dark', server: SERVER_URL, touchLayout: 'left', touchSize: 'normal', keys: { gas: 'ArrowUp', brake: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', nitro: 'Space', drift: 'ShiftLeft' } } });
 let save;
 try { save = Object.assign(defSave(), JSON.parse(localStorage.getItem('tr_save') || '{}')); } catch (e) { save = defSave(); }
 save.set = Object.assign(defSave().set, save.set); save.char = Object.assign(defSave().char, save.char); save.paint = Object.assign({}, save.paint || {}); save.style = Object.assign({}, save.style || {}); save.neon = Object.assign({}, save.neon || {}); save.tune = Object.assign({}, save.tune || {}); save.set.keys = Object.assign(defSave().set.keys, save.set.keys || {});
@@ -98,7 +101,12 @@ const THEMES = [
   { name: 'Морской порт', sky: [0x244c70, 0xc2d9df], fog: 0x9bb6c3, ground: 0x4b565f, bh: [10, 58], bcol: [0x53626a, 0x7b8588, 0x3b4b59, 0x9d795c], lit: 0.32, lamp: 0xffd59b, hemi: [0xc5e3fa, 0x293b49, 0.85], sun: [0xffdfb7, 0.76], stars: 0, moon: '#eef7ff', rain: 0 }
 ];
 const WORLD_REGIONS = {
-  newyork: { id:'newyork', name:'США · Нью-Йорк', short:'NEW YORK', style:'manhattan', landmark:'empire', ground:0x6f7a68, asphalt:0x2f3236, concrete:0xb9b7b0, lane:0xf2d36b, window:0xb5d9f2, windowGlow:0x2c4a63, lamp:0xffd9a0, bcol:[0x8d9399,0x6f7882,0xa49b90,0x7c8791,0x5f6a75,0x9a8f84,0x838d98,0xb0a79b], palm:false, sky:[0x7d9fc0,0xcfd7de], fog:0xaab3ba, landmarkAt:{x:0,z:-190}, welcome:'MANHATTAN · NEW YORK', roadW:20 }
+  newyork: { id:'newyork', name:'США · Нью-Йорк', short:'NEW YORK', style:'manhattan', landmark:'empire', ground:0x6f7a68, asphalt:0x2f3236, concrete:0xb9b7b0, lane:0xf2d36b, window:0xb5d9f2, windowGlow:0x2c4a63, lamp:0xffd9a0, bcol:[0x8d9399,0x6f7882,0xa49b90,0x7c8791,0x5f6a75,0x9a8f84,0x838d98,0xb0a79b], palm:false, sky:[0x7d9fc0,0xcfd7de], fog:0xaab3ba, landmarkAt:{x:0,z:-190}, welcome:'MANHATTAN · NEW YORK', roadW:20 },
+  tashkent: { id:'tashkent', name:'Узбекистан · Ташкент', short:'ТАШКЕНТ', style:'central-asian', landmark:'bazaar', ground:0x6a8064, asphalt:0x353a3c, concrete:0xc1b9a7, lane:0xf0e2b6, window:0x8de9ed, windowGlow:0x236e79, lamp:0xffd48a, bcol:[0xd4b995,0xb79d7b,0xceb991,0x93a6a4,0xd9c9a5,0x8f9d9b,0xb8a58a,0xa3b5b3], palm:false, sky:[0x96bad4,0xd8c4a1], fog:0xc6b69c, landmarkAt:{x:-130,z:-180}, welcome:'ШАҲАР · ТАШКЕНТ', roadW:24 },
+  paris: { id:'paris', name:'Франция · Париж', short:'PARIS', style:'haussmann', landmark:'eiffel', ground:0x6f8560, asphalt:0x35383d, concrete:0xc9c7c1, lane:0xf3e6b9, window:0xd5e8f4, windowGlow:0x263d58, lamp:0xffdca1, bcol:[0xd1c3ad,0xb6a48d,0xe0d5c1,0x9e8f7f,0xc6b8a3,0x8f969d,0xe6dcc9,0xb6aaa0], palm:false, sky:[0x829bb2,0xd3c1ae], fog:0xb7b5b0, landmarkAt:{x:0,z:-190}, welcome:'RIVE GAUCHE · PARIS', roadW:17 },
+  italy: { id:'italy', name:'Италия · Рим', short:'ROMA', style:'roman', landmark:'colosseum', ground:0x81825a, asphalt:0x393938, concrete:0xd2c3aa, lane:0xe8d5a6, window:0xd9edee, windowGlow:0x56453a, lamp:0xffd19a, bcol:[0xc58d69,0xd5ae8c,0xb98161,0xe1c4a3,0xbfa58a,0x9f775b,0xd9b797,0xc5a78a], palm:false, sky:[0x9cbdd3,0xe8c9a4], fog:0xd4b08e, landmarkAt:{x:0,z:-190}, welcome:'CENTRO STORICO · ROMA', roadW:18 },
+  losangeles: { id:'losangeles', name:'США · Лос-Анджелес', short:'LOS ANGELES', style:'california', landmark:'hollywood', ground:0x7b8758, asphalt:0x31363a, concrete:0xc8c6bd, lane:0xf5e8b3, window:0xb8e9f1, windowGlow:0x214c60, lamp:0xffdb99, bcol:[0xb7b5a6,0x9b9b91,0xd6c8ad,0x8b969b,0xc2b6a2,0xa9b5b5,0xd5d2c4,0x929eaa], palm:true, sky:[0x8fc8e8,0xf1c8a4], fog:0xd7c2a1, landmarkAt:{x:-170,z:-220}, welcome:'SUNSET BOULEVARD · LOS ANGELES', roadW:27 },
+  miami: { id:'miami', name:'США · Майами', short:'MIAMI', style:'art-deco', landmark:'ocean', ground:0xd6c09b, asphalt:0x3c4247, concrete:0xf0dfc4, lane:0xf8efcc, window:0x9cf4f0, windowGlow:0x255c76, lamp:0xffb8a1, bcol:[0xf0bcae,0x9dd6d2,0xe7c7a2,0xf1d5b7,0xa7c7d8,0xf4b1b1,0xc0ded0,0xe4b8cf], palm:true, sky:[0x64b6df,0xffc3a2], fog:0xb6d8de, landmarkAt:{x:770,z:0}, welcome:'OCEAN DRIVE · MIAMI', roadW:22 }
 };
 const themeFor = L => Math.floor((L - 1) / 5) % THEMES.length;
 const SHAPES_PTS = [
@@ -142,6 +150,7 @@ updateResponsiveMode();
 const LOW_DEVICE = (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4) || (navigator.deviceMemory && navigator.deviceMemory <= 4) || matchMedia('(max-width: 700px)').matches;
 let adaptiveScale = 1, fpsSamples = 0, fpsTime = 0, lowFpsWindows = 0;
 const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: !LOW_DEVICE, powerPreference: 'high-performance' });
+window.gameRenderer = renderer;
 renderer.outputEncoding = THREE.sRGBEncoding;
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -170,7 +179,13 @@ function applyGfx() {
   const maxRatio = ({verylow:0.72,low:0.9,med:1.12,high:1.35,veryhigh:1.45,ultra:1.5,rt:1.35})[g] || 1.1;
   const scaleFloor = g === 'rt' ? 0.88 : g === 'ultra' ? 0.78 : 0.56;
   adaptiveScale = Math.max(scaleFloor, adaptiveScale);
-  renderer.setPixelRatio(Math.max(0.65, Math.min(devicePixelRatio || 1, maxRatio) * adaptiveScale));
+  const resolutionMode = ['720p','1080p','2k','4k'].includes(save.set.resolution) ? save.set.resolution : 'recommended';
+  const targetLongestEdge = ({'720p':1280,'1080p':1920,'2k':2560,'4k':3840})[resolutionMode];
+  const screenLongestEdge = Math.max(innerWidth, innerHeight, 1);
+  const basePixelRatio = targetLongestEdge
+    ? Math.min(3, targetLongestEdge / screenLongestEdge)
+    : Math.min(devicePixelRatio || 1, maxRatio);
+  renderer.setPixelRatio(Math.max(0.55, basePixelRatio * adaptiveScale));
   renderer.setSize(innerWidth, innerHeight);
   const shadowOn = ['high','veryhigh','ultra','rt'].includes(g);
   renderer.shadowMap.enabled = shadowOn; sun.castShadow = shadowOn;
@@ -184,6 +199,7 @@ function applyGfx() {
   scene.traverse(o => { if (o.material) [].concat(o.material).forEach(m => m.needsUpdate = true); });
 }
 function resize() {
+  applyGfx();
   renderer.setSize(innerWidth, innerHeight);
   cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); updateResponsiveMode();
   if (typeof applyTouchSettings === 'function') {
@@ -338,7 +354,8 @@ function buildTrack(L, providedSeed) {
   const controls = [], cpCount = 13 + Math.floor(rnd() * 7), rotation = rnd() * Math.PI * 2;
   for (let i = 0; i < cpCount; i++) {
     const angle = (i / cpCount) * Math.PI * 2 + rotation;
-    const rX = 355 + rnd() * 150, rZ = 325 + rnd() * 145;
+    const levelScale = 0.62 + clamp((Number(L) || 1) - 1, 0, 99) / 99 * 0.68;
+    const rX = (355 + rnd() * 150) * levelScale, rZ = (325 + rnd() * 145) * levelScale;
     controls.push(new THREE.Vector3(Math.cos(angle) * rX, 0, Math.sin(angle) * rZ));
   }
   const curve = new THREE.CatmullRomCurve3(controls, true, 'catmullrom', 0.45);
@@ -406,6 +423,31 @@ function buildTrack(L, providedSeed) {
 
   // атмосферные детали по локациям
   const sideAt = (i, d, s) => ({ x: pos[i].x + tan[i].z * d * s, z: pos[i].z - tan[i].x * d * s, h: Math.atan2(tan[i].x, tan[i].z) });
+  // Compact, reusable low-poly grandstands with animated-game-style crowd silhouettes.
+  // Their placement follows the generated track tangent so they stay outside every bend.
+  const standCount=['verylow','low'].includes(resolvedGfx())?2:4;
+  const standBody=new THREE.MeshStandardMaterial({color:0x303544,roughness:0.78,metalness:0.1});
+  const standSteps=new THREE.MeshStandardMaterial({color:0x535d71,roughness:0.8});
+  const crowdMat=new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.9});
+  for(let si=0;si<standCount;si++){
+    const idx=Math.floor((si+0.5)*N/standCount),side=si%2? -1:1,sp=sideAt(idx,ROAD_W+16,side),stand=new THREE.Group();
+    stand.name='TR track grandstand '+(si+1);stand.position.set(sp.x,0,sp.z);stand.rotation.y=sp.h;
+    const base=new THREE.Mesh(new THREE.BoxGeometry(10,1.0,38),standBody);base.position.set(side*3.4,0.6,0);stand.add(base);
+    for(let tier=0;tier<4;tier++){
+      const step=new THREE.Mesh(new THREE.BoxGeometry(7.5,0.85,36),standSteps);step.position.set(side*(1.3+tier*1.15),1.25+tier*0.93,0);stand.add(step);
+    }
+    const lightMat=new THREE.MeshStandardMaterial({color:si%2?0xff4dba:0x3be8ff,emissive:si%2?0x8f1459:0x08788e,emissiveIntensity:1.1});
+    const banner=new THREE.Mesh(new THREE.BoxGeometry(0.18,1.05,35),lightMat);banner.position.set(side*6.9,5.2,0);stand.add(banner);
+    const heads=new THREE.InstancedMesh(new THREE.SphereGeometry(0.20,6,5),crowdMat,56);heads.instanceMatrix.setUsage(THREE.StaticDrawUsage);
+    const colors=[0xffce9e,0xf3f2ed,0x2e9fbd,0xe45b6a,0xffcf52,0x8bdc9b,0x9f8ae6];
+    for(let j=0;j<56;j++){
+      const row=Math.floor(j/14),col=j%14,dx=side*(1.2+row*1.13),dz=(col-6.5)*2.2;
+      dum.position.set(dx,1.85+row*0.93,dz);dum.rotation.set(0,0,0);dum.scale.set(1,1.15,1);dum.updateMatrix();heads.setMatrixAt(j,dum.matrix);
+      if(heads.setColorAt)heads.setColorAt(j,new THREE.Color(colors[Math.floor(rnd()*colors.length)]));
+    }
+    heads.instanceMatrix.needsUpdate=true;if(heads.instanceColor)heads.instanceColor.needsUpdate=true;stand.add(heads);
+    stand.traverse(o=>{o.castShadow=false;o.receiveShadow=true;});trackG.add(stand);
+  }
   if (themeIdx === 0) {
     const bar = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.45, 0.45, 1, 8), new THREE.MeshStandardMaterial({ color: 0x4a6a4a, roughness: 0.7 }), 40);
     for (let n = 0; n < 40; n++) { const p = sideAt(Math.floor(rnd() * N), ROAD_W + 4 + rnd() * 4, rnd() < 0.5 ? -1 : 1); dum.position.set(p.x, 0.5, p.z); dum.rotation.set(0, 0, 0); dum.updateMatrix(); bar.setMatrixAt(n, dum.matrix); }
@@ -695,7 +737,7 @@ function toMenu() {
   raceId++; held.clear(); stuckT = 0; touchEditing=false; touchDrag=null;
   if (Net.isOpen()) { Net.send({ t: 'leave' }); Net.close(); }
   clearRemotes(); leaveChar();
-  ['hud', 'count', 'fixBtn','raceCamBtn','minimap','worldHud','worldPhone','worldShop','worldSelect','touchEditDone','touchEditPanel'].forEach(i => {const el=$(i);if(el)el.hidden=true;}); $('touch').hidden = true; $('touch').classList.remove('editing'); $('fx').style.opacity = 0;
+  ['hud', 'count', 'fixBtn','raceCamBtn','minimap','worldMiniMap','worldHud','worldPhone','worldShop','worldSelect','worldLoading','worldDevPanel','touchEditDone','touchEditPanel'].forEach(i => {const el=$(i);if(el)el.hidden=true;}); $('touch').hidden = true; $('touch').classList.remove('editing'); $('fx').style.opacity = 0;
   if (worldG) worldG.visible = false; if (apartmentG) apartmentG.visible = false; if (schoolG) schoolG.visible = false; worldInterior=false; worldDriving=false; worldNear=null;
   if(leavingWorld){scene.background=null;scene.fog=null;spot.visible=true;hemi.intensity=0.8;sun.intensity=0.8;sun.color.setHex(0xffffff);if(snowG)snowG.visible=false;}
   ais.forEach(a => { scene.remove(a.mesh); disposeModel(a.mesh); }); ais = [];
@@ -712,13 +754,14 @@ $('setBtn').onclick = () => openScreen('settings');
 $('helpBtn').onclick = () => openScreen('help');
 function showWorldSelect(){
   requestGameFullscreen();const box=$('worldRegionCards');
-  const r=WORLD_REGIONS.newyork;
-  box.innerHTML=`<button class="world-region-card" data-region="newyork"><span class="region-art newyork"><i></i><b>NEW YORK</b></span><strong>США · Нью-Йорк</strong><small>Единый открытый мир: Манхэттен, небоскрёбы, люди, светофоры, магазины, дом и свободный вызов машины.</small></button>`;
+  box.innerHTML=Object.values(WORLD_REGIONS).filter(r=>r.id==='newyork').map(r=>`<button class="world-region-card" data-region="${r.id}"><span class="region-art ${r.id}"><i></i><b>${r.short}</b></span><strong>${r.name}</strong><small>Единая большая карта Манхэттена · свободное исследование города</small></button>`).join('');
   $('worldSelect').hidden=false;
 }
 $('worldRegionCards').addEventListener('click',e=>{const b=e.target.closest('[data-region]');if(!b)return;$('worldSelect').hidden=true;startOpenWorld(b.dataset.region);});
 $('worldSelectClose').onclick=()=>{$('worldSelect').hidden=true;};
 $('worldBtn').onclick=showWorldSelect;
+if($('tutorialStartBtn'))$('tutorialStartBtn').onclick=()=>{save.set.tutorialComplete=true;store();$('tutorialOverlay').hidden=true;tutorialPermitStart=true;startOpenWorld(pendingTutorialRegion||'newyork');};
+if($('tutorialSkipBtn'))$('tutorialSkipBtn').onclick=()=>{$('tutorialOverlay').hidden=true;save.set.tutorialComplete=true;store();tutorialPermitStart=true;startOpenWorld(pendingTutorialRegion||'newyork');};
 $('adminBtn').onclick = () => {
   const u = (save.set.server || '').trim().replace(/^ws(s?):\/\//i, 'http$1://');
   if (!/^https?:\/\//i.test(u)) { toast('Укажите адрес сервера в Настройках'); return; }
@@ -819,7 +862,8 @@ function startTour(id) {
 }
 
 // ---- настройки ----
-const GFX = { auto: 'Авто · FPS', verylow: 'Очень низкая', low: 'Низкая', med: 'Средняя', high: 'Высокая', veryhigh: 'Очень высокая', ultra: 'Ультра', rt: 'RT-стиль · чёткая картинка' };
+const GFX = { auto: 'Рекомендации', verylow: 'Очень низкая', low: 'Низкая', med: 'Средняя', high: 'Высокая', veryhigh: 'Очень высокая', ultra: 'Ультра', rt: 'RT-стиль · чёткая картинка' };
+const RESOLUTION_LABELS = { recommended: 'Рекомендации', '720p': '720 пикселей · экономно', '1080p': '1080 пикселей', '2k': '2K', '4k': '4K · нагрузка выше' };
 function renderKeyBindings() {
   $('keyBindings').innerHTML = actionKeys.map(a => `<button class="btn" data-key-action="${a}">${keyNames[a]}: <b>${waitingKey===a?'Нажмите клавишу…':prettyKey(save.set.keys[a])}</b></button>`).join('');
   const opts = actionKeys.map(a => `<option value="${a}">${keyNames[a]}</option>`).join('');
@@ -829,7 +873,7 @@ function renderKeyBindings() {
 function refreshSettings() {
   $('nameIn').value = save.name; $('srvIn').value = save.set.server || '';
   $('sndBtn').textContent = save.set.snd ? 'Вкл' : 'Выкл'; $('musBtn').textContent = save.set.mus ? 'Вкл' : 'Выкл';
-  $('gfxBtn').textContent = GFX[save.set.gfx] || GFX.auto; $('themeBtn').textContent = save.set.theme === 'light' ? 'Светлая' : 'Тёмная';
+  $('gfxBtn').textContent = GFX[save.set.gfx] || GFX.auto; if ($('resolutionBtn')) $('resolutionBtn').textContent = RESOLUTION_LABELS[save.set.resolution] || RESOLUTION_LABELS.recommended; $('themeBtn').textContent = save.set.theme === 'light' ? 'Светлая' : 'Тёмная';
   $('touchLayoutBtn').textContent = save.set.touchLayout === 'right' ? 'Руль справа' : 'Руль слева';
   $('touchSizeBtn').textContent = ({small:'Маленькие',normal:'Обычные',large:'Большие'})[save.set.touchSize] || 'Обычные';
   $('settingsAccountName').textContent = 'Аккаунт: ' + (localStorage.getItem('tr_account_name') || save.name || 'не определён');
@@ -840,7 +884,8 @@ $('touchBindings').onchange = e => { const sel=e.target.closest('[data-touch-but
 $('setBack').onclick = () => { save.name = ($('nameIn').value.trim() || 'Гонщик').slice(0, 14); save.set.server = $('srvIn').value.trim(); store(); toMenu(); };
 $('sndBtn').onclick = () => { save.set.snd = save.set.snd ? 0 : 1; store(); refreshSettings(); };
 $('musBtn').onclick = () => { save.set.mus = save.set.mus ? 0 : 1; store(); refreshSettings(); };
-$('gfxBtn').onclick = () => { const k = ['auto','verylow','low','med','high','veryhigh','ultra','rt']; save.set.gfx = k[(k.indexOf(save.set.gfx) + 1) % k.length]; adaptiveScale=1; store(); refreshSettings(); applyGfx(); builtL = -1; toast('Графика: '+GFX[save.set.gfx]); };
+$('gfxBtn').onclick = () => { const k = ['auto','verylow','low','med','high','veryhigh','ultra','rt']; save.set.gfx = k[(k.indexOf(save.set.gfx) + 1) % k.length]; adaptiveScale=1; store(); refreshSettings(); applyGfx(); builtL = -1; toast('Детализация: '+GFX[save.set.gfx]); };
+if ($('resolutionBtn')) $('resolutionBtn').onclick = () => { const k = ['recommended','720p','1080p','2k','4k']; save.set.resolution = k[(k.indexOf(save.set.resolution || 'recommended') + 1) % k.length]; adaptiveScale=1; store(); refreshSettings(); applyGfx(); toast('Разрешение: '+RESOLUTION_LABELS[save.set.resolution]); };
 $('themeBtn').onclick = () => { save.set.theme = save.set.theme === 'light' ? 'dark' : 'light'; store(); refreshSettings(); };
 $('touchLayoutBtn').onclick = () => {
   save.set.touchLayout = save.set.touchLayout === 'right' ? 'left' : 'right';
@@ -999,7 +1044,7 @@ $('toMenu').onclick = toMenu;
 function applyDamageVisual() {
   if (!player.mesh || !player.mesh.userData) return;
   const u=player.mesh.userData;
-  (u.damageMarks||[]).forEach(x => { x.mesh.visible = player.dmg >= x.threshold; });
+  (u.damageMarks||[]).forEach(x => { x.mesh.visible = !u.externalCarRoot && player.dmg >= x.threshold; });
   if(u.damageSmoke){u.damageSmoke.visible=player.dmg>=72;u.damageSmoke.material.opacity=player.dmg>=90?0.48:0.2;u.damageSmoke.scale.setScalar(player.dmg>=90?2.2:1.25);}
   if(u.damageBumper){u.damageBumper.rotation.x=player.dmg>=84?-0.32:player.dmg>=68?-0.13:0;u.damageBumper.position.y=player.dmg>=84?0.12:0.29;}
   if(u.damageChip){u.damageChip.rotation.z=player.dmg>=82?0.42:0.12;u.damageChip.position.x=player.dmg>=82?-u.S.w*0.34:-u.S.w*0.31;}
@@ -1060,7 +1105,7 @@ function updatePlayer(dt) {
   if (player.slip > 0) { player.slip -= dt; player.h += player.spin * 7 * dt; player.speed -= player.speed * 0.9 * dt; steer = 0; }
   player.steerS += (steer - player.steerS) * Math.min(1, 8 * dt);
   const sp = Math.abs(player.speed);
-  if (!player.air) player.h -= player.steerS * P.hnd * 1.25 * clamp(sp / 18, 0, 1) / (1 + sp / 55) * dt * (player.speed >= 0 ? 1 : -1);
+  if (!player.air) player.h -= player.steerS * P.hnd * (player.mesh.userData.trWheelLost ? 0.56 : 1) * 1.25 * clamp(sp / 18, 0, 1) / (1 + sp / 55) * dt * (player.speed >= 0 ? 1 : -1);
 
   const fx = Math.sin(player.h) * player.speed, fz = Math.cos(player.h) * player.speed;
   const weatherGrip = envInfo.weather === 'Дождь' ? 0.80 : envInfo.weather === 'Туман' ? 0.96 : 1;
@@ -1088,9 +1133,10 @@ function updatePlayer(dt) {
     if (vn * side > 0.025) {
       // Reflect the outward component along the track normal; do not multiply by side twice.
       // This used to invert the response on one side and could pin the car against the barrier.
-      const reflected = -vn * 0.46;
-      player.vx += (reflected - vn) * wt.z;
-      player.vz -= (reflected - vn) * wt.x;
+      // A solid guardrail removes outward velocity; it does not launch the car backwards.
+      // Remaining tangential velocity lets the body scrape and slide along the rail.
+      player.vx -= vn * wt.z;
+      player.vz += vn * wt.x;
       const mag = Math.hypot(player.vx, player.vz);
       if (mag > 0.55) { player.speed = mag * 0.9; player.h = Math.atan2(player.vx, player.vz); }
       else { player.speed = 0; player.vx = 0; player.vz = 0; }
@@ -1172,13 +1218,13 @@ function updateRemotes(dt) {
 }
 
 let collisionCooldown = 0, impactBursts = [];
-function spawnSparks(x,y,z,count=12,color=0xffb348) {
+function spawnSparks(x,y,z,count=12) {
   if (resolvedGfx()==='verylow' || resolvedGfx()==='low') count=Math.min(count,8);
   while(impactBursts.length>=7){const old=impactBursts.shift();scene.remove(old.points);old.geometry.dispose();old.material.dispose();}
   const positions=new Float32Array(count*3), velocities=[];
   for(let i=0;i<count;i++){positions[i*3]=x;positions[i*3+1]=y;positions[i*3+2]=z;const a=Math.random()*Math.PI*2,sp=4+Math.random()*15;velocities.push([Math.cos(a)*sp,2+Math.random()*8,Math.sin(a)*sp]);}
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));
-  const material=new THREE.PointsMaterial({color,size:resolvedGfx()==='rt'?0.36:0.27,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
+  const material=new THREE.PointsMaterial({color:0xffb348,size:resolvedGfx()==='rt'?0.36:0.27,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
   const points=new THREE.Points(geometry,material);points.frustumCulled=false;scene.add(points);impactBursts.push({points,geometry,material,velocities,life:0.38,age:0});
 }
 function updateImpactBursts(dt){
@@ -1187,6 +1233,24 @@ function updateImpactBursts(dt){
     if(b.age>=b.life){scene.remove(b.points);b.geometry.dispose();b.material.dispose();impactBursts.splice(i,1);}
   }
 }
+function carFootprintOverlap(a, b) {
+  const pa=a.mesh.position,pb=b.mesh.position,ha=Number.isFinite(a.h)?a.h:(Number(a.mesh.rotation.y)||0),hb=Number.isFinite(b.h)?b.h:(Number(b.mesh.rotation.y)||0);
+  const ua={x:Math.sin(ha),z:Math.cos(ha)}, va={x:Math.cos(ha),z:-Math.sin(ha)};
+  const ub={x:Math.sin(hb),z:Math.cos(hb)}, vb={x:Math.cos(hb),z:-Math.sin(hb)};
+  const Sa=a.mesh.userData.S||{},Sb=b.mesh.userData.S||{};
+  const la=Math.max(1.35,(Number(a.mesh.userData.hitboxLength)||Number(Sa.l)||4.3)*0.48),wa=Math.max(0.72,(Number(a.mesh.userData.hitboxWidth)||Number(Sa.w)||2)*0.48);
+  const lb=Math.max(1.35,(Number(b.mesh.userData.hitboxLength)||Number(Sb.l)||4.3)*0.48),wb=Math.max(0.72,(Number(b.mesh.userData.hitboxWidth)||Number(Sb.w)||2)*0.48);
+  const dx=pb.x-pa.x,dz=pb.z-pa.z;
+  const axes=[ua,va,ub,vb];let minOverlap=Infinity,nx=1,nz=0;
+  for(const axis of axes){
+    const distance=dx*axis.x+dz*axis.z;
+    const ra=la*Math.abs(ua.x*axis.x+ua.z*axis.z)+wa*Math.abs(va.x*axis.x+va.z*axis.z);
+    const rb=lb*Math.abs(ub.x*axis.x+ub.z*axis.z)+wb*Math.abs(vb.x*axis.x+vb.z*axis.z);
+    const overlap=ra+rb-Math.abs(distance);if(overlap<=0)return null;
+    if(overlap<minOverlap){minOverlap=overlap;const sign=distance>=0?1:-1;nx=-axis.x*sign;nz=-axis.z*sign;}
+  }
+  return {overlap:minOverlap,nx,nz};
+}
 function collide(dt) {
   collisionCooldown = Math.max(0, collisionCooldown - dt);
   const pm = player.mesh.position;
@@ -1194,15 +1258,11 @@ function collide(dt) {
   for (const a of [...ais, ...Object.values(remotes)]) {
     a.hitCooldown = Math.max(0, (a.hitCooldown || 0) - dt);
     const am = a.mesh.position;
-    const dx = pm.x - am.x, dz = pm.z - am.z;
-    const d = Math.hypot(dx, dz);
-    const otherRadius = a.isRemote ? 1.82 : 1.86;
-    const minD = playerRadius + otherRadius;
-    if (d >= minD || Math.abs(pm.y - am.y) >= 1.75) continue;
-    // A stable fallback normal avoids NaN when two vehicle origins overlap exactly.
-    const nx = d > 0.001 ? dx / d : Math.cos(player.h);
-    const nz = d > 0.001 ? dz / d : -Math.sin(player.h);
-    const overlap = minD - d;
+    if (Math.abs(pm.y - am.y) >= 1.75) continue;
+    // Rotated bounding boxes follow the actual vehicle length and width; nearby cars
+    // no longer collide merely because their circular centre distances are small.
+    const contact=carFootprintOverlap(player,a);if(!contact)continue;
+    const {nx,nz}=contact;const overlap=contact.overlap;
     // Push both cars out of the shared volume. AI is driven by lane position, so also
     // update its lane offset; remote cars are corrected via their interpolation target.
     pm.x += nx * overlap * 0.53; pm.z += nz * overlap * 0.53;
@@ -1224,16 +1284,17 @@ function collide(dt) {
     const impactSpeed = Math.abs(relNormal);
     // Cars should recoil a little, not pinball away. A glancing contact mostly changes
     // lateral velocity; a head-on contact loses more forward speed.
-    const impulse = clamp(impactSpeed * 0.34, 1.2, 8.5);
-    player.vx = playerVx - nx * impulse * 0.58;
-    player.vz = playerVz - nz * impulse * 0.58;
-    if (Math.abs(relNormal) > 0.2) {
-      player.speed *= impactSpeed > 14 ? 0.66 : 0.78;
-      if (a.isAI || a.isRemote) a.speed = otherSpeed * (impactSpeed > 14 ? 0.66 : 0.78);
-    } else {
-      player.speed *= 0.88;
-      if (a.isAI || a.isRemote) a.speed = otherSpeed * 0.88;
-    }
+    const playerMass=Number(player.mesh.userData.mass)||1.0;
+    const otherMass=Number(a.mesh.userData.mass)||1.0;
+    const invA=1/playerMass,invB=1/otherMass;
+    const impulse=clamp(impactSpeed*0.72,0,12)/(invA+invB||1);
+    player.vx = playerVx + nx * impulse * invA;
+    player.vz = playerVz + nz * impulse * invA;
+    const nextOtherVx=otherVx-nx*impulse*invB,nextOtherVz=otherVz-nz*impulse*invB;
+    if(a.isAI){a.vx=nextOtherVx;a.vz=nextOtherVz;a.speed=Math.hypot(a.vx,a.vz);}
+    else if(a.isRemote){a.tx=(Number.isFinite(a.tx)?a.tx:am.x)+nx*overlap*0.35;a.tz=(Number.isFinite(a.tz)?a.tz:am.z)+nz*overlap*0.35;a.speed=Math.hypot(nextOtherVx,nextOtherVz);}
+    if(Math.abs(relNormal)>0.2) player.speed *= impactSpeed>14?0.68:0.84;
+    else player.speed *= 0.94;
     player.lat = clamp(player.lat + (nx * Math.cos(player.h) - nz * Math.sin(player.h)) * overlap * 0.16, -ROAD_W + 1.9, ROAD_W - 1.9);
     if (a.isRemote && cfg && cfg.mode === 'online') Net.send({ t: 'bump', target: a.id });
     if (performance.now() - bumpT > 300) { Snd.bump(); bumpT = performance.now(); }
@@ -1386,7 +1447,7 @@ function loop(now) {
   const rawDt = (now - last) / 1000; const dt = Math.min(rawDt, 0.05); last = now; tAcc += dt; fixCool -= dt;
   fpsSamples += 1; fpsTime += rawDt; if (fpsTime >= 2) { const fps=fpsSamples/fpsTime; { if (fps<49) lowFpsWindows++; else lowFpsWindows=Math.max(0,lowFpsWindows-1); if (lowFpsWindows>=2 && adaptiveScale>0.56) { adaptiveScale=Math.max(0.56,adaptiveScale-0.1); applyGfx(); lowFpsWindows=0; } else if (fps>59 && adaptiveScale<1) { adaptiveScale=Math.min(1,adaptiveScale+0.035); applyGfx(); } } fpsSamples=0; fpsTime=0; }
   if (state === 'world') {
-    updateOpenWorld(dt); $('minimap').hidden = true; if(!$('worldMapOverlay').hidden)drawWorldMap();
+    updateOpenWorld(dt); $('minimap').hidden = true;
   } else if (inRace()) {
     updatePlayer(dt);
     ais.forEach(a => updateAI(a, dt));
@@ -1411,109 +1472,63 @@ function loop(now) {
     if(typeof window.TRModels.setCamera==='function')window.TRModels.setCamera(cam);
     const firstRace=state==='race'&&raceCamMode===0;
     const firstWorld=state==='world'&&worldCamMode===0&&!worldInterior;
-    const context=state==='world'?(worldDriving?'drive':'world'):'race';
+    const context=(state==='world'&&worldDriving)||state==='race'?'drive':state==='world'?'world':'race';
     window.TRModels.setFirstPerson(firstRace||firstWorld,context);
-    if((firstRace||(state==='world'&&worldDriving&&worldCamMode===0))&&typeof window.TRModels.setCharacterMotion==='function'){
-      const speedNow=Math.abs(player.speed||0);
-      window.TRModels.setCharacterMotion(speedNow>2.5,speedNow>34||!!player.boosting);
-    }
+    if(typeof window.TRModels.setSteer==='function')window.TRModels.setSteer(state==='world'&&worldDriving?((held.has('right')?1:0)-(held.has('left')?1:0)):player.steerS||0);
     window.TRModels.update(dt);
   }
   if (starsG) starsG.position.copy(cam.position);
   updateRain(dt); updateWorldSnow(dt); updateImpactBursts(dt); updateCrashDebris(dt);
+  // A car with a missing wheel scrapes its exposed rim against the road while moving.
+  if(player.mesh&&player.mesh.userData.trWheelLost&&player.mesh.userData.trWheelLostPos&&Math.abs(player.speed)>3){
+    player.mesh.userData.trWheelSparkClock=(player.mesh.userData.trWheelSparkClock||0)-dt;
+    if(player.mesh.userData.trWheelSparkClock<=0){const wp=player.mesh.localToWorld(player.mesh.userData.trWheelLostPos.clone());spawnSparks(wp.x,Math.max(0.08,wp.y),wp.z,4);player.mesh.userData.trWheelSparkClock=0.24;}
+  }
   const smoke=player.mesh&&player.mesh.userData&&player.mesh.userData.damageSmoke;if(smoke&&smoke.visible){smoke.material.opacity=(player.dmg>=90?0.38:0.18)+0.08*(0.5+0.5*Math.sin(tAcc*5));smoke.position.y+=Math.sin(tAcc*2)*0.0008;}
   renderer.render(scene, cam);
+  if(state==='world'){renderWorldMinimap();if(!worldInterior)pollSharedWorldEdits();}
   if(photoRequested){photoRequested=false;savePhoto();}
 }
 
 
 // ================= открытый мир: город, квартира, пешеходы, магазины и телефон =================
 let worldG = null, apartmentG = null, worldPedestrians = [], worldTraffic = [], worldBuildings = [], worldInteractables = [];
-let worldRegionId = 'newyork', worldBuiltRegion = null, raceCamMode = 2, criticalRespawnAt = 0, criticalRespawnReady = false;
+let worldRegionId = 'tashkent', worldBuiltRegion = null, raceCamMode = 2, criticalRespawnAt = 0, criticalRespawnReady = false;
 let worldInterior = false, worldDriving = false, worldYaw = 0, worldCamMode = 2, worldNear = null, worldCollisionTimer = 0, worldAnimT = 0, worldWeather = 'Ясно', worldTime = 'День';
-let worldCarVisibleBeforeInterior = false, worldInteriorLabel = 'МОЙ ДОМ';
+let worldCarVisibleBeforeInterior = false;
 let worldJumpRemaining = 0, worldJumpCooldown = 0, worldJumpWasHeld = false;
-let worldCamOrbitYaw = 0, worldCamOrbitPitch = 0, worldLookDrag = null, worldSwipeMove = null;
-let cityTrafficSignals = [], cityHomePoi = {id:'home',name:'Мой дом',x:-160,z:145,type:'apartment'};
-let worldRouteTarget = 'home';
+let worldFallState = { character: { vy: 0, grounded: true }, car: { vy: 0, grounded: true } };
+let worldBounds = { minX: -526, maxX: 526, minZ: -414, maxZ: 414 }, worldGroundY = 0;
+let cityWallRay = new THREE.Raycaster();
+const devRaycaster = new THREE.Raycaster(), devPointer = new THREE.Vector2();
+let worldRouteTarget = { x: 0, z: -190, name: 'Empire State Building' };
+let worldMinimapLast = 0, worldMiniMapBaseCanvas = null, worldMiniMapWorldSpan = 1080, worldMiniMapCenterX = 0, worldMiniMapCenterZ = 0;
+let devUnlocked = false, devPassword = '', devPickMode = false, devSelected = null, devDragState = null;
+let devGlobalEdits = {}, devLocalEdits = {}, devGlobalRevision = 0, devLastPollAt = 0;
+let worldCamOrbitYaw = 0, worldCamOrbitPitch = 0, worldLookDrag = null;
+let pendingTutorialRegion='newyork',tutorialPermitStart=false;
 const WORLD_RANGE = 650;
-// Approximate centre lines of Manhattan streets used by traffic, the route map and wayfinding.
-const NY_ROAD_X = [-490,-160,-100,130,310,480];
-const NY_ROAD_Z = [-370,-135,-100,100,140,370];
-const CITY_POIS = [
-  {id:'garage',name:'Pear Auto Lab',x:130,z:-100,type:'garage',icon:'🔧'},
-  {id:'market',name:'Market 24/7',x:-160,z:-100,type:'market',icon:'🛍'},
-  {id:'times-square',name:'Таймс-сквер',x:-85,z:100,type:'plaza',icon:'🌆'},
-  {id:'street-race',name:'Клуб уличных гонок',x:310,z:140,type:'raceboard',icon:'🏁'}
-];
-function cityPoi(id){return id==='home'?cityHomePoi:CITY_POIS.find(p=>p.id===id)||cityHomePoi;}
-function setWorldRoute(id){const poi=cityPoi(id);worldRouteTarget=poi.id;$('worldRouteStatus').textContent=`Маршрут: ${poi.name} · примерно ${Math.round(Math.hypot(worldPos().x-poi.x,worldPos().z-poi.z))} м`;$('worldMapOverlay').hidden=true;toast('Маршрут проложен: '+poi.name);}
-function openCityMap(){if(state!=='world')return;$('worldPhone').hidden=true;$('worldShop').hidden=true;$('worldMapOverlay').hidden=false;drawWorldMap();}
-function closeCityMap(){$('worldMapOverlay').hidden=true;}
-function callWorldCar(){
-  if(state!=='world')return;
-  if(worldInterior){toast('Сначала выйди из здания, затем вызови машину.');return;}
-  if(worldDriving){toast('Ты уже за рулём.');return;}
-  const a=charMesh?charMesh.position:new THREE.Vector3(150,0,160), yaw=worldYaw;
-  const spot=findFreeWorldSpot(a.x+Math.sin(yaw+Math.PI)*8,a.z+Math.cos(yaw+Math.PI)*8,3.2);
-  player.mesh.position.set(spot.x,0,spot.z);player.mesh.rotation.set(0,yaw,0);player.h=yaw;player.speed=0;player.vx=0;player.vz=0;player.mesh.visible=true;
-  toast('Твоя машина прибыла рядом. Подойди и нажми «Сесть в машину».');
-}
-function drawWorldMap(){
-  const canvas=$('worldMapCanvas');if(!canvas||$('worldMapOverlay').hidden)return;
-  const ctx=canvas.getContext('2d');if(!ctx)return;const w=canvas.width,h=canvas.height;
-  ctx.clearRect(0,0,w,h);ctx.fillStyle='#0b1724';ctx.fillRect(0,0,w,h);
-  const mx=x=>(x+540)/1080*w, mz=z=>(z+430)/860*h;
-  // City blocks and street grid (schematic, keeps the map responsive on mobile).
-  const xs=[-540,...NY_ROAD_X,540].sort((a,b)=>a-b),zs=[-430,...NY_ROAD_Z,430].sort((a,b)=>a-b);
-  for(let ix=0;ix<xs.length-1;ix++)for(let iz=0;iz<zs.length-1;iz++){
-    const x1=mx(xs[ix]),x2=mx(xs[ix+1]),y1=mz(zs[iz]),y2=mz(zs[iz+1]);
-    ctx.fillStyle=((ix+iz)%2)?'#1a2b39':'#20313f';ctx.fillRect(x1+4,y1+4,Math.max(0,x2-x1-8),Math.max(0,y2-y1-8));
-    ctx.strokeStyle='#31485a';ctx.lineWidth=2;ctx.strokeRect(x1+7,y1+7,Math.max(0,x2-x1-14),Math.max(0,y2-y1-14));
-  }
-  ctx.strokeStyle='#536271';ctx.lineWidth=13;for(const x of NY_ROAD_X){ctx.beginPath();ctx.moveTo(mx(x),0);ctx.lineTo(mx(x),h);ctx.stroke();}for(const z of NY_ROAD_Z){ctx.beginPath();ctx.moveTo(0,mz(z));ctx.lineTo(w,mz(z));ctx.stroke();}
-  ctx.strokeStyle='#a2b2bf';ctx.lineWidth=1.5;ctx.setLineDash([7,8]);for(const x of NY_ROAD_X){ctx.beginPath();ctx.moveTo(mx(x),0);ctx.lineTo(mx(x),h);ctx.stroke();}for(const z of NY_ROAD_Z){ctx.beginPath();ctx.moveTo(0,mz(z));ctx.lineTo(w,mz(z));ctx.stroke();}ctx.setLineDash([]);
-  const target=cityPoi(worldRouteTarget),p=worldPos();
-  ctx.strokeStyle='#46e1ff';ctx.lineWidth=5;ctx.setLineDash([11,8]);ctx.beginPath();ctx.moveTo(mx(p.x),mz(p.z));ctx.lineTo(mx(target.x),mz(p.z));ctx.lineTo(mx(target.x),mz(target.z));ctx.stroke();ctx.setLineDash([]);
-  for(const poi of [cityHomePoi,...CITY_POIS]){const x=mx(poi.x),y=mz(poi.z);ctx.beginPath();ctx.fillStyle=poi.id===worldRouteTarget?'#61f4cc':'#f5bb58';ctx.arc(x,y,poi.id===worldRouteTarget?10:7,0,Math.PI*2);ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#07111d';ctx.stroke();ctx.fillStyle='#f5f8fc';ctx.font='bold 19px system-ui';ctx.textBaseline='bottom';ctx.fillText(poi.name,x+10,y-8);}
-  ctx.beginPath();ctx.fillStyle='#55e7ff';ctx.strokeStyle='#e9ffff';ctx.lineWidth=3;ctx.arc(mx(p.x),mz(p.z),10,0,Math.PI*2);ctx.fill();ctx.stroke();
-  ctx.fillStyle='#dce9f4';ctx.font='bold 18px system-ui';ctx.textBaseline='top';ctx.fillText('MANHATTAN · NORTH ↑',18,14);
-  const dist=Math.round(Math.hypot(p.x-target.x,p.z-target.z));$('worldRouteStatus').textContent=`Маршрут: ${target.name} · примерно ${dist} м`;
-}
-function findFreeWorldSpot(x,z,pad=2.5){
-  const free=(px,pz)=>px>-522&&px<522&&pz>-410&&pz<410&&!worldBuildings.some(b=>Math.abs(px-b.x)<b.hw+pad&&(Math.abs(pz-b.z)<b.hd+pad));
-  if(free(x,z))return new THREE.Vector3(x,0,z);
-  for(let r=4;r<=100;r+=4)for(let i=0;i<32;i++){const a=i*Math.PI/16,px=x+Math.cos(a)*r,pz=z+Math.sin(a)*r;if(free(px,pz))return new THREE.Vector3(px,0,pz);}
-  return new THREE.Vector3(150,0,160);
-}
-// Drag the scene to look around in the open world. Mouse right-drag rotates the view;
-// on touchscreens, swipes intentionally move the character/car in the same direction.
 // Drag the scene to look around in the open world. Desktop uses right-drag; touchscreens use a one-finger drag on empty scene space.
 const worldCanvas = $('c');
 worldCanvas.addEventListener('contextmenu', e => { if (state === 'world') e.preventDefault(); });
 worldCanvas.addEventListener('pointerdown', e => {
-  if (state !== 'world' || $('worldPhone').hidden === false || $('worldShop').hidden === false || $('worldMapOverlay').hidden === false) return;
+  if (state !== 'world' || !$('worldPhone').hidden || !$('worldShop').hidden) return;
   if (e.pointerType === 'mouse' && e.button !== 2) return;
+  // Don't start a camera gesture if a top-level UI panel overlaps this pointer's screen point.
   const ui = document.elementFromPoint(e.clientX, e.clientY);
-  if (ui && ui !== worldCanvas && ui.closest && ui.closest('#worldHud, #worldPhone, #worldShop, #worldMapOverlay, #touch, #touchEditPanel, #touchEditDone')) return;
-  worldLookDrag = { id:e.pointerId, x:e.clientX, y:e.clientY, startX:e.clientX, startY:e.clientY, type:e.pointerType };
+  if (ui && ui !== worldCanvas && ui.closest && ui.closest('#worldHud, #worldPhone, #worldShop, #touch, #touchEditPanel, #touchEditDone')) return;
+  worldLookDrag = { id:e.pointerId, x:e.clientX, y:e.clientY, type:e.pointerType };
   try { worldCanvas.setPointerCapture(e.pointerId); } catch (_) {}
+  // Prevent browser/WebView scrolling from stealing the gesture. Telegram vertical
+  // swipes are disabled separately via WebApp.disableVerticalSwipes().
   e.preventDefault();
 });
 worldCanvas.addEventListener('pointermove', e => {
   if (!worldLookDrag || worldLookDrag.id !== e.pointerId || state !== 'world') return;
   const dx=e.clientX-worldLookDrag.x, dy=e.clientY-worldLookDrag.y; worldLookDrag.x=e.clientX; worldLookDrag.y=e.clientY;
-  if(worldLookDrag.type==='mouse'){worldCamOrbitYaw -= dx*0.006; worldCamOrbitPitch=clamp(worldCamOrbitPitch-dy*0.004,-0.36,0.38);}
-  e.preventDefault();
+  worldCamOrbitYaw -= dx*0.006; worldCamOrbitPitch=clamp(worldCamOrbitPitch-dy*0.004,-0.36,0.38); e.preventDefault();
 });
-['pointerup','pointercancel','lostpointercapture'].forEach(type => worldCanvas.addEventListener(type, e => {
-  if(!worldLookDrag||worldLookDrag.id!==e.pointerId)return;
-  const drag=worldLookDrag;worldLookDrag=null;
-  if(type==='pointerup'&&drag.type==='touch'&&state==='world'){
-    const dx=e.clientX-drag.startX,dy=e.clientY-drag.startY;
-    if(Math.hypot(dx,dy)>28)worldSwipeMove={x:Math.abs(dx)>22?Math.sign(dx):0,y:Math.abs(dy)>22?Math.sign(dy):0,until:performance.now()+560};
-  }
-}));
+['pointerup','pointercancel','lostpointercapture'].forEach(type => worldCanvas.addEventListener(type, e => { if(worldLookDrag&&worldLookDrag.id===e.pointerId)worldLookDrag=null; }));
 const WORLD_NAMES = ['Артём','Саша','Мира','Даня','Ника','Рустам','Лейла','Тимур','Алиса','Марк','Илья','Зара','Амир','Ева','Матвей','Амина','Дамир','Лина','Рома','Самира','Эмир','Даша','Камиль','Яна','Тим','Адель','Ренат','Малика','Вадим','Алия','Женя','Марат'];
 const WORLD_LINES = ['Классная машина!','Сегодня в городе настоящий движ.','На площади скоро стартует турнир.','Заедь в мастерскую — там хорошие детали.','Неплохой дрифт видел на южной улице!','Добро пожаловать в наш район.','У меня сегодня выходной — гуляю по городу.','Говорят, ночной заезд будет сложным.'];
 function wmat(color, roughness=0.8, metalness=0){return new THREE.MeshStandardMaterial({color,roughness,metalness});}
@@ -1595,6 +1610,17 @@ function mergePedestrianStaticMeshes(root){
     const mesh=new THREE.Mesh(geometry,rec.material);mesh.castShadow=rec.castShadow;mesh.receiveShadow=true;body.add(mesh);
   }
   root.add(body);return body;
+}
+function addTrafficSignal(parent,x,z,rotation=0){
+  const group=new THREE.Group();group.name='TR Custom Traffic Signal';group.position.set(x,0,z);group.rotation.y=rotation;group.userData.trKeepInImportedCity=true;group.userData.trCustomAddon=true;
+  const poleMat=wmat(0x343c44,0.52,0.55),housingMat=wmat(0x161d24,0.35,0.35),redMat=new THREE.MeshStandardMaterial({color:0xff342c,emissive:0x8b0803,emissiveIntensity:0.75}),yellowMat=new THREE.MeshStandardMaterial({color:0xffc744,emissive:0x886010,emissiveIntensity:0.65}),greenMat=new THREE.MeshStandardMaterial({color:0x42e888,emissive:0x0a6c31,emissiveIntensity:0.65});
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.09,4.2,8),poleMat);pole.position.y=2.1;pole.castShadow=false;group.add(pole);
+  const arm=new THREE.Mesh(new THREE.BoxGeometry(1.25,0.09,0.09),poleMat);arm.position.set(0.5,4.05,0);group.add(arm);
+  const housing=new THREE.Mesh(new THREE.BoxGeometry(0.48,1.23,0.32),housingMat);housing.position.set(0.86,3.35,0);housing.castShadow=false;group.add(housing);
+  [redMat,yellowMat,greenMat].forEach((mat,i)=>{const lamp=new THREE.Mesh(new THREE.SphereGeometry(0.125,10,8),mat);lamp.position.set(0.86,3.76-i*0.41,0.176);lamp.castShadow=false;group.add(lamp);});
+  parent.add(group);
+  if(window.TRModels&&window.TRModels.registerCityCollision)group.children.forEach(o=>{if(o.isMesh)window.TRModels.registerCityCollision(o);});
+  return group;
 }
 function addWorldTree(parent,x,z,scale=1){
   const trunk=wmat(0x55402d),leaf=wmat(0x2d7045,0.9),lod=new THREE.LOD();
@@ -1720,46 +1746,63 @@ function createApartmentInterior(){
 }
 // ---- Отлетающие детали при ударе ----
 const crashDebris=[];const debrisGeoCache={};
-function debrisGeo(w,h,d){const k=w.toFixed(3)+'_'+h.toFixed(3)+'_'+d.toFixed(3);return debrisGeoCache[k]||(debrisGeoCache[k]=new THREE.BoxGeometry(w,h,d));}
-function removeDebris(d){scene.remove(d.mesh);d.mesh.material.dispose();}
-function spawnCrashDebris(amount){
-  if(!player.mesh)return;
-  const S=player.mesh.userData.S||{}, sw=S.w||2, sl=S.l||4.4;
-  const count=clamp(Math.round(amount*1.15),4,14);
-  const fx=Math.sin(player.h), fz=Math.cos(player.h), p=player.mesh.position;
-  let bodyC=null;player.mesh.traverse(o=>{if(bodyC===null&&o.isMesh&&o.material&&o.material.color&&o.material.metalness!==undefined){const c=o.material.color;if(c.r+c.g+c.b>0.6)bodyC=c.getHex();}});
-  const kinds=[
-    {w:sw*0.92,h:0.2,d:0.42,c:0x1d2126,rough:0.8,body:true},
-    {w:0.32,h:0.22,d:0.3,c:0x1a1d21,rough:0.7,body:false},
-    {w:0.5,h:0.14,d:0.3,c:0xcfe9ff,rough:0.15,body:false,glow:0x67dfff},
-    {w:0.34,h:0.18,d:0.22,c:0xf4b74e,rough:0.32,body:false,glow:0xff6f35},
-    {w:sw*0.62,h:0.06,d:sl*0.34,c:0xffffff,rough:0.45,body:true},
-    {w:0.42,h:0.36,d:0.4,c:0x2b2f35,rough:0.9,body:false}
-  ];
-  for(let i=0;i<count;i++){
-    const k=kinds[i%kinds.length];
-    const mat=new THREE.MeshStandardMaterial({color:(k.body&&bodyC!==null)?bodyC:k.c,roughness:k.rough,metalness:0.15});
-    if(k.glow&&mat.emissive){mat.emissive.setHex(k.glow);mat.emissiveIntensity=1.2;}
-    const mesh=new THREE.Mesh(debrisGeo(k.w,k.h,k.d),mat);
-    const lat=rr(-sw*0.4,sw*0.4);
-    mesh.position.set(p.x+fx*sl*0.42+fz*lat,0.6+Math.random()*0.5,p.z+fz*sl*0.42-fx*lat);
-    const sp=2+Math.random()*3+amount*0.7, side=rr(-1,1)*(1.5+amount*0.35);
-    const vel=new THREE.Vector3(-fx*sp+fz*side+(player.vx||0)*0.5,3+Math.random()*4+amount*0.35,-fz*sp-fx*side+(player.vz||0)*0.5);
-    const spin=new THREE.Vector3(rr(-9,9),rr(-9,9),rr(-9,9));
-    scene.add(mesh);crashDebris.push({mesh,vel,spin,life:0,ttl:4+Math.random()*2});
+function removeDebris(d){
+  scene.remove(d.mesh);
+  // Source GLB parts share their geometry/material with the vehicle catalogue. Do not
+  // dispose those shared resources while a detached panel is flying away.
+  if(!d.actualPart){
+    if(d.mesh.material)d.mesh.material.dispose();
+    if(d.mesh.geometry)d.mesh.geometry.dispose();
   }
-  // High-energy impact: metal sparks, glass glints and extra fragments.
-  if(amount>=1.6){spawnSparks(p.x+fx*1.1,0.7,p.z+fz*1.1,clamp(Math.round(16+amount*2.1),16,38),0xffa62b);}
-  if(amount>=3.5){spawnSparks(p.x-fx*0.8,0.8,p.z-fz*0.8,clamp(Math.round(10+amount*1.2),10,25),0x57dcff);}
-  while(crashDebris.length>64)removeDebris(crashDebris.shift());
+}
+function makeGlassShard(color=0x98e5ff){
+  const w=rr(0.09,0.24),h=rr(0.10,0.30),lean=rr(-0.08,0.08);
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute([-w,0,lean,w*0.7,-h,0,w*0.1,h,lean],3));
+  geometry.computeVertexNormals();
+  const material=new THREE.MeshStandardMaterial({color,roughness:0.12,metalness:0.08,transparent:true,opacity:0.83,side:THREE.DoubleSide});
+  return new THREE.Mesh(geometry,material);
+}
+function spawnCrashDebris(amount){
+  if(!player.mesh||!player.mesh.visible||amount<3.7)return;
+  const S=player.mesh.userData.S||{},sw=S.w||2,sl=S.l||4.4,fx=Math.sin(player.h),fz=Math.cos(player.h),p=player.mesh.position;
+  const pushPart=(part,glass=false,wheel=false)=>{
+    const mesh=part;mesh.updateMatrixWorld(true);
+    const wp=new THREE.Vector3();mesh.getWorldPosition(wp);
+    // Detach the actual named GLB piece; this preserves its model geometry and shape.
+    scene.attach(mesh);mesh.userData.trDetachedPart=true;
+    const side=rr(-1,1),speed=2+Math.min(13,amount*1.0)+Math.random()*3;
+    const vel=new THREE.Vector3(-fx*speed+fz*side*speed*0.5+(player.vx||0)*0.48,2.5+Math.random()*4+amount*0.28,-fz*speed-fx*side*speed*0.5+(player.vz||0)*0.48);
+    const spin=new THREE.Vector3(rr(-7,7),rr(-10,10),rr(-7,7));
+    crashDebris.push({mesh,vel,spin,life:0,ttl:5+Math.random()*2,actualPart:true});
+    spawnSparks(wp.x,wp.y,wp.z,wheel?12:glass?4:9);
+    return wp;
+  };
+  let detached=[];
+  if(window.TRModels&&typeof window.TRModels.detachCrashParts==='function'){
+    try{detached=window.TRModels.detachCrashParts(player.mesh,amount)||[];}catch(err){console.warn('[Turbo Rivals] Не удалось отделить деталь машины:',err);}
+  }
+  let brokeGlass=false;
+  for(const item of detached){const wp=pushPart(item.part,item.glass,item.wheel);if(item.glass)brokeGlass=true;if(item.wheel){player.mesh.userData.trWheelLost=true;player.mesh.userData.trWheelLostPos=player.mesh.worldToLocal(wp.clone());}}
+  // Glass breaks into small triangular shards, not placeholder rectangular blocks.
+  if(amount>=5.1&&(brokeGlass||Math.random()<Math.min(0.72,0.18+amount*0.055))){
+    const count=clamp(Math.round(amount*0.55),3,7);
+    for(let i=0;i<count;i++){
+      const shard=makeGlassShard(i%3===0?0xeffcff:0x72bbd9);
+      shard.position.set(p.x+fx*sl*0.35+rr(-sw*0.42,sw*0.42),0.65+Math.random()*1.05,p.z+fz*sl*0.35+rr(-0.3,0.3));
+      const vel=new THREE.Vector3(-fx*rr(1.5,6)+rr(-2,2)+(player.vx||0)*0.22,rr(2,6),-fz*rr(1.5,6)+rr(-2,2)+(player.vz||0)*0.22);
+      crashDebris.push({mesh:shard,vel,spin:new THREE.Vector3(rr(-12,12),rr(-12,12),rr(-12,12)),life:0,ttl:2.6+Math.random()*1.8,actualPart:false});scene.add(shard);
+    }
+  }
+  // No generic cubes are spawned: visible flying parts are imported car components or shards.
+  while(crashDebris.length>48)removeDebris(crashDebris.shift());
 }
 function updateCrashDebris(dt){
   for(let i=crashDebris.length-1;i>=0;i--){
-    const d=crashDebris[i];d.life+=dt;
-    d.vel.y-=18*dt;d.mesh.position.addScaledVector(d.vel,dt);
+    const d=crashDebris[i];d.life+=dt;d.vel.y-=18*dt;d.mesh.position.addScaledVector(d.vel,dt);
     d.mesh.rotation.x+=d.spin.x*dt;d.mesh.rotation.y+=d.spin.y*dt;d.mesh.rotation.z+=d.spin.z*dt;
-    if(d.mesh.position.y<0.08){d.mesh.position.y=0.08;d.vel.y*=-0.35;d.vel.x*=0.7;d.vel.z*=0.7;d.spin.multiplyScalar(0.6);if(Math.abs(d.vel.y)<0.6)d.vel.y=0;}
-    if(d.life>d.ttl-0.6)d.mesh.scale.setScalar(Math.max(0.01,(d.ttl-d.life)/0.6));
+    if(d.mesh.position.y<0.08){d.mesh.position.y=0.08;d.vel.y*=-0.22;d.vel.x*=0.78;d.vel.z*=0.78;d.spin.multiplyScalar(0.55);if(Math.abs(d.vel.y)<0.6)d.vel.y=0;}
+    if(d.life>d.ttl-0.6){const base=1;d.mesh.scale.multiplyScalar(Math.max(0.1,1-dt*3));}
     if(d.life>=d.ttl){removeDebris(d);crashDebris.splice(i,1);}
   }
 }
@@ -1840,12 +1883,12 @@ function updateWorldSnow(dt){
   snowG.position.set(cam.position.x,cam.position.y-12,cam.position.z);
 }
 function applyWorldAtmosphere(){
-  const cfg=WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.newyork;
+  const cfg=WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.tashkent;
   const T={
     'Утро':{bg:0x9db8d8,fog:0xdcc6aa,hemi:0.85,sun:0.85,sunC:0xffdcae},
     'День':{bg:cfg.sky[0],fog:cfg.sky[1],hemi:1.15,sun:1.12,sunC:0xffffff},
-    'Вечер':{bg:0x715d80,fog:cfg.fog,hemi:0.7,sun:0.78,sunC:0xffa56b},
-    'Ночь':{bg:0x0d1530,fog:0x262e46,hemi:0.34,sun:0.45,sunC:0x9fb4ff}
+    'Вечер':worldRegionId==='newyork'?{bg:0x9b668e,fog:0x7d6b91,hemi:0.82,sun:0.88,sunC:0xffa16e}:{bg:0x715d80,fog:cfg.fog,hemi:0.7,sun:0.78,sunC:0xffa56b},
+    'Ночь':worldRegionId==='newyork'?{bg:0x14254b,fog:0x392b59,hemi:0.42,sun:0.38,sunC:0x91bdff}:{bg:0x0d1530,fog:0x262e46,hemi:0.34,sun:0.45,sunC:0x9fb4ff}
   }[worldTime]||{bg:cfg.sky[0],fog:cfg.sky[1],hemi:1,sun:1,sunC:0xffffff};
   const bg=new THREE.Color(T.bg),fog=new THREE.Color(T.fog);
   let hm=1,sm=1,near=120,far=1050;const grey=new THREE.Color(worldTime==='Ночь'?0x1a2036:0x8f98a3);
@@ -1875,14 +1918,16 @@ function ensureWorldAtmoButtons(){
   }
 }
 // ---- Аэропорт и перелёты ----
-function openAirportMenu(){openWorldPhone('map');toast('Выбери район Нью-Йорка на карте — старые карты удалены.');}
-
+const AIRPORT_DESTS=[['tashkent','🇺🇿 Ташкент'],['newyork','🗽 Нью-Йорк'],['paris','🇫🇷 Париж'],['italy','🇮🇹 Рим'],['losangeles','🌴 Лос-Анджелес'],['miami','🏖 Майами']];
+function openAirportMenu(){
+  $('worldPhone').hidden=false;
+  $('worldPhoneContent').innerHTML='<h2>✈ Аэропорт · вылеты</h2><p>Выберите город. Перелёт бесплатный, время суток и погода сохранятся.</p>'+AIRPORT_DESTS.filter(d=>d[0]!==worldRegionId).map(d=>`<div class="card"><b>${d[1]}</b><button class="btn" data-travel="${d[0]}">Лететь</button></div>`).join('');
+}
 function travelTo(dest){
-  if(dest!=='newyork'){setWorldRoute(dest);return;}
   closeWorldPhone();
   let f=$('flightFade');if(!f){f=document.createElement('div');f.id='flightFade';f.style.cssText='position:fixed;inset:0;background:#000;color:#fff;display:flex;align-items:center;justify-content:center;font:700 26px sans-serif;z-index:9999;opacity:0;transition:opacity .5s;pointer-events:none;';document.body.appendChild(f);}
   f.textContent='✈ Перелёт…';f.style.opacity='1';
-  setTimeout(()=>{worldKeepAtmo=true;startOpenWorld('newyork');toast('Добро пожаловать в Нью-Йорк');setTimeout(()=>{f.style.opacity='0';},300);},650);
+  setTimeout(()=>{worldKeepAtmo=true;startOpenWorld(dest);toast('Добро пожаловать: '+WORLD_REGIONS[dest].name);setTimeout(()=>{f.style.opacity='0';},300);},650);
 }
 function addAirportApron(parent,x,z){
   const tarmac=wmat(0x2b2e33,0.95),white=wmat(0xf1f3f5,0.5,0.2),blue=wmat(0x1c5aa6,0.5),dark=wmat(0x14181d,0.6);
@@ -1951,7 +1996,7 @@ function disposeWorldGroup(group){
   if(group.parent)group.parent.remove(group);
 }
 function buildOpenWorld(regionId=worldRegionId){
-  const cfg=WORLD_REGIONS[regionId]||WORLD_REGIONS.newyork;
+  const cfg=WORLD_REGIONS[regionId]||WORLD_REGIONS.tashkent;
   if(worldG&&worldBuiltRegion===cfg.id)return;
   if(worldG)disposeWorldGroup(worldG); if(apartmentG)disposeWorldGroup(apartmentG);
   worldG=new THREE.Group();worldG.name='TurboRivals_'+cfg.id;scene.add(worldG);worldBuildings=[];worldPedestrians=[];worldTraffic=[];worldInteractables=[];worldBuiltRegion=cfg.id;
@@ -1983,9 +2028,9 @@ function buildOpenWorld(regionId=worldRegionId){
   }
   benchSeat.count=bi;trashBins.count=ti;parking.count=pi;worldG.add(benchSeat,trashBins,parking);
   for(let i=0;i<bi;i++){const x=(Math.floor(i/11)-5)*100+15,z=(i%11-5)*100+16;dummy.position.set(x,0.38,z);dummy.rotation.set(0,0,0);dummy.updateMatrix();benchLeg.setMatrixAt(i*2,dummy.matrix);dummy.position.x+=2.0;dummy.updateMatrix();benchLeg.setMatrixAt(i*2+1,dummy.matrix);}benchLeg.count=bi*2;worldG.add(benchLeg);
-  // В Нью-Йорке сохраняем базовый слой дорог и тротуаров под импортированной 3D-картой.
-  // Дальнейшие процедурные дома будут скрыты, чтобы не накладываться на здания GLB.
-  worldG.children.forEach(child=>{child.userData=child.userData||{};child.userData.keepForNY=true;});
+  // Это временная сетка старого города. Для NYC скрываем её целиком и используем
+  // дороги/тротуары из GLB; специальные сервисные фасады отмечаются отдельно ниже.
+  worldG.children.forEach(child=>{child.userData=child.userData||{};child.userData.trLegacyBlockout=true;});
   // Фасады — отдельные здания, оконные панели и кондиционеры инстансированы.
   const winMax=['verylow','low'].includes(resolvedGfx())?1700:5200,winMesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1.5,1.35,0.12),windowMat,winMax);winMesh.castShadow=false;
   let wn=0;const colliders=[];const specialCells=new Map([['-1,-1',{kind:'apartment',name:'АПАРТАМЕНТЫ',sub:'HOME · 24/7',col:0x7e8d9d}],['0,-1',{kind:'market',name:'MARKET 24/7',sub:'ЕЖЕДНЕВНЫЕ ТОВАРЫ',col:0x2c7867}],['1,0',{kind:'garage',name:'AUTO LAB',sub:'РЕМОНТ · ТЮНИНГ',col:0x305c7d}],['-1,0',{kind:'fashion',name:'CITY MODA',sub:'ОДЕЖДА · СТИЛЬ',col:0x82537d}]]);
@@ -2040,6 +2085,12 @@ function buildOpenWorld(regionId=worldRegionId){
     const tx=i*100+18,tz=j*100+18;
     if(cfg.palm)addWorldPalm(worldG,tx,tz,0.72+Math.random()*0.28);else addWorldTree(worldG,tx,tz,0.65+Math.random()*0.35);
   }
+  // Custom add-on signals are not part of the imported city root, so the map editor
+  // can move/scale the city without dragging them along with the background model.
+  if(cfg.id==='newyork'){
+    addTrafficSignal(worldG,-8,12,0);addTrafficSignal(worldG,92,12,Math.PI/2);
+    addTrafficSignal(worldG,-8,112,0);addTrafficSignal(worldG,92,112,Math.PI/2);
+  }
   addRegionLandmarks(worldG,cfg);
   // Monument and waterfront collision bounds keep cars from clipping straight through landmarks.
   const lm=cfg.landmarkAt;
@@ -2057,130 +2108,190 @@ function buildOpenWorld(regionId=worldRegionId){
     wbox(worldG,0.2,12,0.2,wmat(0x8d939a,0.5,0.4),228,6,224);wbox(worldG,3.2,0.9,0.05,wmat(0x1d9bd7,0.6),229.7,11.4,224);wbox(worldG,3.2,0.9,0.05,wmat(0xffffff,0.6),229.7,10.5,224);wbox(worldG,3.2,0.9,0.05,wmat(0x2fa05b,0.6),229.7,9.6,224);
   }
   // Личная машина на парковочном кармане рядом с персонажем.
-  if(!player.mesh){showCar(save.cur);}player.mesh.position.set(159,0,160);player.mesh.rotation.set(0,0,0);player.mesh.visible=false;worldYaw=0;
+  if(!player.mesh){showCar(save.cur);}player.mesh.position.set(9,0,8);player.mesh.rotation.set(0,0,0);player.mesh.visible=false;worldYaw=0;
   worldInteractables.push({type:'raceboard',x:-28,z:12,r:10,name:'Городские заезды'},{type:'plaza',x:0,z:50,r:12,name:'Центральная площадь'});
   // Пешеходы: разнообразные лица, куртки и обувь; прохожие гуляют, машут рукой и радуются рядом с гонщиком.
   const pedCount=quality==='verylow'?6:quality==='low'?10:quality==='med'?14:quality==='high'?20:quality==='veryhigh'?26:32;
   for(let i=0;i<pedCount;i++){
-    const axis=Math.random()<0.5?'x':'z',side=Math.random()<0.5?-1:1;
-    const roadX=NY_ROAD_X[1+Math.floor(Math.random()*(NY_ROAD_X.length-2))];
-    const roadZ=NY_ROAD_Z[1+Math.floor(Math.random()*(NY_ROAD_Z.length-2))];
-    const centerX=axis==='x'?(Math.random()*960-480):roadX+side*10;
-    const centerZ=axis==='x'?roadZ+side*10:(Math.random()*720-360);
+    const axis=Math.random()<0.5?'x':'z',road=Math.floor(Math.random()*9-4)*100+(Math.random()<0.5?-1:1)*13;
+    const centerX=axis==='x'?road:(Math.random()*850-425),centerZ=axis==='z'?road:(Math.random()*850-425);
     const ped=makeWorldPedestrian(Math.random()<0.42?'girl':'boy',Math.floor(Math.random()*OUTFITS.length),Math.floor(Math.random()*SKINS.length));
     ped.position.set(centerX,0,centerZ);ped.rotation.y=Math.random()*Math.PI*2;worldG.add(ped);
-    const rec={mesh:ped,name:WORLD_NAMES[i%WORLD_NAMES.length],centerX,centerZ,axis,phase:Math.random()*6.28,amp:2+Math.random()*5,walk:0.45+Math.random()*0.7,waveT:Math.random()*2,jumpT:0,nextCheer:2+Math.random()*6,baseYaw:ped.rotation.y};worldPedestrians.push(rec);
+    const rec={mesh:ped,name:WORLD_NAMES[i%WORLD_NAMES.length],centerX,centerZ,axis,phase:Math.random()*6.28,amp:2+Math.random()*5,walk:0.45+Math.random()*0.7,waveT:Math.random()*2,jumpT:0,nextCheer:2+Math.random()*6,baseYaw:ped.rotation.y};ped.userData.trWalkSpeed=rec.walk;ped.userData.trMotionPhase=rec.phase;worldPedestrians.push(rec);
   }
   // Движущийся городской транспорт для масштаба и жизни города.
   const trafficCount=quality==='verylow'?2:quality==='low'?3:quality==='med'?4:quality==='high'?6:quality==='veryhigh'?7:8;
   for(let i=0;i<trafficCount;i++){
     const def=CARS[Math.floor(Math.random()*Math.min(7,CARS.length))],mesh=makeCarModel(def,Math.random()<0.5?undefined:Math.floor(Math.random()*0xffffff),{neon:false,rimStyle:Math.floor(Math.random()*3)});seatDriver(mesh,Math.random()<0.5?'boy':'girl',Math.floor(Math.random()*6),Math.floor(Math.random()*3));
-    const dir=Math.random()<0.5?1:-1,baseZ=NY_ROAD_Z[1+Math.floor(Math.random()*(NY_ROAD_Z.length-2))],z=baseZ+(Math.random()<0.5?-4:4),x=Math.random()*960-480;mesh.position.set(x,0,z);mesh.rotation.y=dir>0?Math.PI/2:-Math.PI/2;worldG.add(mesh);worldTraffic.push({mesh,x,z,dir,speed:6+Math.random()*8,axis:'x',phase:Math.random()*6.28});
+    const dir=Math.random()<0.5?1:-1,z=Math.floor(Math.random()*9-4)*100+(Math.random()<0.5?-5:5),x=Math.random()*1200-600;mesh.position.set(x,0,z);mesh.rotation.y=dir>0?Math.PI/2:-Math.PI/2;worldG.add(mesh);worldTraffic.push({mesh,x,z,dir,speed:6+Math.random()*8,axis:'x',phase:Math.random()*6.28});
   }
   // Уютная квартира с окном, гостиной, кухней и спальней.
   apartmentG=createApartmentInterior();
 }
+function setCityLoadProgress(percent, text){
+  const bar=document.querySelector('.loading-track i');if(bar)bar.style.width=clamp(percent,0,100)+'%';
+  const label=$('worldLoadingText');if(label&&text)label.textContent=text;
+}
+window.setCityLoadProgress=setCityLoadProgress;
+function buildWorldMinimapBase(city){
+  if(!$('worldMiniMap')||!city)return false;
+  let target=null,oldTarget=null,oldClearColor=null,oldClearAlpha=1,stateSaved=false;
+  try{
+    city.updateMatrixWorld(true);
+    const bounds=new THREE.Box3().setFromObject(city);
+    if(bounds.isEmpty())return false;
+    const size=bounds.getSize(new THREE.Vector3());
+    worldMiniMapWorldSpan=Math.max(100,size.x,size.z);
+    worldMiniMapCenterX=(bounds.min.x+bounds.max.x)/2;
+    worldMiniMapCenterZ=(bounds.min.z+bounds.max.z)/2;
+    const mobile=LOW_DEVICE||isTouch,sizePx=mobile?384:768;
+    const mapScene=new THREE.Scene();mapScene.background=new THREE.Color(0x27313a);
+    const mapRoot=city.clone(true);mapScene.add(mapRoot);mapRoot.updateMatrixWorld(true);
+    mapScene.add(new THREE.HemisphereLight(0xffffff,0x4a5360,2.0));
+    const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(worldMiniMapCenterX+250,Math.max(bounds.max.y+worldMiniMapWorldSpan,bounds.max.y+300),worldMiniMapCenterZ+150);mapScene.add(sun);
+    const half=worldMiniMapWorldSpan/2;
+    const mapCamera=new THREE.OrthographicCamera(-half,half,half,-half,0.1,Math.max(4000,worldMiniMapWorldSpan*5));
+    mapCamera.position.set(worldMiniMapCenterX,bounds.max.y+worldMiniMapWorldSpan*1.2+50,worldMiniMapCenterZ);
+    mapCamera.up.set(0,0,-1);mapCamera.lookAt(worldMiniMapCenterX,(bounds.min.y+bounds.max.y)/2,worldMiniMapCenterZ);mapCamera.updateProjectionMatrix();
+    target=new THREE.WebGLRenderTarget(sizePx,sizePx,{format:THREE.RGBAFormat,minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,depthBuffer:true,stencilBuffer:false});
+    oldTarget=renderer.getRenderTarget();oldClearColor=renderer.getClearColor(new THREE.Color()).clone();oldClearAlpha=renderer.getClearAlpha();stateSaved=true;
+    let pixels;
+    try{
+      renderer.setRenderTarget(target);renderer.setClearColor(0x27313a,1);renderer.clear(true,true,true);renderer.render(mapScene,mapCamera);
+      pixels=new Uint8Array(sizePx*sizePx*4);renderer.readRenderTargetPixels(target,0,0,sizePx,sizePx,pixels);
+    }finally{
+      if(stateSaved){renderer.setRenderTarget(oldTarget);renderer.setClearColor(oldClearColor,oldClearAlpha);}
+      if(target)target.dispose();
+    }
+    const base=document.createElement('canvas');base.width=sizePx;base.height=sizePx;const bctx=base.getContext('2d');if(!bctx)throw new Error('Canvas 2D недоступен');const image=bctx.createImageData(sizePx,sizePx);
+    for(let y=0;y<sizePx;y++){const sourceY=sizePx-1-y;for(let x=0;x<sizePx;x++){const a=(sourceY*sizePx+x)*4,d=(y*sizePx+x)*4;image.data[d]=pixels[a];image.data[d+1]=pixels[a+1];image.data[d+2]=pixels[a+2];image.data[d+3]=255;}}
+    bctx.putImageData(image,0,0);worldMiniMapBaseCanvas=base;
+    return true;
+  }catch(error){
+    if(stateSaved){try{renderer.setRenderTarget(oldTarget);renderer.setClearColor(oldClearColor,oldClearAlpha);}catch(_){} }
+    if(target){try{target.dispose();}catch(_){}}
+    console.warn('[Turbo Rivals] Не удалось построить карту мини-карты:',error);worldMiniMapBaseCanvas=null;return false;
+  }
+}
+function renderWorldMinimap(){
+  const canvas=$('worldMiniMap');if(!canvas||canvas.hidden||state!=='world'||worldInterior)return;
+  const now=performance.now();if(now-worldMinimapLast<90)return;worldMinimapLast=now;
+  const ctx=canvas.getContext('2d');if(!ctx)return;const w=canvas.width,h=canvas.height,cx=w/2,cy=h/2;
+  const actor=currentWorldActor();if(!actor)return;const px=actor.position.x,pz=actor.position.z;
+  const range=145,scale=w/(range*2);
+  ctx.clearRect(0,0,w,h);ctx.fillStyle='#222d36';ctx.fillRect(0,0,w,h);
+  if(worldMiniMapBaseCanvas){
+    const base=worldMiniMapBaseCanvas,span=worldMiniMapWorldSpan;
+    const srcX=(px-range-worldMiniMapCenterX+span/2)/span*base.width;
+    const srcY=(pz-range-worldMiniMapCenterZ+span/2)/span*base.height;
+    const srcW=(range*2)/span*base.width,srcH=(range*2)/span*base.height;
+    const ix0=Math.max(0,srcX),iy0=Math.max(0,srcY),ix1=Math.min(base.width,srcX+srcW),iy1=Math.min(base.height,srcY+srcH);
+    if(ix1>ix0&&iy1>iy0){const dx0=(ix0-srcX)/srcW*w,dy0=(iy0-srcY)/srcH*h,dw=(ix1-ix0)/srcW*w,dh=(iy1-iy0)/srcH*h;ctx.drawImage(base,ix0,iy0,ix1-ix0,iy1-iy0,dx0,dy0,dw,dh);}
+  }else{
+    // Fallback only while the city is loading or if the WebGL readback is unavailable.
+    ctx.fillStyle='#303a43';ctx.fillRect(0,0,w,h);
+  }
+  const mapX=x=>cx+(x-px)*scale,mapY=z=>cy+(z-pz)*scale;
+  if(worldRouteTarget){
+    const tx=worldRouteTarget.x,tz=worldRouteTarget.z;
+    ctx.strokeStyle='#ffd75e';ctx.lineWidth=3;ctx.lineCap='round';ctx.setLineDash([5,3]);ctx.beginPath();ctx.moveTo(mapX(px),mapY(pz));ctx.lineTo(mapX(tx),mapY(pz));ctx.lineTo(mapX(tx),mapY(tz));ctx.stroke();ctx.setLineDash([]);
+    const dx=mapX(tx),dy=mapY(tz);ctx.fillStyle='#ffd75e';ctx.beginPath();ctx.arc(dx,dy,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#17202b';ctx.lineWidth=2;ctx.stroke();
+  }
+  ctx.save();ctx.translate(cx,cy);ctx.rotate(Math.PI-(worldDriving?player.h:worldYaw));ctx.fillStyle='#65e4ff';ctx.strokeStyle='#06121c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  ctx.fillStyle='#fff';ctx.font='bold 10px Arial';ctx.textAlign='left';ctx.fillText('NYC · МАРШРУТ',7,13);
+}
+function getCityEditorRoot(){return worldG&&worldG.userData&&worldG.userData.importedCityRoot;}
+function editorKeyFor(obj){if(!obj)return null;if(obj===getCityEditorRoot())return '__city__';return obj.userData&&obj.userData.trEditorPath!=null?'city:'+obj.userData.trEditorPath:null;}
+function editorObjectByKey(key){if(key==='__city__')return getCityEditorRoot();const map=window.TRModels&&window.TRModels.getEditorObjects?window.TRModels.getEditorObjects():null;return map&&key&&key.startsWith('city:')?map.get(key.slice(5)):null;}
+function editRecord(obj){return {x:+obj.position.x.toFixed(3),y:+obj.position.y.toFixed(3),z:+obj.position.z.toFixed(3),sx:+obj.scale.x.toFixed(4),sy:+obj.scale.y.toFixed(4),sz:+obj.scale.z.toFixed(4)};}
+function writeEditorFields(obj){if(!obj)return;const p=editRecord(obj);['x','y','z','sx','sy','sz'].forEach(k=>{const el=$('dev'+k.toUpperCase());if(el)el.value=p[k];});$('devSelected').textContent=(obj.name||'Объект')+' · '+(obj===getCityEditorRoot()?'вся карта':(obj.userData.trEditorPath||''));}
+function applyEditRecord(key,rec,obj){obj=obj||editorObjectByKey(key);if(!obj||!rec)return;obj.position.set(clamp(Number(rec.x)||0,-10000,10000),clamp(Number(rec.y)||0,-10000,10000),clamp(Number(rec.z)||0,-10000,10000));obj.scale.set(clamp(Number(rec.sx)||1,.01,100),clamp(Number(rec.sy)||1,.01,100),clamp(Number(rec.sz)||1,.01,100));obj.updateMatrixWorld(true);}
+function syncCityBoundsAndMiniMap(rebuildMap=false){const city=getCityEditorRoot();if(!city)return;city.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(city);worldGroundY=city.position.y-0.045;if(!b.isEmpty()){worldBounds={minX:b.min.x+3,maxX:b.max.x-3,minZ:b.min.z+3,maxZ:b.max.z-3};if(worldG&&worldG.userData)worldG.userData.importedCityBounds=Object.assign({},worldBounds);}if(rebuildMap)buildWorldMinimapBase(city);}
+function applySharedWorldEdits(){if(!window.TRModels||!window.TRModels.getEditorObjects)return;let cityChanged=false;for(const [key,rec] of Object.entries(devGlobalEdits||{})){if((devDragState&&devDragState.key===key)||(devSelected&&devSelected.key===key&&!$('worldDevPanel').hidden))continue;const obj=editorObjectByKey(key);if(obj){const before=editRecord(obj);const changed=['x','y','z','sx','sy','sz'].some(k=>Math.abs(Number(before[k])-Number(rec[k]))>0.001);if(changed){applyEditRecord(key,rec,obj);if(key==='__city__')cityChanged=true;}}}if(cityChanged)syncCityBoundsAndMiniMap(true);}
+function applyLocalWorldEdits(){try{devLocalEdits=JSON.parse(localStorage.getItem('tr_world_edits_local')||'{}')||{};}catch(_){devLocalEdits={};}let cityChanged=false;for(const [key,rec] of Object.entries(devLocalEdits)){const obj=editorObjectByKey(key);if(obj){const before=editRecord(obj);const changed=['x','y','z','sx','sy','sz'].some(k=>Math.abs(Number(before[k])-Number(rec[k]))>0.001);if(changed){applyEditRecord(key,rec,obj);if(key==='__city__')cityChanged=true;}}}if(cityChanged)syncCityBoundsAndMiniMap(true);}
+function getWorldApiBase(){let u=String(save.set.server||SERVER_URL||'').trim();if(!u)return'';u=u.replace(/^wss:/i,'https:').replace(/^ws:/i,'http:');return u.replace(/\/+$/,'');}
+async function loadSharedWorldEdits(){const base=getWorldApiBase();if(!base)return;try{const r=await fetch(base+'/api/world-edits',{cache:'no-store'});if(!r.ok)return;const data=await r.json();if(data&&data.edits&&typeof data.edits==='object'){devGlobalEdits=data.edits;devGlobalRevision=Number(data.updatedAt)||0;applySharedWorldEdits();applyLocalWorldEdits();}}catch(e){console.warn('Shared map edits unavailable',e);}}
+async function pollSharedWorldEdits(){if(performance.now()-devLastPollAt<5000)return;devLastPollAt=performance.now();await loadSharedWorldEdits();}
+function refreshEditorSelection(obj,key){if(!obj)return;devSelected={object:obj,key:key||editorKeyFor(obj)};writeEditorFields(obj);}
+function editorRaycast(event){const canvas=$('c'),rect=canvas.getBoundingClientRect();devPointer.x=((event.clientX-rect.left)/rect.width)*2-1;devPointer.y=-((event.clientY-rect.top)/rect.height)*2+1;devRaycaster.setFromCamera(devPointer,cam);const city=getCityEditorRoot();if(!city)return null;city.updateMatrixWorld(true);const hits=devRaycaster.intersectObject(city,true);return hits.find(h=>h.object&&h.object.isMesh&&!h.object.userData.trEditorSkip)||null;}
+function registerWorldEditor(){
+  const panel=$('worldDevPanel'),btn=$('worldDevBtn');if(!panel||panel.dataset.bound)return;panel.dataset.bound='1';
+  btn.onclick=()=>{panel.hidden=!panel.hidden;if(!panel.hidden){$('devPass').focus();loadSharedWorldEdits();}};
+  $('devClose').onclick=()=>{panel.hidden=true;devPickMode=false;devDragState=null;};
+  $('devUnlock').onclick=async()=>{devPassword=$('devPass').value;const base=getWorldApiBase();let globalOK=false;try{if(!base)throw new Error('Не указан API URL сервера');const r=await fetch(base+'/api/world-edits/auth',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Pass':devPassword},body:'{}'});globalOK=r.ok;if(!r.ok)throw new Error('Пароль сервера не принят');}catch(e){console.warn(e);}
+    devUnlocked=true;$('devLockRow').hidden=true;$('devControls').hidden=false;$('devStatus').textContent=globalOK?'Доступ открыт · общие изменения включены':'Локальный доступ · для всех недоступно';$('devApplyAll').disabled=!globalOK;$('devApplyAll').title=globalOK?'Изменения будут отправлены на сервер':'Нужны ADMIN_PASSWORD и правильный адрес сервера';toast(globalOK?'Редактор открыт':'Редактор открыт только для себя');};
+  $('devPick').onclick=()=>{devPickMode=true;$('devStatus').textContent='Нажми на объект в городе';toast('Коснись здания или предмета');};
+  $('devPickCity').onclick=()=>{const city=getCityEditorRoot();if(city)refreshEditorSelection(city,'__city__');else toast('Сначала загрузи Нью-Йорк');};
+  ['X','Y','Z','SX','SY','SZ'].forEach(k=>$('dev'+k).addEventListener('change',()=>{if(!devSelected)return;const obj=devSelected.object;const rec={x:Number($('devX').value),y:Number($('devY').value),z:Number($('devZ').value),sx:Number($('devSX').value),sy:Number($('devSY').value),sz:Number($('devSZ').value)};applyEditRecord(devSelected.key,rec,obj);if(devSelected.key==='__city__')syncCityBoundsAndMiniMap(true);}));
+  const collect=()=>{if(!devSelected)return null;const rec={x:Number($('devX').value),y:Number($('devY').value),z:Number($('devZ').value),sx:Number($('devSX').value),sy:Number($('devSY').value),sz:Number($('devSZ').value)};applyEditRecord(devSelected.key,rec,devSelected.object);return rec;};
+  $('devApplySelf').onclick=()=>{const rec=collect();if(!rec)return toast('Сначала выбери объект');devLocalEdits[devSelected.key]=rec;localStorage.setItem('tr_world_edits_local',JSON.stringify(devLocalEdits));if(devSelected.key==='__city__')syncCityBoundsAndMiniMap(true);toast('Изменение сохранено только на этом устройстве');};
+  $('devApplyAll').onclick=async()=>{const rec=collect();if(!rec)return toast('Сначала выбери объект');if(!devUnlocked||!devPassword)return toast('Сначала введи пароль разработчика');const next=Object.assign({},devGlobalEdits,{[devSelected.key]:rec});try{const r=await fetch(getWorldApiBase()+'/api/world-edits',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Pass':devPassword},body:JSON.stringify({edits:next})});const data=await r.json();if(!r.ok)throw new Error(data.error||'Сервер отказал');devGlobalEdits=data.edits||next;devGlobalRevision=Number(data.updatedAt)||Date.now();if(devSelected.key==='__city__')syncCityBoundsAndMiniMap(true);toast('Общее изменение опубликовано для всех игроков');}catch(e){toast('Не удалось сохранить для всех: '+e.message);}};
+  $('devDrag').addEventListener('change',()=>toast($('devDrag').checked?'Перетаскивание включено':'Перетаскивание выключено'));
+  $('c').addEventListener('pointerdown',e=>{if(state!=='world'||panel.hidden||!devUnlocked)return;if(devPickMode){const hit=editorRaycast(e);devPickMode=false;if(hit){const obj=hit.object;refreshEditorSelection(obj,editorKeyFor(obj));toast('Выбран объект: '+(obj.name||'меш'));}else toast('Не удалось выбрать этот объект — попробуй нажать на его видимую часть');e.preventDefault();e.stopImmediatePropagation();return;}if($('devDrag').checked&&devSelected){const plane=new THREE.Plane(new THREE.Vector3(0,1,0),-devSelected.object.position.y);const p=new THREE.Vector3();devRaycaster.setFromCamera(devPointer.set(((e.clientX/window.innerWidth)*2)-1,-((e.clientY/window.innerHeight)*2)+1),cam);if(devRaycaster.ray.intersectPlane(plane,p)){devDragState={id:e.pointerId,plane,key:devSelected.key,offset:devSelected.object.position.clone().sub(p)};e.preventDefault();e.stopImmediatePropagation();}}},true);
+  $('c').addEventListener('pointermove',e=>{if(!devDragState||!devSelected||e.pointerId!==devDragState.id)return;devPointer.set(((e.clientX/window.innerWidth)*2)-1,-((e.clientY/window.innerHeight)*2)+1);devRaycaster.setFromCamera(devPointer,cam);const p=new THREE.Vector3();if(devRaycaster.ray.intersectPlane(devDragState.plane,p)){devSelected.object.position.copy(p.add(devDragState.offset));devSelected.object.updateMatrixWorld(true);writeEditorFields(devSelected.object);if(devSelected.key==='__city__')syncCityBoundsAndMiniMap(false);}e.preventDefault();},true);
+  ['pointerup','pointercancel','lostpointercapture'].forEach(type=>$('c').addEventListener(type,e=>{if(devDragState&&e.pointerId===devDragState.id){const cityKey=devDragState.key==='__city__';devDragState=null;if(cityKey)syncCityBoundsAndMiniMap(true);}},true));
+}
+registerWorldEditor();
+$('worldMiniMap').addEventListener('click',e=>{if(state!=='world'||worldInterior)return;const c=$('worldMiniMap'),r=c.getBoundingClientRect(),actor=currentWorldActor();if(!actor)return;const range=145,scale=c.width/(range*2),x=(e.clientX-r.left)/r.width*c.width,z=(e.clientY-r.top)/r.height*c.height;worldRouteTarget={x:clamp(actor.position.x+(x-c.width/2)/scale,worldBounds.minX+3,worldBounds.maxX-3),z:clamp(actor.position.z+(z-c.height/2)/scale,worldBounds.minZ+3,worldBounds.maxZ-3),name:'пользовательская точка'};toast('Маршрут установлен');});
+
 function activateImportedNewYork(){
   if(!window.TRModels||!worldG||worldRegionId!=='newyork'||worldG.userData.importedCityActive)return;
   const city=window.TRModels.createCityInstance();if(!city)return;
-  // Only keep living actors and weather cover from the procedural prototype. Old roads,
-  // ground and facades were misaligned with the supplied GLB and are intentionally removed.
+  // Keep only genuinely moving actors from the placeholder blockout. Static buildings,
+  // placeholder roads and the legacy districts are hidden and never collide.
   const keep=new Set([...worldPedestrians.map(r=>r.mesh),...worldTraffic.map(r=>r.mesh)]);
-  worldG.children.forEach(child=>{if(keep.has(child)||child===worldG.userData.snowCover)return;child.visible=false;});
-  city.position.y-=0.025;
-  city.userData.trSharedAsset=true;city.userData.importedNYCity=true;worldG.add(city);worldG.userData.importedCityActive=true;worldG.userData.importedCityRoot=city;
-  city.updateMatrixWorld(true);
-  const boxes=[],addBox=(obj)=>{
-    const b=new THREE.Box3().setFromObject(obj);if(b.isEmpty())return;
-    const sz=b.getSize(new THREE.Vector3()),c=b.getCenter(new THREE.Vector3());
-    if(sz.y<9||sz.x<5||sz.z<5||sz.x>190||sz.z>190||sz.y>520)return;
-    if(boxes.some(q=>Math.abs(q.x-c.x)<3&&Math.abs(q.z-c.z)<3&&Math.abs(q.hw-sz.x/2)<5&&Math.abs(q.hd-sz.z/2)<5))return;
-    boxes.push({x:c.x,z:c.z,hw:sz.x/2+0.65,hd:sz.z/2+0.65,h:sz.y,type:'building',sourceName:obj.name||'NY building'});
-  };
-  // The GLB groups are individual building objects; using their full AABBs prevents
-  // cars and pedestrians from walking through walls, rather than checking only small meshes.
-  city.traverse(o=>{
-    if(o.children&&o.children.length&&/^CityGen Buildings(?:\.|_)/i.test(o.name||''))o.children.forEach(addBox);
+  const ib=city.userData.importedBounds||{minX:-540,maxX:540,minZ:-440,maxZ:440};
+  worldG.children.slice().forEach(child=>{
+    // The imported New York GLB is the only static city. Physically remove and dispose
+    // every legacy blockout road/building/landmark so it cannot render, collide, or
+    // waste phone memory. Keep only moving actors and deliberately-added extras.
+    if(keep.has(child)||child.userData.trCustomAddon)return;
+    disposeWorldGroup(child);
   });
-  if(boxes.length<12){
-    city.traverse(o=>{if(o.isMesh)addBox(o);});
-  }
-  const importedBuildingBoxes=boxes;
-  // The GLB combines some city blocks into large multi-mesh groups. Use a precomputed
-  // roof-footprint grid for reliable ground-level collision, instead of oversized group AABBs.
-  const footprintColliders=Array.isArray(window.NY_BUILDING_COLLIDERS)?window.NY_BUILDING_COLLIDERS.map(b=>({x:b.x,z:b.z,hw:b.hw,hd:b.hd,h:0,type:'city-roof-collider'})):[];
-  worldBuildings=footprintColliders.length?footprintColliders:importedBuildingBoxes;
-  worldInteractables=[];cityTrafficSignals=[];
-  // Most close and clearly reachable imported building door becomes the player's home.
-  const staticEntrances=Array.isArray(window.NY_BUILDING_ENTRANCES)?window.NY_BUILDING_ENTRANCES:[];
-  const entrances=(staticEntrances.length?staticEntrances.map(e=>({
-    box:{x:e.buildingX,z:e.buildingZ,hw:e.hw,hd:e.hd,h:30,type:'imported-building'},
-    x:e.x,z:e.z,d:Math.hypot(e.x-150,e.z-160)
-  })):importedBuildingBoxes.map(b=>{
-    const edgeCandidates=[
-      {x:b.x-b.hw-1.8,z:b.z,d:Math.min(...NY_ROAD_X.map(r=>Math.abs(r-(b.x-b.hw))))},
-      {x:b.x+b.hw+1.8,z:b.z,d:Math.min(...NY_ROAD_X.map(r=>Math.abs(r-(b.x+b.hw))))},
-      {x:b.x,z:b.z-b.hd-1.8,d:Math.min(...NY_ROAD_Z.map(r=>Math.abs(r-(b.z-b.hd))) )},
-      {x:b.x,z:b.z+b.hd+1.8,d:Math.min(...NY_ROAD_Z.map(r=>Math.abs(r-(b.z+b.hd))) )}
-    ].sort((a,b)=>a.d-b.d);
-    return {box:b,x:edgeCandidates[0].x,z:edgeCandidates[0].z,d:Math.hypot(edgeCandidates[0].x-150,edgeCandidates[0].z-160)};
-  })).filter(e=>e.box.h>12&&Math.abs(e.x)<510&&Math.abs(e.z)<400&&e.d>7);
-  entrances.sort((a,b)=>a.d-b.d);
-  const homeEntry=entrances.shift();
-  if(homeEntry){cityHomePoi={id:'home',name:'Мой дом',x:homeEntry.x,z:homeEntry.z,type:'apartment',icon:'🏠',exit:{x:homeEntry.x,z:homeEntry.z}};worldInteractables.push({type:'apartment',x:homeEntry.x,z:homeEntry.z,r:6.5,name:'Мой дом',exit:{x:homeEntry.x,z:homeEntry.z}});}
-  else cityHomePoi={id:'home',name:'Мой дом',x:-160,z:145,type:'apartment',icon:'🏠'};
-  // Each imported building has a reachable entrance that opens the furnished interior.
-  for(const e of entrances){worldInteractables.push({type:'citybuilding',x:e.x,z:e.z,r:5.7,name:'Здание Нью-Йорка',exit:{x:e.x,z:e.z},building:e.box});}
-  for(const poi of CITY_POIS)worldInteractables.push({type:poi.type,x:poi.x,z:poi.z,r:12,name:poi.name});
-  addNYTrafficLights();
-  addNYLandmarkMarkers();
-  const spawn=findFreeWorldSpot(150,160,3);
-  if(charMesh&&!worldInterior&&!worldDriving){charMesh.position.set(spawn.x,0,spawn.z);}
-  const carSpot=findFreeWorldSpot(spawn.x+9,spawn.z,3.1);
-  if(player.mesh&&!worldDriving){player.mesh.position.set(carSpot.x,0,carSpot.z);player.speed=0;}
-  // Route to the home is the default, but players can select any neighborhood in the map.
-  worldRouteTarget='home';
-  toast('Нью-Йорк загружен: здания, коллизии и городская карта активны');
-}
-function addNYLandmarkMarkers(){
-  if(!worldG||worldG.userData.nyMarkersAdded)return;worldG.userData.nyMarkersAdded=true;
-  for(const poi of [cityHomePoi,...CITY_POIS]){
-    const g=new THREE.Group();g.name='Map POI '+poi.id;g.position.set(poi.x,0,poi.z);
-    const ring=new THREE.Mesh(new THREE.TorusGeometry(1.25,0.12,7,24),new THREE.MeshBasicMaterial({color:poi.id===worldRouteTarget?0x53e8c0:0x5bd9ff,transparent:true,opacity:0.86}));ring.rotation.x=-Math.PI/2;ring.position.y=0.22;g.add(ring);
-    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.12,2.5,7),new THREE.MeshStandardMaterial({color:0xb8f6ff,emissive:0x238fb8,emissiveIntensity:1.1}));stem.position.y=1.25;g.add(stem);
-    const ball=new THREE.Mesh(new THREE.SphereGeometry(0.4,12,8),new THREE.MeshStandardMaterial({color:0x81fff0,emissive:0x22cfff,emissiveIntensity:1.4}));ball.position.y=2.7;g.add(ball);worldG.add(g);
-  }
-}
-function addNYTrafficLights(){
-  if(!worldG)return;cityTrafficSignals=[];
-  const laneX=[-160,-100,130,310],laneZ=[-370,-135,-100,100,140,370];
-  let index=0;
-  for(const x of laneX)for(const z of laneZ)for(const side of [-1,1]){
-    const gx=x+side*11,gz=z+(side>0?9:-9),g=new THREE.Group();g.name='NY traffic light';g.position.set(gx,0,gz);
-    const pole=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.16,5.4,8),wmat(0x37424c,0.45,0.5));pole.position.y=2.7;g.add(pole);
-    const head=wbox(g,0.72,1.85,0.58,wmat(0x141b24,0.35,0.35),0,4.2,0,{shadow:false});
-    const bulbs=[0xff3e49,0xffc247,0x38ee89].map((color,i)=>{const m=new THREE.Mesh(new THREE.SphereGeometry(0.22,10,8),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:0.08,roughness:0.25}));m.position.set(0,4.78-i*0.56,0.31);g.add(m);return m;});
-    worldG.add(g);cityTrafficSignals.push({bulbs,elapsed:index*1.7});worldBuildings.push({x:gx,z:gz,hw:0.34,hd:0.34,h:5.4,type:'prop'});index++;
-  }
-}
-function updateCityTrafficLights(dt){
-  for(const s of cityTrafficSignals){s.elapsed+=dt;const phase=Math.floor(s.elapsed/6)%3;const active=phase===0?0:phase===1?2:1;
-    s.bulbs.forEach((b,i)=>{b.material.emissiveIntensity=i===active?2.8:0.08;});
-  }
+  worldG.userData.winMat=null;
+  city.userData.trSharedAsset=true;city.userData.importedNYCity=true;city.name='Imported New York City';
+  // A real, invisible walkable floor at y=0 prevents the player/car from falling through
+  // the visual ground. It is not part of the selectable city geometry.
+  const floorScaleX=Math.max(0.01,Math.abs(city.scale.x)),floorScaleZ=Math.max(0.01,Math.abs(city.scale.z)),floorScaleY=Math.max(0.01,Math.abs(city.scale.y));
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(1080/floorScaleX,880/floorScaleZ),new THREE.MeshBasicMaterial({color:0xffffff,colorWrite:false,depthWrite:false,side:THREE.DoubleSide}));
+  floor.name='TR Walkable floor collider';floor.rotation.x=-Math.PI/2;floor.position.y=-0.045/floorScaleY;floor.userData.trEditorSkip=true;city.add(floor);
+  worldG.add(city);worldG.visible=true;worldG.userData.importedCityActive=true;worldG.userData.importedCityRoot=city;
+  city.updateMatrixWorld(true);syncCityBoundsAndMiniMap(false);
+  player.mesh.position.set(9,worldGroundY+10,8);player.mesh.speed=0;player.speed=0;player.vx=0;player.vz=0;worldFallState.car={vy:0,grounded:false};
+  if(charMesh){charMesh.position.set(9,worldGroundY+10,1.8);charMesh.visible=!worldDriving;worldFallState.character={vy:0,grounded:false};}
+  const b=city.userData.importedBounds||new THREE.Box3().setFromObject(city);
+  worldBounds={minX:(b.minX??b.min.x)+3,maxX:(b.maxX??b.max.x)-3,minZ:(b.minZ??b.min.z)+3,maxZ:(b.maxZ??b.max.z)-3};
+  worldG.userData.importedCityBounds=Object.assign({},worldBounds);
+  worldInteractables=worldInteractables.filter(it=>(it.type==='raceboard'||it.type==='plaza')&&it.x>worldBounds.minX+8&&it.x<worldBounds.maxX-8&&it.z>worldBounds.minZ+8&&it.z<worldBounds.maxZ-8);
+  // Do not turn the bounding box of a whole grouped building mesh into a giant wall.
+  // Actual city triangles and the visible, separately-created service/signal meshes
+  // are the only obstacles tested; hidden legacy scenery never collides.
+  worldBuildings=[];
+  if(window.TRModels&&window.TRModels.registerCityCollision){for(const child of worldG.children){if(!child.visible||!(child.userData.trKeepInImportedCity||child.userData.keepForNY))continue;child.traverse(o=>{if(o.isMesh&&o.visible)window.TRModels.registerCityCollision(o);});}}
+  applySharedWorldEdits();applyLocalWorldEdits();syncCityBoundsAndMiniMap(false);buildWorldMinimapBase(city);
+  $('worldMiniMap').hidden=false;
+  toast('Нью-Йорк загружен · коллизии проверяются по геометрии объектов');
 }
 function currentWorldActor(){return worldDriving?player.mesh:charMesh;}
 function worldPos(){const a=currentWorldActor();return a?a.position:new THREE.Vector3();}
 function startOpenWorld(regionId=worldRegionId){
-  requestGameFullscreen(); worldRegionId=WORLD_REGIONS[regionId]?regionId:'newyork';const cfg=WORLD_REGIONS[worldRegionId];
-  held.clear(); buildOpenWorld(worldRegionId);state='world';worldInterior=false;worldDriving=false;worldJumpRemaining=0;worldJumpCooldown=0;worldJumpWasHeld=false;worldCamMode=2;worldCamOrbitYaw=0;worldCamOrbitPitch=0;worldLookDrag=null;worldSwipeMove=null;worldNear=null;worldCollisionTimer=0;
-  if(worldRegionId==='newyork'&&window.TRModels){window.TRModels.ensureCity().then(()=>{if(state==='world'&&worldRegionId==='newyork')activateImportedNewYork();});}
-  if(!worldKeepAtmo){worldTime=WORLD_TIMES[Math.floor(Math.random()*WORLD_TIMES.length)];worldWeather=WORLD_WEATHERS[Math.floor(Math.random()*WORLD_WEATHERS.length)];}worldKeepAtmo=false;applyWorldAtmosphere();ensureWorldAtmoButtons();
-  if(trackG)trackG.visible=false;worldG.visible=true;apartmentG.visible=false;if(schoolG)schoolG.visible=false;activeInteriorG=null;
-  // Clear race entities and place the selected car beside the player as a usable vehicle.
+  if(!save.set.tutorialComplete&&!tutorialPermitStart){pendingTutorialRegion=regionId||'newyork';const panel=$('tutorialOverlay');if(panel){panel.hidden=false;return;}}
+  tutorialPermitStart=false;requestGameFullscreen();worldRegionId='newyork';const cfg=WORLD_REGIONS.newyork;
+  held.clear();buildOpenWorld('newyork');state='world';worldInterior=false;worldDriving=false;worldJumpRemaining=0;worldJumpCooldown=0;worldJumpWasHeld=false;worldCamMode=2;worldCamOrbitYaw=0;worldCamOrbitPitch=0;worldLookDrag=null;worldNear=null;worldCollisionTimer=0;
+  if(trackG)trackG.visible=false;worldG.visible=false;apartmentG.visible=false;if(schoolG)schoolG.visible=false;activeInteriorG=null;
+  if($('worldLoading')){$('worldLoading').hidden=false;$('worldLoadingText').textContent='Загружаем карту Нью-Йорка и оптимизированные текстуры…';}
+  if(window.TRModels){window.TRModels.ensureCity().then(()=>{
+    if(state!=='world'||worldRegionId!=='newyork')return;
+    if(window.TRModels.createCityInstance){activateImportedNewYork();if(worldG.userData.importedCityActive){setCityLoadProgress(100,'Готово!');$('worldLoading').hidden=true;worldG.visible=true;}}
+    if(!worldG.userData.importedCityActive){worldG.visible=false;worldBuildings=[];$('worldLoading').hidden=true;toast('Нью-Йорк не загрузился. Старая карта и её коллизии отключены — проверь файлы new_york_city*.glb.gz.');}
+  });}else{$('worldLoading').hidden=true;}
+  if(!worldKeepAtmo){worldTime='Вечер';worldWeather='Ясно';}worldKeepAtmo=false;applyWorldAtmosphere();ensureWorldAtmoButtons();
   clearRemotes();ais.forEach(a=>{scene.remove(a.mesh);disposeModel(a.mesh);});ais=[];
-  if(charMesh){scene.remove(charMesh);disposeModel(charMesh);}charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.set(150,0,160);charMesh.rotation.y=0;scene.add(charMesh);worldYaw=0;
-  player.mesh.position.set(159,0,160);player.mesh.rotation.set(0,0,0);player.h=0;player.mesh.visible=true;player.speed=0;player.vx=0;player.vz=0;player.dmg=save.cars[save.cur]?.dmg||0;player.immobilized=player.dmg>=100;phys=physFor(save.cur);applyDamageVisual();
-  show(null);$('hud').hidden=true;$('minimap').hidden=true;$('worldHud').hidden=false;$('worldPhone').hidden=true;$('worldShop').hidden=true;$('touch').hidden=!isTouch;$('fixBtn').hidden=true;$('worldLocation').textContent=cfg.welcome+' · СВОБОДНАЯ ЕЗДА';$('worldActionHint').textContent=isTouch?'Свайп в сторону — движение в эту сторону; свайп вверх — вперёд · кнопки для точного управления':'WASD — движение · E — взаимодействие · V — камера';Snd.music('menu');applyTouchSettings();updateWorldCameraLabel();toast(cfg.name+' · E — взаимодействовать');
+  if(charMesh){scene.remove(charMesh);disposeModel(charMesh);}charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.set(9,10,1.8);charMesh.rotation.y=0;scene.add(charMesh);worldYaw=0;
+  player.mesh.position.set(9,10,8);player.mesh.rotation.set(0,0,0);player.h=0;player.mesh.visible=true;player.speed=0;player.vx=0;player.vz=0;player.dmg=save.cars[save.cur]?.dmg||0;player.immobilized=player.dmg>=100;phys=physFor(save.cur);applyDamageVisual();
+  worldFallState={character:{vy:0,grounded:false},car:{vy:0,grounded:false}};
+  show(null);$('hud').hidden=true;$('minimap').hidden=true;$('worldHud').hidden=false;$('worldPhone').hidden=true;$('worldShop').hidden=true;$('worldMiniMap').hidden=false;$('worldDevPanel').hidden=true;$('touch').hidden=!isTouch;$('fixBtn').hidden=true;$('worldLocation').textContent=cfg.welcome+' · СВОБОДНАЯ ЕЗДА';$('worldActionHint').textContent=isTouch?'Двигайся кнопками · проведи пальцем по пустой области, чтобы повернуть камеру':'WASD — движение · перетащи мышь по сцене, чтобы повернуть камеру · E — действие';Snd.music('menu');applyTouchSettings();updateWorldCameraLabel();toast('Нью-Йорк · город загружается');
+  loadSharedWorldEdits();
 }
 function updateWorldCameraLabel(){const labels=['1-е лицо','2-е лицо · плечо','3-е лицо'];$('worldCamBtn').textContent='Камера: '+labels[worldCamMode];}
 function cycleWorldCamera(){worldCamMode=(worldCamMode+1)%3;updateWorldCameraLabel();toast('Камера: '+['от первого лица','с плеча','от третьего лица'][worldCamMode]);}
@@ -2188,13 +2299,13 @@ function openWorldPhone(tab='home'){$('worldPhone').hidden=false;renderWorldPhon
 function closeWorldPhone(){$('worldPhone').hidden=true;}
 function renderWorldPhone(tab='home'){
   const el=$('worldPhoneContent'),p=worldPos(),loc=worldInterior?'Квартира':Math.hypot(p.x,p.z)<100?'Центр города':p.x<0?'Западный район':'Восточный район';
-  if(tab==='map')el.innerHTML=`<h2>Карта Манхэттена</h2><p>Ты находишься: <b>${loc}</b></p><div class="card"><b>🗺 Районы, улицы и маршрут</b><p>Открой карту, выбери цель — линия маршрута появится на карте.</p><button class="btn" data-phone-action="map">Открыть большую карту</button></div><div class="card"><b>🏠 ${cityHomePoi.name}</b><button class="btn" data-route="home">Маршрут домой</button></div>${CITY_POIS.map(q=>`<div class="card"><b>${q.icon} ${q.name}</b><button class="btn" data-route="${q.id}">Построить маршрут</button></div>`).join('')}<p>Дома и здания можно посещать у входа; машина вызывается с любой улицы.</p>`;
-  else if(tab==='services')el.innerHTML=`<h2>Сервисы</h2><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>монет на счету</span></div><div><b>${Math.round(player.dmg)}%</b><span>повреждение машины</span></div></div><div class="card"><b>Эвакуатор и механик</b><p>Вызвать сервис, сбросить критическую поломку или заказать ремонт.</p><button class="btn" data-phone-action="tow">Вызвать эвакуатор · 600</button></div><div class="card"><b>Автосервис</b><p>Улучшить двигатель, ускорение и нитро за игровые монеты.</p><button class="btn" data-phone-action="garage">Открыть магазин тюнинга</button></div>`;
+  if(tab==='map')el.innerHTML=`<h2>Карта · ${(WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.tashkent).name}</h2><p>Ты находишься: <b>${loc}</b></p><div class="card"><b>🏠 Апартаменты</b><div class="muted">${worldRegionId==='tashkent'?'Катта Чиланзар 1, дом 11А, подъезд 4 · X −126 / Z −40':'Запад, около X −50 / Z −25'}</div></div><div class="card"><b>🛠 AUTO LAB</b><div class="muted">Восток, около X 150 / Z 20</div></div><div class="card"><b>🏁 Городской клуб</b><div class="muted">Рядом с центральным перекрёстком</div></div><p>В городе можно свободно ходить, садиться в свою машину, посещать магазины и запускать заезды.</p>`;
+  else if(tab==='services')el.innerHTML=`<h2>Сервисы</h2><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>монет на счету</span></div><div><b>${Math.round(player.dmg)}%</b><span>повреждение машины</span></div></div><div class="card"><b>Эвакуатор и механик</b><p>Вызвать сервис, сбросить критическую поломку или заказать ремонт.</p><button class="btn" data-phone-action="tow">Вызвать эвакуатор · 600</button></div><div class="card"><b>Автосервис</b><p>Улучшить двигатель, ускорение и нитро за игровые монеты.</p><button class="btn" data-phone-action="garage">Открыть магазин тюнинга</button></div><div class="card"><b>🚕 Городское такси</b><p>Вызови такси, чтобы быстро добраться к городской точке.</p><button class="btn" data-phone-action="taxi">Вызвать такси · 150</button></div>`;
   else if(tab==='events')el.innerHTML=`<h2>События</h2><div class="card"><b>🏁 Уличный спринт</b><p>Короткий заезд против соперников, которые ускоряются, используют нитро и пытаются объезжать ловушки.</p><button class="btn" data-phone-action="race">Начать заезд</button></div><div class="card"><b>🏆 Турниры</b><p>Открывай турниры в главном меню: дождевой кубок, дрифт, марафон и Hyper League.</p><button class="btn" data-phone-action="menu-tours">Список турниров</button></div>`;
   else el.innerHTML=`<h2>Добро пожаловать</h2><p>Город открыт для исследования. Жители гуляют, машут руками, прыгают от радости, читают телефон и реагируют на твою машину.</p><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>баланс · монеты</span></div><div><b>${Math.round(player.dmg)}%</b><span>состояние авто</span></div></div><div class="card"><b>Подсказки</b><p>WASD — ходить/ехать · E — взаимодействие · V — смена камеры · P — телефон · Esc — в меню.</p></div><button class="btn" data-phone-action="tow">Эвакуатор / ремонт</button><button class="btn" data-phone-action="race">Быстрый уличный заезд</button>`;
 }
-$('worldPhoneContent').addEventListener('click',e=>{const b=e.target.closest('[data-travel]');if(b)travelTo(b.dataset.travel);const route=e.target.closest('[data-route]');if(route){setWorldRoute(route.dataset.route);return;}});
-$('worldPhoneBtn').onclick=()=>openWorldPhone('home');$('worldPhoneClose').onclick=closeWorldPhone;$('worldCamBtn').onclick=cycleWorldCamera;$('worldExitBtn').onclick=toMenu;$('worldInteractBtn').onclick=interactWorld;$('worldMapBtn').onclick=openCityMap;$('worldMapClose').onclick=closeCityMap;$('worldCallCarBtn').onclick=callWorldCar;$('worldRouteButtons').addEventListener('click',e=>{const b=e.target.closest('[data-route]');if(b)setWorldRoute(b.dataset.route);});$('worldPhone').addEventListener('click',e=>{const t=e.target.closest('[data-phone-tab]');if(t){renderWorldPhone(t.dataset.phoneTab);return;}const a=e.target.closest('[data-phone-action]');if(!a)return;const act=a.dataset.phoneAction;if(act==='map'){openCityMap();return;}if(act==='tow'){if(save.coins<600){toast('Не хватает 600 монет на выезд механика');return;}save.coins-=600;setDamage(Math.max(0,player.dmg-45));player.immobilized=false;player.engineStall=0;player.speed=0;const here=worldPos(),tow=findFreeWorldSpot(here.x+7,here.z,3);player.mesh.position.set(tow.x,0,tow.z);store();renderWorldPhone('services');toast('Механик прибыл: восстановлено 45% прочности');}else if(act==='garage'){closeWorldPhone();openWorldShop('garage');}else if(act==='race'){closeWorldPhone();toMenu();setTimeout(startCareer,20);}else if(act==='menu-tours'){closeWorldPhone();toMenu();setTimeout(()=>openScreen('tour'),20);}});
+$('worldPhoneContent').addEventListener('click',e=>{const b=e.target.closest('[data-travel]');if(b)travelTo(b.dataset.travel);});
+$('worldPhoneBtn').onclick=()=>openWorldPhone('home');$('worldPhoneClose').onclick=closeWorldPhone;$('worldCamBtn').onclick=cycleWorldCamera;$('worldExitBtn').onclick=toMenu;$('worldInteractBtn').onclick=interactWorld;$('worldPhone').addEventListener('click',e=>{const t=e.target.closest('[data-phone-tab]');if(t){renderWorldPhone(t.dataset.phoneTab);return;}const a=e.target.closest('[data-phone-action]');if(!a)return;const act=a.dataset.phoneAction;if(act==='taxi'){if(save.coins<150){toast('Не хватает 150 монет на такси');return;}save.coins-=150;store();closeWorldPhone();toast('🚕 Такси едет к тебе…');setTimeout(()=>{if(state!=='world')return;const dest=worldRouteTarget||{x:0,z:0,name:'центр города'};const tx=clamp(dest.x,worldBounds.minX+8,worldBounds.maxX-8),tz=clamp(dest.z,worldBounds.minZ+8,worldBounds.maxZ-8);player.mesh.position.set(tx,worldGroundY,tz);player.speed=0;worldFallState.car={vy:0,grounded:true};if(charMesh){charMesh.position.set(tx-2,worldGroundY,tz-2);charMesh.visible=!worldDriving;worldFallState.character={vy:0,grounded:true};}worldRouteTarget={x:0,z:0,name:'Центр города'};toast('🚕 Такси доставило к '+(dest.name||'месту назначения'));},1200);return;}else if(act==='tow'){if(save.coins<600){toast('Не хватает 600 монет на выезд механика');return;}save.coins-=600;setDamage(Math.max(0,player.dmg-45));player.immobilized=false;player.engineStall=0;player.speed=0;player.mesh.position.set(9,worldGroundY,8);worldFallState.car={vy:0,grounded:true};store();renderWorldPhone('services');toast('Механик прибыл: восстановлено 45% прочности');}else if(act==='garage'){closeWorldPhone();openWorldShop('garage');}else if(act==='race'){closeWorldPhone();toMenu();setTimeout(startCareer,20);}else if(act==='menu-tours'){closeWorldPhone();toMenu();setTimeout(()=>openScreen('tour'),20);}});
 document.querySelectorAll('[data-phone-tab]').forEach(()=>{});
 function openWorldShop(kind){
   const title=kind==='market'?'MARKET 24/7':kind==='fashion'?'CITY MODA':'AUTO LAB';$('worldShopTitle').textContent=title;$('worldShopDesc').textContent=kind==='market'?'Городской магазин и полезные вещи':kind==='fashion'?'Одежда и внешний вид персонажа':'Ремонт, двигатель и спортивные детали';
@@ -2208,8 +2319,8 @@ function openWorldShop(kind){
     if(act==='repair'){cost=repairCost;if(own.dmg<=0){toast('Машина уже в отличном состоянии');return;}if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;setDamage(0);player.immobilized=false;player.engineStall=0;}
     else if(['engine','accel','nitro'].includes(act)){const i=act==='engine'?0:act==='accel'?1:5,base=act==='engine'?1100:act==='accel'?900:1300;cost=Math.round((own.up[i]+1)*(base+carIdx(save.cur)*280));if(own.up[i]>=5){toast('Улучшение уже максимальное');return;}if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;own.up[i]++;phys=physFor(save.cur);}
     else if(act==='outfit'){cost=850;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.char.col=(save.char.col+1+Math.floor(Math.random()*5))%OUTFITS.length;replaceWorldPlayer();}
-    else if(act==='style'){cost=2500;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.style[save.cur]=((save.style[save.cur]||0)+1)%STYLE_SHAPES.length;refreshPlayerCarPreservingTransform();}
-    else if(act==='neon'){cost=1800;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.neon[save.cur]=save.neon[save.cur]===false;refreshPlayerCarPreservingTransform();}
+    else if(act==='style'){cost=2500;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.style[save.cur]=((save.style[save.cur]||0)+1)%STYLE_SHAPES.length;showCar(save.cur);player.mesh.position.set(9,worldGroundY,8);player.mesh.visible=!worldDriving;}
+    else if(act==='neon'){cost=1800;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.neon[save.cur]=save.neon[save.cur]===false;showCar(save.cur);player.mesh.position.set(9,worldGroundY,8);player.mesh.visible=!worldDriving;}
     else if(act==='repair-kit'){cost=500;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;setDamage(Math.max(0,player.dmg-20));player.immobilized=player.dmg>=100;}
     else if(act==='snack'){cost=150;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;toast('Вкусный перерыв!');}
     else if(act==='event'){ $('worldShop').hidden=true;closeWorldPhone();toMenu();setTimeout(startCareer,20);return;}
@@ -2218,30 +2329,19 @@ function openWorldShop(kind){
 }
 $('worldShopClose').onclick=()=>{$('worldShop').hidden=true;};
 function replaceWorldPlayer(){if(!charMesh)return;const p=charMesh.position.clone(),r=charMesh.rotation.y;scene.remove(charMesh);disposeModel(charMesh);charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.copy(p);charMesh.rotation.y=r;scene.add(charMesh);}
-function refreshPlayerCarPreservingTransform(){
-  const old=player.mesh;
-  const pos=old?old.position.clone():new THREE.Vector3(159,0,160);
-  const rot=old?old.rotation.clone():new THREE.Euler(0,0,0);
-  const visible=old?old.visible:true;
-  showCar(save.cur);
-  player.mesh.position.copy(pos);player.mesh.rotation.copy(rot);player.mesh.visible=visible;
-  player.h=rot.y;
-}
-function enterApartment(target=null){
+function enterApartment(){
   worldCarVisibleBeforeInterior=!!player.mesh.visible;
-  worldInteriorLabel=target&&target.type==='citybuilding'?'ЗДАНИЕ НЬЮ-ЙОРКА':'МОЙ ДОМ';
-  interiorExit=target&&target.exit?{x:target.exit.x,z:target.exit.z}:{x:-50,z:-23};
-  worldInterior=true;worldJumpRemaining=0;worldJumpWasHeld=held.has('drift');if(charMesh)charMesh.position.y=0;worldG.visible=false;apartmentG.visible=true;activeInteriorG=apartmentG;
+  worldInterior=true;worldJumpRemaining=0;worldJumpWasHeld=held.has('drift');if(charMesh)charMesh.position.y=0;worldG.visible=false;apartmentG.visible=true;activeInteriorG=apartmentG;interiorExit={x:-50,z:-23};
   charMesh.position.set(-2,0,2);charMesh.rotation.y=Math.PI;
   player.mesh.visible=false;worldLookDrag=null;
-  $('worldLocation').textContent=worldInteriorLabel+' · ГОСТИНАЯ';toast(worldInteriorLabel==='МОЙ ДОМ'?'Ты дома. Нажми E у двери, чтобы выйти.':'Ты внутри здания. Нажми E, чтобы вернуться на улицу.');
+  $('worldLocation').textContent='МОЯ КВАРТИРА · ГОСТИНАЯ';toast('Ты дома. Нажми E у двери, чтобы выйти.');
 }
 function leaveApartment(){
   worldInterior=false;worldJumpRemaining=0;worldJumpWasHeld=held.has('drift');if(charMesh)charMesh.position.y=0;(activeInteriorG||apartmentG).visible=false;activeInteriorG=null;worldG.visible=true;
   charMesh.position.set(interiorExit.x,0,interiorExit.z);charMesh.rotation.y=Math.PI;worldYaw=Math.PI;
   // Restore the parked car's previous visibility; otherwise entering/leaving home made the car disappear.
   player.mesh.visible=worldCarVisibleBeforeInterior;worldLookDrag=null;
-  $('worldLocation').textContent='НЬЮ-ЙОРК · УЛИЦЫ МАНХЭТТЕНА';
+  $('worldLocation').textContent='ЗАПАДНЫЙ РАЙОН · АПАРТАМЕНТЫ';
 }
 function worldActorNear(x,z){const p=worldPos();return Math.hypot(p.x-x,p.z-z);}
 function worldInteractablesAt(){const p=worldPos();let best=null,dist=Infinity;
@@ -2254,28 +2354,62 @@ function interactWorld(){
   if(state!=='world')return;if(worldInterior){leaveApartment();return;}
   const target=worldInteractablesAt();if(!target){toast('Поблизости нет объектов для взаимодействия');return;}worldNear=target;
   if(worldDriving && target.type!=='car'){toast('Сначала выйди из машины, чтобы взаимодействовать');return;}
-  if(target.type==='apartment'||target.type==='citybuilding'){enterApartment(target);return;}
+  if(target.type==='apartment'){enterApartment();if(target.exit)interiorExit=target.exit;return;}
   if(target.type==='airport'){openAirportMenu();return;}
   if(target.type==='school'){enterSchool(target);return;}
   if(target.type==='market'||target.type==='garage'||target.type==='fashion'){openWorldShop(target.type);return;}
   if(target.type==='car'){
     if(!worldDriving){worldDriving=true;worldYaw=player.h;player.mesh.visible=true;charMesh.visible=false;applyTouchSettings();toast('Ты за рулём. WASD — управление, E — выйти.');}
-    else{worldDriving=false;charMesh.visible=true;charMesh.position.set(player.mesh.position.x-Math.cos(player.h)*3,0,player.mesh.position.z+Math.sin(player.h)*3);worldYaw=player.h;player.mesh.visible=true;player.speed=0;applyTouchSettings();toast('Ты вышел из машины. E — снова сесть.');}
+    else{worldDriving=false;charMesh.visible=true;charMesh.position.set(player.mesh.position.x-Math.cos(player.h)*3,worldGroundY,player.mesh.position.z+Math.sin(player.h)*3);worldFallState.character={vy:0,grounded:true};worldYaw=player.h;player.mesh.visible=true;player.speed=0;applyTouchSettings();toast('Ты вышел из машины. E — снова сесть.');}
     return;
   }
   if(target.type==='npc'){const rec=target.rec;rec.waveT=2.4;rec.jumpT=Math.random()<0.45?0.7:0;toast(rec.name+': «'+WORLD_LINES[Math.floor(Math.random()*WORLD_LINES.length)]+'»');return;}
   if(target.type==='raceboard'||target.type==='plaza'){openWorldPhone('events');return;}
 }
+function stepWorldFall(actor,key,dt){
+  if(!actor||!worldFallState[key]||worldInterior)return;
+  const f=worldFallState[key];
+  if(f.grounded){actor.position.y=worldGroundY;return;}
+  f.vy-=25*dt;actor.position.y+=f.vy*dt;
+  if(actor.position.y<=worldGroundY){actor.position.y=worldGroundY;f.vy=0;f.grounded=true;}
+}
+function cityWallHit(ax,az,bx,bz,radius,y=1.0){
+  const city=worldG&&worldG.userData&&worldG.userData.importedCityActive;
+  if(!city||!window.TRModels||!window.TRModels.getCityMeshes)return false;
+  const meshes=window.TRModels.getCityMeshes();if(!meshes||!meshes.length)return false;
+  const dx=bx-ax,dz=bz-az,dist=Math.hypot(dx,dz);if(dist<0.025)return false;
+  const perpX=-dz/dist,perpZ=dx/dist;
+  for(const offset of [0, radius*0.62, -radius*0.62]){
+    const rayY=worldGroundY+y;cityWallRay.set(new THREE.Vector3(ax+perpX*offset,rayY,az+perpZ*offset),new THREE.Vector3(dx/dist,0,dz/dist));cityWallRay.near=0.02;cityWallRay.far=dist+radius*0.3;
+    const hits=cityWallRay.intersectObjects(meshes,false);
+    if(hits.some(h=>h.distance<=dist+radius*0.3&&h.point.y>worldGroundY-0.1&&h.point.y<worldGroundY+2.7))return true;
+  }
+  return false;
+}
+function resolveCityMotion(oldX,oldZ,newX,newZ,radius,isCar){
+  if(!(worldG&&worldG.userData&&worldG.userData.importedCityActive))return{x:newX,z:newZ,hit:false};
+  if(!cityWallHit(oldX,oldZ,newX,newZ,radius,isCar?0.9:1.0))return{x:newX,z:newZ,hit:false};
+  // Slide along walls rather than trapping the actor in an oversized rectangle.
+  const xFree=!cityWallHit(oldX,oldZ,newX,oldZ,radius,isCar?0.9:1.0);
+  const zFree=!cityWallHit(oldX,oldZ,oldX,newZ,radius,isCar?0.9:1.0);
+  if(xFree&&!zFree)return{x:newX,z:oldZ,hit:true};
+  if(zFree&&!xFree)return{x:oldX,z:newZ,hit:true};
+  if(xFree&&zFree){const dx=Math.abs(newX-oldX),dz=Math.abs(newZ-oldZ);return dx>dz?{x:newX,z:oldZ,hit:true}:{x:oldX,z:newZ,hit:true};}
+  return{x:oldX,z:oldZ,hit:true};
+}
 function updateOpenWorld(dt){
-  if($('worldPhone').hidden===false||$('worldShop').hidden===false||$('worldMapOverlay').hidden===false)return;
-  worldAnimT+=dt;worldCollisionTimer=Math.max(0,worldCollisionTimer-dt);updateCityTrafficLights(dt);
+  if($('worldPhone').hidden===false||$('worldShop').hidden===false)return;
+  // Do not let movement collide with invisible placeholder buildings while the GLB is loading.
+  if(worldRegionId==='newyork'&&!(worldG&&worldG.userData&&worldG.userData.importedCityActive))return;
+  worldAnimT+=dt;worldCollisionTimer=Math.max(0,worldCollisionTimer-dt);
+  if(!worldInterior){stepWorldFall(charMesh,'character',dt);stepWorldFall(player.mesh,'car',dt);}
   worldJumpCooldown=Math.max(0,worldJumpCooldown-dt);
   const jumpHeld=held.has('drift');
   if(!worldDriving&&!worldInterior&&jumpHeld&&!worldJumpWasHeld&&worldJumpCooldown<=0){worldJumpRemaining=0.62;worldJumpCooldown=0.88;}
   worldJumpWasHeld=jumpHeld;
   if(charMesh){
-    if(worldJumpRemaining>0&&!worldInterior&&!worldDriving){worldJumpRemaining=Math.max(0,worldJumpRemaining-dt);charMesh.position.y=Math.sin((0.62-worldJumpRemaining)/0.62*Math.PI)*0.78;}
-    else {if(worldInterior||worldDriving)worldJumpRemaining=0;charMesh.position.y=0;}
+    if(worldJumpRemaining>0&&!worldInterior&&!worldDriving&&worldFallState.character.grounded){worldJumpRemaining=Math.max(0,worldJumpRemaining-dt);charMesh.position.y=worldGroundY+Math.sin((0.62-worldJumpRemaining)/0.62*Math.PI)*0.78;}
+    else {if(worldInterior||worldDriving)worldJumpRemaining=0;if(worldInterior)charMesh.position.y=0;else if(worldFallState.character.grounded)charMesh.position.y=worldGroundY;}
   }
   if(!worldInterior){
     for(const rec of worldPedestrians){
@@ -2291,54 +2425,73 @@ function updateOpenWorld(dt){
       p.position.y=rec.jumpT>0?Math.sin((1-rec.jumpT/.7)*Math.PI)*0.85:0;
       if(u.bodyGroup){u.bodyGroup.position.y=Math.abs(Math.sin(rec.phase*2))*0.022;u.bodyGroup.rotation.z=cheering?Math.sin(worldAnimT*3+rec.phase)*0.025:Math.sin(rec.phase)*0.008;}
     }
-    const trafficRange=worldG&&worldG.userData&&worldG.userData.importedCityActive?510:WORLD_RANGE;
-    for(const car of worldTraffic){car.x+=car.speed*car.dir*dt;if(car.x>trafficRange)car.x=-trafficRange;if(car.x< -trafficRange)car.x=trafficRange;car.mesh.position.set(car.x,0,car.z);(car.mesh.userData.wheels||[]).forEach(w=>w.rotation.x+=car.speed*dt/0.4);(car.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=car.speed*dt/0.4);}
+    for(const car of worldTraffic){car.x+=car.speed*car.dir*dt;if(car.x>WORLD_RANGE)car.x=-WORLD_RANGE;if(car.x< -WORLD_RANGE)car.x=WORLD_RANGE;car.mesh.position.set(car.x,0,car.z);car.mesh.userData.wheels.forEach(w=>w.rotation.x+=car.speed*dt/0.4);(car.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=car.speed*dt/0.4);}
   }
   const actor=worldDriving?player.mesh:charMesh;if(!actor)return;
   if(worldDriving){
-    const swipeActive=!!(worldSwipeMove&&performance.now()<worldSwipeMove.until);if(worldSwipeMove&&!swipeActive)worldSwipeMove=null;
-    const gas=(held.has('gas')||(swipeActive&&worldSwipeMove.y<0))&&!player.immobilized&&player.engineStall<=0,brake=held.has('brake')||(swipeActive&&worldSwipeMove.y>0),steer=clamp((held.has('right')?1:0)-(held.has('left')?1:0)+(swipeActive?worldSwipeMove.x:0),-1,1);player.engineStall=Math.max(0,player.engineStall-dt);
+    const gas=held.has('gas')&&!player.immobilized&&player.engineStall<=0,brake=held.has('brake'),steer=(held.has('right')?1:0)-(held.has('left')?1:0);player.engineStall=Math.max(0,player.engineStall-dt);
     const max=player.immobilized?0:Math.max(18,phys.max*0.92);if(gas)player.speed+=phys.acc*0.82*dt;if(brake)player.speed-=phys.brk*dt;if(!gas&&!brake)player.speed-=player.speed*0.48*dt;player.speed=player.immobilized?0:clamp(player.speed,-8,max);
-    player.h-=steer*(0.4+Math.min(Math.abs(player.speed)/45,1)*0.85)*dt*Math.sign(player.speed||1);player.mesh.rotation.y=player.h;
+    player.h-=steer*(0.4+Math.min(Math.abs(player.speed)/45,1)*0.85)*(player.mesh.userData.trWheelLost?0.56:1)*dt*Math.sign(player.speed||1);player.mesh.rotation.y=player.h;
     const oldX=player.mesh.position.x,oldZ=player.mesh.position.z;player.mesh.position.x+=Math.sin(player.h)*player.speed*dt;player.mesh.position.z+=Math.cos(player.h)*player.speed*dt;player.mesh.userData.wheels.forEach(w=>w.rotation.x+=player.speed*dt/0.4);(player.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=player.speed*dt/0.4);
-    if(worldG&&worldG.userData&&worldG.userData.importedCityActive){const edgeX=526,edgeZ=414;let edgeHit=false;if(player.mesh.position.x<-edgeX||player.mesh.position.x>edgeX){player.mesh.position.x=clamp(player.mesh.position.x,-edgeX,edgeX);player.h=-player.h;edgeHit=true;}if(player.mesh.position.z<-edgeZ||player.mesh.position.z>edgeZ){player.mesh.position.z=clamp(player.mesh.position.z,-edgeZ,edgeZ);player.h=Math.PI-player.h;edgeHit=true;}if(edgeHit){player.speed*=-0.28;if(worldCollisionTimer<=0){worldCollisionTimer=0.3;addDmg(1.2);Snd.bump();toast('Край карты Нью-Йорка');}}}
-    const radX=2.15,radZ=2.65;
-    let struck=false,wallNX=0,wallNZ=0;for(const b of worldBuildings){const dx=player.mesh.position.x-b.x,dz=player.mesh.position.z-b.z,ox=b.hw+radX-Math.abs(dx),oz=b.hd+radZ-Math.abs(dz);if(ox>0&&oz>0){if(ox<oz){wallNX=Math.sign(dx||1);player.mesh.position.x=b.x+wallNX*(b.hw+radX);player.speed*=0.72;player.h+=wallNX*0.035;}else{wallNZ=Math.sign(dz||1);player.mesh.position.z=b.z+wallNZ*(b.hd+radZ);player.speed*=0.72;player.h-=wallNZ*0.035;}struck=true;break;}}
-    if(struck&&worldCollisionTimer<=0){worldCollisionTimer=0.34;const impact=Math.abs(player.speed)/0.72;const normal=wallNX||wallNZ;player.speed*=-0.34;player.vx*=0.58;player.vz*=0.58;addDmg(clamp(impact*0.095,0.8,9));if(impact>8)spawnSparks(player.mesh.position.x,0.7,player.mesh.position.z,clamp(Math.floor(impact*.3),6,18));Snd.bump();toast('Удар о препятствие · повреждения '+Math.round(player.dmg)+'%');}
-    for(const tr of worldTraffic){const dx=player.mesh.position.x-tr.mesh.position.x,dz=player.mesh.position.z-tr.mesh.position.z,d=Math.hypot(dx,dz);if(d<4.4&&worldCollisionTimer<=0){worldCollisionTimer=0.5;const impact=Math.abs(player.speed),nx=d>0.1?dx/d:Math.cos(player.h),nz=d>0.1?dz/d:-Math.sin(player.h);player.mesh.position.x=tr.mesh.position.x+nx*4.65;player.mesh.position.z=tr.mesh.position.z+nz*4.65;player.speed*=0.58;player.vx*=0.58;player.vz*=0.58;addDmg(clamp(impact*0.085,1.4,7));tr.dir*=-1;tr.speed=Math.max(4,tr.speed*0.78);spawnSparks(player.mesh.position.x,0.7,player.mesh.position.z,clamp(Math.floor(impact*.28),6,14));Snd.bump();toast('Столкновение с городским транспортом');break;}}
-    for(const rec of worldPedestrians){const dx=player.mesh.position.x-rec.mesh.position.x,dz=player.mesh.position.z-rec.mesh.position.z,d=Math.hypot(dx,dz);if(d<3.1&&worldCollisionTimer<=0){worldCollisionTimer=0.4;const nx=d>0.1?dx/d:Math.cos(player.h),nz=d>0.1?dz/d:-Math.sin(player.h);player.mesh.position.x=rec.mesh.position.x+nx*3.5;player.mesh.position.z=rec.mesh.position.z+nz*3.5;player.speed*=0.52;addDmg(clamp(Math.abs(player.speed)*0.04,0.8,3.5));rec.waveT=1.8;rec.jumpT=0.45;spawnSparks(player.mesh.position.x,0.65,player.mesh.position.z,8,0xffbc67);Snd.bump();toast('Столкновение: машина остановилась.');break;}}
+    const cityActive=!!(worldG&&worldG.userData&&worldG.userData.importedCityActive);let struck=false;
+    if(cityActive){const r=resolveCityMotion(oldX,oldZ,player.mesh.position.x,player.mesh.position.z,2.1,true);player.mesh.position.x=r.x;player.mesh.position.z=r.z;struck=r.hit;
+      const beforeX=player.mesh.position.x,beforeZ=player.mesh.position.z;player.mesh.position.x=clamp(beforeX,worldBounds.minX,worldBounds.maxX);player.mesh.position.z=clamp(beforeZ,worldBounds.minZ,worldBounds.maxZ);if(beforeX!==player.mesh.position.x||beforeZ!==player.mesh.position.z)struck=true;
+    }else{const radX=2.15,radZ=2.65;for(const b of worldBuildings){const dx=player.mesh.position.x-b.x,dz=player.mesh.position.z-b.z,ox=b.hw+radX-Math.abs(dx),oz=b.hd+radZ-Math.abs(dz);if(ox>0&&oz>0){if(ox<oz)player.mesh.position.x=b.x+Math.sign(dx||1)*(b.hw+radX);else player.mesh.position.z=b.z+Math.sign(dz||1)*(b.hd+radZ);struck=true;break;}}}
+    if(struck&&worldCollisionTimer<=0){worldCollisionTimer=0.34;const impact=Math.abs(player.speed);player.speed*=0.22;player.vx*=0.24;player.vz*=0.24;if(impact>9)addDmg(clamp(impact*0.065,0.7,7));if(impact>12)spawnSparks(player.mesh.position.x,0.7,player.mesh.position.z,clamp(Math.floor(impact*.28),5,15));Snd.bump();if(impact>5)toast('Столкновение · машина затормозила у препятствия');}
+    // Городской транспорт сталкивается по повёрнутым прямоугольным хитбоксам,
+    // без старого телепорта машины на 4.65 м и без автоматического разворота трафика.
+    for(const tr of worldTraffic){
+      if(worldCollisionTimer>0)break;
+      const hit=carFootprintOverlap(player,tr);if(!hit)continue;
+      const nx=hit.nx,nz=hit.nz,overlap=hit.overlap;
+      const tvx=Math.cos(0)*tr.speed*tr.dir,tvz=0;
+      const pvx=Number.isFinite(player.vx)?player.vx:Math.sin(player.h)*player.speed;
+      const pvz=Number.isFinite(player.vz)?player.vz:Math.cos(player.h)*player.speed;
+      const rel=(pvx-tvx)*nx+(pvz-tvz)*nz,impact=Math.abs(rel);
+      // Небольшое разделение тел: более тяжёлая/быстрая машина не отлетает далеко,
+      // а вытесняет вторую в соответствии с импульсом столкновения.
+      const playerMass=Number(player.mesh.userData.mass)||1.25,otherMass=Number(tr.mesh.userData.mass)||1.0;
+      player.mesh.position.x+=nx*overlap*0.42;player.mesh.position.z+=nz*overlap*0.42;
+      tr.mesh.position.x-=nx*overlap*0.58;tr.mesh.position.z-=nz*overlap*0.58;
+      const impulse=clamp(impact*0.52,0,10)/(1/playerMass+1/otherMass);
+      player.vx=pvx+nx*impulse/playerMass;player.vz=pvz+nz*impulse/playerMass;
+      // In the open world the car is driven by heading + speed, so convert the
+      // impulse back into those controls instead of discarding the sideways shove.
+      player.speed=Math.hypot(player.vx,player.vz);
+      if(player.speed>0.35){player.h=Math.atan2(player.vx,player.vz);player.mesh.rotation.y=player.h;}
+      const otherVX=tvx-nx*impulse/otherMass;tr.speed=clamp(Math.abs(otherVX),2,Math.max(9,Math.abs(tvx)+3));
+      if(otherVX<0)tr.dir=-1;else if(otherVX>0)tr.dir=1;
+      tr.mesh.rotation.y=tr.dir>0?Math.PI/2:-Math.PI/2;tr.x=tr.mesh.position.x;tr.z=tr.mesh.position.z;
+      if(impact>1){player.speed*=impact>16?0.68:impact>7?0.82:0.94;player.vx*=impact>16?0.68:impact>7?0.82:0.94;player.vz*=impact>16?0.68:impact>7?0.82:0.94;}
+      if(impact>8)addDmg(clamp((impact-5)*0.16,0.5,7));
+      if(impact>5)spawnSparks(player.mesh.position.x,0.7,player.mesh.position.z,clamp(Math.floor(impact*.28),4,14));
+      worldCollisionTimer=0.34;Snd.bump();toast('Столкновение с городским транспортом');break;
+    }
     if(Math.abs(player.speed)>0.7){player.vx=Math.sin(player.h)*player.speed;player.vz=Math.cos(player.h)*player.speed;}
   }else{
-    const oldX=charMesh.position.x,oldZ=charMesh.position.z;
-    const swipeActive=!!(worldSwipeMove&&performance.now()<worldSwipeMove.until);if(worldSwipeMove&&!swipeActive)worldSwipeMove=null;
-    let moveX=0,moveZ=0,forward=(held.has('gas')?1:0)-(held.has('brake')?1:0),turn=(held.has('right')?1:0)-(held.has('left')?1:0);
-    if(swipeActive){const yaw=worldYaw+worldCamOrbitYaw,fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);moveX=rx*worldSwipeMove.x-fx*worldSwipeMove.y;moveZ=rz*worldSwipeMove.x-fz*worldSwipeMove.y;const len=Math.hypot(moveX,moveZ)||1;moveX/=len;moveZ/=len;}
-    else {worldYaw-=turn*2.15*dt;moveX=Math.sin(worldYaw)*forward;moveZ=Math.cos(worldYaw)*forward;}
-    const walkSpeed=held.has('nitro')?14:8.3;
-    charMesh.position.x+=moveX*walkSpeed*dt;charMesh.position.z+=moveZ*walkSpeed*dt;
-    if(Math.hypot(moveX,moveZ)>0.08&&swipeActive)worldYaw=Math.atan2(moveX,moveZ);
-    charMesh.rotation.y=worldYaw;
+    const oldX=charMesh.position.x,oldZ=charMesh.position.z;const turn=(held.has('right')?1:0)-(held.has('left')?1:0);worldYaw-=turn*2.15*dt;const forward=(held.has('gas')?1:0)-(held.has('brake')?1:0),walkSpeed=held.has('nitro')?14:8.3;
+    charMesh.position.x+=Math.sin(worldYaw)*forward*walkSpeed*dt;charMesh.position.z+=Math.cos(worldYaw)*forward*walkSpeed*dt;charMesh.rotation.y=worldYaw;
     if(worldInterior){
       // Apartment interior has its own walkable bounds; don't let the character pass through the room's walls.
       charMesh.position.x=clamp(charMesh.position.x,-11.55,11.55);
       charMesh.position.z=clamp(charMesh.position.z,-11.55,11.55);
     } else {
-      for(const b of worldBuildings){const dx=charMesh.position.x-b.x,dz=charMesh.position.z-b.z,ox=b.hw+0.42-Math.abs(dx),oz=b.hd+0.42-Math.abs(dz);if(ox>0&&oz>0){if(Math.abs(charMesh.position.x-oldX)>Math.abs(charMesh.position.z-oldZ))charMesh.position.x=b.x+Math.sign(dx||1)*(b.hw+0.42);else charMesh.position.z=b.z+Math.sign(dz||1)*(b.hd+0.42);}}
-      // The city is large, but the playable region stays inside the generated street grid.
       const cityActive=!!(worldG&&worldG.userData&&worldG.userData.importedCityActive);
-      const limitX=cityActive?526:WORLD_RANGE-8, limitZ=cityActive?414:WORLD_RANGE-8;
-      charMesh.position.x=clamp(charMesh.position.x,-limitX,limitX);
-      charMesh.position.z=clamp(charMesh.position.z,-limitZ,limitZ);
+      if(cityActive){const r=resolveCityMotion(oldX,oldZ,charMesh.position.x,charMesh.position.z,0.42,false);charMesh.position.x=r.x;charMesh.position.z=r.z;
+        charMesh.position.x=clamp(charMesh.position.x,worldBounds.minX,worldBounds.maxX);charMesh.position.z=clamp(charMesh.position.z,worldBounds.minZ,worldBounds.maxZ);
+      }else{
+        for(const b of worldBuildings){const dx=charMesh.position.x-b.x,dz=charMesh.position.z-b.z,ox=b.hw+0.42-Math.abs(dx),oz=b.hd+0.42-Math.abs(dz);if(ox>0&&oz>0){if(Math.abs(charMesh.position.x-oldX)>Math.abs(charMesh.position.z-oldZ))charMesh.position.x=b.x+Math.sign(dx||1)*(b.hw+0.42);else charMesh.position.z=b.z+Math.sign(dz||1)*(b.hd+0.42);}}
+        charMesh.position.x=clamp(charMesh.position.x,-WORLD_RANGE+8,WORLD_RANGE-8);charMesh.position.z=clamp(charMesh.position.z,-WORLD_RANGE+8,WORLD_RANGE-8);
+      }
     }
-    const moving=Math.abs(forward)>0||(swipeActive&&Math.hypot(moveX,moveZ)>0.08);
+    const moving=Math.abs(forward)>0;
     if(window.TRModels)window.TRModels.setCharacterMotion(moving,held.has('nitro'));
     const u=charMesh.userData;u.legs[0].rotation.x=moving?Math.sin(worldAnimT*10)*0.55:0;u.legs[1].rotation.x=moving?-Math.sin(worldAnimT*10)*0.55:0;u.arms[0].rotation.x=moving?-Math.sin(worldAnimT*10)*0.22:0;u.arms[1].rotation.x=moving?Math.sin(worldAnimT*10)*0.22:0;
     if(u.bodyGroup){u.bodyGroup.position.y=moving?Math.abs(Math.sin(worldAnimT*10))*0.035:Math.sin(worldAnimT*1.6)*0.012;u.bodyGroup.rotation.z=moving?Math.sin(worldAnimT*5)*0.018:Math.sin(worldAnimT*0.8)*0.008;}
   }
-  if(!worldInterior){const target=worldInteractablesAt();worldNear=target;if(target){$('worldInteractBtn').textContent='E · '+(target.type==='npc'?'Поговорить с '+target.name:target.type==='car'?(worldDriving?'Выйти из машины':'Сесть в машину'):(target.type==='apartment'?'Войти домой':target.type==='citybuilding'?'Войти в здание':target.type==='market'?'Зайти в магазин':target.type==='garage'?'Тюнинг авто':target.type==='fashion'?'Магазин одежды':target.type==='raceboard'||target.type==='plaza'?'Городские события':'Взаимодействовать'));$('worldActionHint').textContent='E — '+target.name+' · V — камера · P — телефон';}else{$('worldInteractBtn').textContent='E · Осмотреться';$('worldActionHint').textContent=isTouch?'Свайп в сторону — движение · вверх — вперёд · Телефон — карта и сервисы':'WASD — движение · E — взаимодействие · V — камера · P — телефон';}}
+  if(!worldInterior){const target=worldInteractablesAt();worldNear=target;if(target){$('worldInteractBtn').textContent='E · '+(target.type==='npc'?'Поговорить с '+target.name:target.type==='car'?(worldDriving?'Выйти из машины':'Сесть в машину'):target.type==='apartment'?'Войти домой':target.type==='market'?'Зайти в магазин':target.type==='garage'?'Тюнинг авто':target.type==='fashion'?'Магазин одежды':target.type==='raceboard'||target.type==='plaza'?'Городские события':'Взаимодействовать');$('worldActionHint').textContent=(isTouch?'Свайп по сцене — обзор · ':'')+'E — '+target.name+' · V — камера · P — телефон';}else{$('worldInteractBtn').textContent='E · Осмотреться';$('worldActionHint').textContent=isTouch?'Экранные кнопки · свайп по миру — камера · Телефон — сервисы':'WASD — движение · E — взаимодействие · V — камера · P — телефон';}}
   else{$('worldInteractBtn').textContent='E · Выйти из квартиры';$('worldActionHint').textContent='Квартира · E — выйти в город · P — телефон';}
-  const p=worldPos();const d=Math.hypot(p.x,p.z),cfg=WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.newyork;
-  $('worldLocation').textContent=worldInterior?worldInteriorLabel+' · ГОСТИНАЯ':d<85?cfg.welcome:p.x<0?'НЬЮ-ЙОРК · ЗАПАД':'НЬЮ-ЙОРК · ВОСТОК';
+  const p=worldPos();const d=Math.hypot(p.x,p.z),cfg=WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.tashkent;$('worldLocation').textContent=worldInterior?'МОЯ КВАРТИРА · ГОСТИНАЯ':d<85?cfg.welcome:p.x<0?'ЗАПАДНЫЙ РАЙОН':'ВОСТОЧНЫЙ РАЙОН';
 }
 function segmentAabbHitT(origin, target, b, pad=0.15) {
   const dir=target.clone().sub(origin); let tMin=0,tMax=1;
@@ -2353,7 +2506,7 @@ function updateWorldCamera(dt){
   if(worldCamMode===0){
     a.visible=false;
     const eyeY=worldDriving?1.28:1.62;
-    wanted=new THREE.Vector3(p.x+Math.sin(actorYaw)*(worldDriving?.62:0),eyeY+(worldInterior?.06:0),p.z+Math.cos(actorYaw)*(worldDriving?.62:0));
+    wanted=new THREE.Vector3(p.x+Math.sin(actorYaw)*(worldDriving?.62:0),p.y+eyeY+(worldInterior?.06:0),p.z+Math.cos(actorYaw)*(worldDriving?.62:0));
     const sight=15, pitchOffset=Math.sin(worldCamOrbitPitch)*sight;
     look=new THREE.Vector3(wanted.x+Math.sin(yaw)*sight,wanted.y+pitchOffset,wanted.z+Math.cos(yaw)*sight);
     fov=worldDriving?77:73;
@@ -2374,7 +2527,7 @@ function updateWorldCamera(dt){
   cam.position.lerp(wanted,follow);cam.lookAt(look);cam.fov += (fov-cam.fov)*Math.min(1,7*Math.max(0,dt));cam.updateProjectionMatrix();
 }
 
-function worldKey(code){if(state!=='world')return false;if(code==='KeyE'){interactWorld();return true;}if(code==='KeyT'){cycleWorldTime();return true;}if(code==='KeyY'){cycleWorldWeather();return true;}if(code==='KeyV'){cycleWorldCamera();return true;}if(code==='KeyP'){if($('worldPhone').hidden)openWorldPhone('home');else closeWorldPhone();return true;}if(code==='KeyM'){if($('worldMapOverlay').hidden)openCityMap();else closeCityMap();return true;}if(code==='KeyC'){callWorldCar();return true;}if(code==='Escape'){if(!$('worldMapOverlay').hidden)closeCityMap();else if(!$('worldPhone').hidden)closeWorldPhone();else if(!$('worldShop').hidden)$('worldShop').hidden=true;else toMenu();return true;}if(code==='KeyR'){if(worldDriving){if(player.immobilized){setDamage(Math.max(0,player.dmg-32));player.immobilized=false;player.engineStall=0;toast('Эвакуатор запустил двигатель');}const safe=findFreeWorldSpot(player.mesh.position.x+12,player.mesh.position.z+10,3.1);player.mesh.position.set(safe.x,0,safe.z);player.speed=0;player.vx=0;player.vz=0;}return true;}return false;}
+function worldKey(code){if(state!=='world')return false;if(code==='KeyE'){interactWorld();return true;}if(code==='KeyT'){cycleWorldTime();return true;}if(code==='KeyY'){cycleWorldWeather();return true;}if(code==='KeyV'){cycleWorldCamera();return true;}if(code==='KeyP'){if($('worldPhone').hidden)openWorldPhone('home');else closeWorldPhone();return true;}if(code==='Escape'){if(!$('worldPhone').hidden)closeWorldPhone();else if(!$('worldShop').hidden)$('worldShop').hidden=true;else toMenu();return true;}if(code==='KeyR'){if(worldDriving){if(player.immobilized){setDamage(Math.max(0,player.dmg-32));player.immobilized=false;player.engineStall=0;toast('Эвакуатор запустил двигатель');}player.mesh.position.set(9,worldGroundY,8);player.speed=0;}return true;}return false;}
 
 
 // ================= запуск =================
