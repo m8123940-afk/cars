@@ -21,7 +21,7 @@
   let carAssetsPromise = null, personPromise = null, cityPromise = null, armsPromise = null;
   let personClips = [];
   const characterAnimations = new Map();
-  let fordTemplate = null, carPackTemplates = [], personTemplate = null, cityTemplate = null;
+  let carPackTemplates = [], personTemplate = null, cityTemplate = null;
   let armsRoot = null, armsMixer = null, armsActions = {}, armsCurrent = null, armsOverlay = null, cockpitOverlay = null, steeringWheel = null, gameCamera = null;
   let firstPersonWanted = false, firstPersonContext = 'race', characterMotion = 'idle', characterMotionClock = 0;
 
@@ -106,45 +106,22 @@
     return holder;
   }
 
-  // Ford stores each wheel as a complete wheel_*_dummy assembly. Rotate that
-  // assembly around its own centre. The Ultimate pack stores its four tires in a
-  // combined mesh, so rotating that mesh as one pivot makes the wheels orbit; keep
-  // those wheels visually stable rather than applying a wrong circular motion.
-  function prepareWheelPivots(model, useFord) {
-    if (!useFord) return [];
-    model.updateMatrixWorld(true);
-    const wheelGroups=[];
-    model.traverse(o=>{if(o.isGroup && /^wheel_(lb|rb|lf|rf)_dummy$/i.test(o.name||'') && !o.userData.trWheelPivotBuilt)wheelGroups.push(o);});
-    const pivots=[];
-    for(const group of wheelGroups){
-      const box=new THREE.Box3().setFromObject(group);if(box.isEmpty())continue;
-      const centerWorld=box.getCenter(new THREE.Vector3());
-      const centerLocal=model.worldToLocal(centerWorld.clone());
-      const pivot=new THREE.Group();pivot.name='TR Ford GT wheel pivot';pivot.position.copy(centerLocal);
-      pivot.userData.trWheelPivot=true;model.add(pivot);pivot.attach(group);group.userData.trWheelPivotBuilt=true;pivots.push(pivot);
-    }
-    return pivots;
-  }
-
   function buildCarVisual(record) {
     const root = record.root;
     if (!root || !root.userData || root.userData.externalCarRoot) return;
     const index = Math.max(0, Number(record.index) || 0);
-    const useFord = index >= 20 && !!fordTemplate;
-    const source = useFord ? fordTemplate : carPackTemplates.length ? carPackTemplates[mod(index, carPackTemplates.length)] : null;
+    // Every garage and traffic slot uses a model from Ultimate Car Pack.
+    const source = carPackTemplates.length ? carPackTemplates[mod(index, carPackTemplates.length)] : null;
     if (!source) return;
 
-    const model = source.clone(true);
+    const model = cloneModel(source);
     removeCollisionMeshes(model);
-    const pivots = prepareWheelPivots(model, useFord);
+    const pivots = [];
     const external = new THREE.Group();
-    external.name = useFord ? '2006 Ford GT — external visual' : 'Ultimate pack — external visual';
-    // The Ford GLB is exported Z-up and its local +Y axis is the car's length axis.
-    // Keep the GLTF's -90° X conversion intact, then turn the outer Y-up group so the
-    // bonnet/front (source world -Z) points toward the game's forward direction (+Z).
-    // The Ultimate pack instead uses Y-up and faces -Z, so rotate its model locally.
-    if (useFord) external.rotation.y = Math.PI;
-    else model.rotation.y = Math.PI;
+    external.name = 'Ultimate pack — external visual';
+    // Every car in the Ultimate pack faces -Z in the source scene; rotate its local
+    // model once so the game's +Z forward direction is used for every garage slot.
+    model.rotation.y = Math.PI;
     external.add(model);
     external.visible = !(firstPersonWanted && (firstPersonContext === 'drive' || firstPersonContext === 'race'));
     external.updateMatrixWorld(true);
@@ -180,22 +157,14 @@
   }
   function ensureCarAssets() {
     if (carAssetsPromise) return carAssetsPromise;
-    carAssetsPromise = Promise.all([
-      loadGLB('ultimate_car_pack.glb'),
-      loadGLB('ford_gt_2006.glb')
-    ]).then(([packGltf, fordGltf]) => {
+    carAssetsPromise = loadGLB('ultimate_car_pack.glb').then(packGltf => {
       const packRoot = packGltf.scene.getObjectByName('RootNode');
       carPackTemplates = packNames.map(name => packRoot && packRoot.children.find(child => child.name === name)).filter(Boolean);
       if (!carPackTemplates.length) throw new Error('В Ultimate-паке не найдены отдельные модели машин');
-      // This file contains a full vehicle plus separately exported collision/shadow
-      // helpers. Use the Ford GT hierarchy only so helper geometry cannot show up.
-      fordTemplate = fordGltf.scene.getObjectByName('Ford GT') || fordGltf.scene;
-      fordTemplate = fordTemplate.clone(true);
-      removeCollisionMeshes(fordTemplate);
       applyAllCars();
-      console.info(`[Turbo Rivals] GLB-машины готовы: ${carPackTemplates.length} моделей из Ultimate-пака + Ford GT 2006.`);
+      console.info(`[Turbo Rivals] Подключены только машины Ultimate pack: ${carPackTemplates.length} моделей.`);
     }).catch(error => {
-      console.error('[Turbo Rivals] Не удалось загрузить обязательные GLB-машины. Старые модели не включаются.', error);
+      console.error('[Turbo Rivals] Не удалось загрузить Ultimate pack. Старые модели не включаются.', error);
       carAssetsPromise = null;
     });
     return carAssetsPromise;
@@ -228,19 +197,22 @@
   }
   function attachWorldCharacter(root) {
     if (!root || !root.userData || root.userData.trNewPersonAttached || !personTemplate) return;
-    const u = root.userData;
     const model = makePersonInstance();
     if (!model) return;
-    const body = u.bodyGroup || root;
-    if (u.bodyGroup) {
-      body.children.forEach(child => { child.visible = false; });
-      (u.arms || []).forEach(arm => { arm.visible = false; });
-      (u.legs || []).forEach(leg => { leg.visible = false; });
-    } else {
-      (u.trOriginalCharacterParts || []).forEach(part => { if (part) part.visible = false; });
-    }
-    body.add(model);
-    bindCharacterAnimations(root,model);
+    model.name = 'TR visible player character';
+    model.visible = true;
+    model.traverse(o => { if (o.isMesh) { o.visible = true; o.frustumCulled = false; } });
+    // Keep the imported model directly under the actor root. Parenting it under the
+    // merged procedural body caused bad inherited transforms on some Three.js clones.
+    root.add(model);
+    bindCharacterAnimations(root, model);
+    // Only hide the fallback body AFTER the imported model has been attached.
+    // If new_person.glb fails to load, the player remains visible and controllable.
+    const u = root.userData;
+    // This root may contain separate old fallback meshes plus a merged copy. Hide
+    // every old direct child only after the rigged GLB has been attached successfully.
+    root.children.forEach(child => { if (child !== model) child.visible = false; });
+    model.visible = true;
     model.userData.trNewPersonBaseY = model.position.y;
     model.userData.trNewPersonBaseRotZ = model.rotation.z;
     u.trNewPersonAttached = true;
@@ -250,12 +222,13 @@
     if (!root || !root.userData || root.userData.trNewPersonAttached || !personTemplate) return;
     const model = makePersonInstance();
     if (!model) return;
-    // Replace all procedural driver's body/helmet geometry with the supplied character.
-    root.children.slice().forEach(child => { child.visible = false; });
-    model.rotation.x = -0.08; // gentle forward lean while seated; the source model has no sitting rig
+    // Attach the supplied model first; only then hide the old driver meshes.
+    model.rotation.x = -0.08;
     model.scale.y *= 0.94;
     model.userData.trDriverModel = true;
     root.add(model);
+    model.visible = true;
+    root.children.forEach(child => { if (child !== model) child.visible = false; });
     bindCharacterAnimations(root,model);
     root.userData.trNewPersonAttached = true;
     root.userData.trNewPersonModel = model;
@@ -271,7 +244,7 @@
       driverCharacters.forEach(attachDriverCharacter);
       console.info('[Turbo Rivals] Модель персонажа New Person загружена.');
     }).catch(error => {
-      console.error('[Turbo Rivals] New Person не загрузился; старый персонаж скрыт, проверьте файл new_person.glb.', error);
+      console.error('[Turbo Rivals] New Person не загрузился; остаётся видимый процедурный персонаж, проверьте файл new_person.glb.', error);
       personPromise = null;
     });
     return personPromise;
@@ -356,7 +329,9 @@
     const scale = 2.2; // постоянный размер города по требованию: 2.2 × 2.2 × 2.2
     // The map root itself stays exactly at world origin; only its inner content
     // is normalized and centered. This keeps editor coordinates predictable.
-    content.position.set(-center.x, -box.min.y, -center.z);
+    // Keep the imported road surface aligned to world Y=0. Moving the content by -box.min.y
+    // lifted the pavement about 0.36 m and buried the player's feet below the visible street.
+    content.position.set(-center.x, 0, -center.z);
     holder.scale.setScalar(scale);
     holder.position.set(0, 0, 0);
     holder.updateMatrixWorld(true);
@@ -394,7 +369,6 @@
   function detachCrashParts(root, severity) {
     if (!root || !root.userData || !root.userData.externalCarRoot || severity < 4.4) return [];
     const external=root.userData.externalCarRoot,candidates=[],wheelCandidates=[],glassCandidates=[];
-    const ford=String(external.name||'').includes('Ford GT');
     const pattern=/^(front|rear|door|bonnet|boot|wind|window|glass|mirror|spoiler|wing|bumper|tire|tyre|wheel|rim|body|paint)/i;
     external.updateMatrixWorld(true);
     external.traverse(o=>{
@@ -402,18 +376,16 @@
       // Prefer a complete named assembly/group so it flies away as one real panel,
       // rather than detaching every tiny material triangle as a separate object.
       const name=String(o.name||'');
-      const isFordWheel=ford && o.isGroup && /^wheel_(lb|rb|lf|rf)_dummy$/i.test(name);
-      const isFordPanel=ford && o.isGroup && /^(door_(rf|lf)_dummy|bonnet_dummy|boot_dummy|windscreen_dummy|winds2n_dummy)$/i.test(name);
-      const isPackPanel=!ford && o.isGroup && /^(front|rear|window|body|paint)(?:[._ -]|$)/i.test(name);
-      const isFordGlass=ford && (o.isGroup||o.isMesh) && /^(windscreen_ok|winds2n_ok|glass_dam)/i.test(name);
-      const isMeshPanel=o.isMesh && /^(front|rear|door|bonnet|boot|wind|window|glass|mirror|spoiler|wing|bumper)/i.test(name);
-      const isWheelMesh=ford&&o.isMesh&&/^(wheel|rim)/i.test(name);
-      if(!(isFordWheel||isFordPanel||isPackPanel||isFordGlass||isMeshPanel||isWheelMesh))return;
+      // The Ultimate GLB exposes panels as named mesh nodes (Front/Rear/Window).
+      // Tires and rims are combined meshes in this asset, so don't detach the entire
+      // four-wheel assembly as if it were a single realistic wheel.
+      const isPackPanel=(o.isGroup||o.isMesh) && /^(front|rear|window|glass|mirror|spoiler|wing|bumper|door|paint)/i.test(name);
+      if(!isPackPanel)return;
       const box=new THREE.Box3().setFromObject(o);if(box.isEmpty())return;
       const size=box.getSize(new THREE.Vector3()),largest=Math.max(size.x,size.y,size.z);
       if(largest>6.0)return;
-      const wheel=isFordWheel||isWheelMesh,glass=/window|glass|wind/i.test(name)||isFordGlass;
-      const candidate={part:o,object:o,glass:!!glass,wheel:!!wheel,score:wheel?0:glass?1:/door|bonnet|boot|bumper|front|rear/i.test(name)?2:3};
+      const wheel=false,glass=/window|glass/i.test(name);
+      const candidate={part:o,object:o,glass:!!glass,wheel,score:glass?1:/door|bumper|front|rear/i.test(name)?2:3};
       (wheel?wheelCandidates:glass?glassCandidates:candidates).push(candidate);
     });
     // Do not offer a child when its enclosing door/window assembly is already a choice.
@@ -487,11 +459,27 @@
       armsRoot = gltf.scene;
       const background=armsRoot.getObjectByName('Background_Background_0');if(background)background.visible=false;
       const helperCamera=armsRoot.getObjectByName('Camera');if(helperCamera)helperCamera.visible=false;
-      armsRoot.scale.setScalar(1);
+      armsRoot.traverse(o=>{if(o.isMesh){if(o===background||/background/i.test(o.name||'')){o.visible=false;return;}o.frustumCulled=false;o.visible=true;if(o.material){const ms=Array.isArray(o.material)?o.material:[o.material];ms.forEach(m=>{if(m){m.side=THREE.DoubleSide;m.depthTest=false;m.depthWrite=false;m.needsUpdate=true;}});}}});
+      // Centre the source pack inside a wrapper; the raw asset uses an off-centre
+      // authoring origin, which otherwise pushed the hands above/below the camera.
+      // Box3.setFromObject also counts invisible helper meshes in this Three.js
+      // revision. The pack's hidden background plane has a huge bounding box and
+      // was moving the real arms off-screen. Compute bounds from visible skinned
+      // meshes only (the actual pair of arms), in the GLTF scene's world space.
+      armsRoot.updateMatrixWorld(true);
+      const armBounds=new THREE.Box3();
+      armsRoot.traverse(o=>{
+        if(!o.isMesh||!o.visible||!o.geometry)return;
+        if(!o.geometry.boundingBox)o.geometry.computeBoundingBox();
+        if(o.geometry.boundingBox){const b=o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld);armBounds.union(b);}
+      });
+      const armCenter=armBounds.isEmpty()?new THREE.Vector3():armBounds.getCenter(new THREE.Vector3());
+      const armsRigHolder=new THREE.Group();armsRigHolder.name='TR FPS arms centered holder';
+      armsRigHolder.add(armsRoot);armsRigHolder.position.set(-armCenter.x,-armCenter.y,-armCenter.z);
       armsOverlay = new THREE.Group();
       armsOverlay.name = 'TR first-person animated arms';
-      armsOverlay.add(armsRoot);
-      armsOverlay.position.set(0, -0.54, -0.72);
+      armsOverlay.add(armsRigHolder);
+      armsOverlay.position.set(0, -0.34, -0.78);
       markSharedTree(armsOverlay);
       if (gameCamera && gameCamera.add) gameCamera.add(armsOverlay);
       armsMixer = new THREE.AnimationMixer(armsRoot);
@@ -547,25 +535,20 @@
     registerDriverCharacter(root) {
       if (!root || !root.userData) return;
       driverCharacters.add(root);
-      root.children.slice().forEach(child => { child.visible = false; });
       ensurePerson();
       if (personTemplate) attachDriverCharacter(root);
     },
     registerWorldCharacter(root) {
       if (!root) return;
       worldCharacters.add(root);
-      // Never show the retired procedural character while New Person is loading.
-      const u = root.userData || {};
-      if (u.bodyGroup) u.bodyGroup.children.forEach(child => { child.visible = false; });
-      (u.arms || []).forEach(part => { part.visible = false; });
-      (u.legs || []).forEach(part => { part.visible = false; });
+      // Keep the fallback body visible until the supplied rigged GLB is attached.
+      // This avoids an invisible avatar when the network/CDN/model load is delayed.
       ensurePerson();
       if (personTemplate) attachWorldCharacter(root);
     },
     registerCharacter(root) {
       if (!root || !root.userData) return;
       root.userData.trOriginalCharacterParts = root.children.slice();
-      root.userData.trOriginalCharacterParts.forEach(part => { if (part) part.visible = false; });
       staticCharacters.add(root);
       ensurePerson();
       if (personTemplate) attachWorldCharacter(root);
@@ -590,8 +573,8 @@
       if(playerCar&&playerCar.userData&&playerCar.userData.driver){playerCar.userData.driver.visible=!(firstPersonWanted&&driving);}
       if (armsOverlay) {
         armsOverlay.visible = firstPersonWanted;
-        if(firstPersonContext==='drive'){armsOverlay.position.set(0,-0.48,-0.79);armsOverlay.scale.setScalar(0.15);}
-        else {armsOverlay.position.set(0,-0.54,-0.72);armsOverlay.scale.setScalar(0.18);}
+        if(firstPersonContext==='drive'){armsOverlay.position.set(0,-0.43,-0.67);armsOverlay.scale.setScalar(0.72);}
+        else {armsOverlay.position.set(0,-0.43,-0.67);armsOverlay.scale.setScalar(0.78);}
         armsOverlay.renderOrder=995;
         armsOverlay.traverse(o=>{if(o.isMesh){o.renderOrder=995;if(o.material){o.material.depthTest=false;o.material.depthWrite=false;}}});
         playArmsAction(wantedArmsClip());
@@ -599,11 +582,18 @@
       if(cockpitOverlay)cockpitOverlay.visible=firstPersonWanted&&driving;
     },
     setSteer(value) { if(steeringWheel)steeringWheel.rotation.z=Math.max(-1,Math.min(1,Number(value)||0))*0.48; },
+    isArmsReady() {
+      if(!armsOverlay||!gameCamera||armsOverlay.parent!==gameCamera||!armsOverlay.visible)return false;
+      let visibleMesh=false;armsOverlay.traverse(o=>{if(o.isMesh&&o.visible&&o.geometry&&o.geometry.attributes&&o.geometry.attributes.position&&o.geometry.attributes.position.count>20)visibleMesh=true;});
+      return visibleMesh;
+    },
+    isPersonReady() { return !!personTemplate; },
     detachCrashParts,
     dentCar,
     playCharacterAction(name,seconds=0.65,root=null){if(root)playCharacterAnimation(root,name,seconds);else{const playerRoot=[...worldCharacters,...staticCharacters].find(r=>r&&r.userData&&r.userData.playerPed);if(playerRoot)playCharacterAnimation(playerRoot,name,seconds);}},
-    setCharacterMotion(moving, sprinting) {
+    setCharacterMotion(moving, sprinting, root = null) {
       characterMotion = !moving ? 'idle' : sprinting ? 'sprint' : 'walk';
+      if(root)playCharacterAnimation(root,characterMotion==='sprint'?'Run':characterMotion==='walk'?'Walk':'Idle');
       if (firstPersonWanted) playArmsAction(wantedArmsClip());
     },
     update(dt) {
