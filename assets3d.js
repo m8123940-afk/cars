@@ -157,14 +157,14 @@
   }
   function ensureCarAssets() {
     if (carAssetsPromise) return carAssetsPromise;
-    carAssetsPromise = loadGLB('ultimate_car_pack.glb').then(packGltf => {
-      const packRoot = packGltf.scene.getObjectByName('RootNode');
-      carPackTemplates = packNames.map(name => packRoot && packRoot.children.find(child => child.name === name)).filter(Boolean);
-      if (!carPackTemplates.length) throw new Error('В Ultimate-паке не найдены отдельные модели машин');
+    carAssetsPromise = loadGLB('ford_gt_2006.glb').then(fordGltf => {
+      // Используем Ford GT как единственную импортированную модель для машин.
+      // Все автомобили получают эту модель; характеристики/цены остаются из каталога.
+      carPackTemplates = [fordGltf.scene];
       applyAllCars();
-      console.info(`[Turbo Rivals] Подключены только машины Ultimate pack: ${carPackTemplates.length} моделей.`);
+      console.info('[Turbo Rivals] Подключена модель Ford GT 2006.');
     }).catch(error => {
-      console.error('[Turbo Rivals] Не удалось загрузить Ultimate pack. Старые модели не включаются.', error);
+      console.error('[Turbo Rivals] Не удалось загрузить Ford GT 2006.', error);
       carAssetsPromise = null;
     });
     return carAssetsPromise;
