@@ -1,6 +1,6 @@
 // Звук: двигатель, ветер, визг шин, ambience по локациям, музыка и эффекты. Всё синтезируется, внешних файлов нет.
 const Snd = (() => {
-  let ctx, master, sfx, mus, amb, eng, eng2, engF, engG, turboO, turboG, wind, sq, am, nbuf, timer = null, step = 0, mode = 'off', theme = 0, evT = 6, tAcc = 0, crowdAt = 0, radioIndex = 0;
+  let ctx, master, sfx, mus, amb, eng, eng2, engF, engG, turboO, turboG, wind, sq, am, nbuf, timer = null, step = 0, mode = 'off', radioReturnMode = 'background', theme = 0, evT = 6, tAcc = 0, crowdAt = 0, radioIndex = 0;
   const cfg = { snd: 1, mus: 1 };
 
   const noiseBuf = sec => { const b = ctx.createBuffer(1, ctx.sampleRate * sec, ctx.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; return b; };
@@ -74,6 +74,13 @@ const Snd = (() => {
   const nitro = () => { noise(0.18, 5000, 0.5); sweep(300, 900, 0.5, 'sawtooth', 0.04); };
   const click = () => beep(700, 0.04, 'square', 0.04);
   const countdown = go => beep(go ? 1046 : 523, go ? 0.5 : 0.2, 'square', 0.09);
+  // Старт: 1 и 2 — двигатель на холостых; 3 — колёса медленно проворачиваются (щелчки), двигатель громче; GO — полный газ.
+  function countdownStep(k) {
+    if (!ctx || !cfg.snd) return;
+    if (k <= 2) { sweep(58 + k * 8, 66 + k * 10, 0.8, 'sawtooth', 0.035 + k * 0.012, sfx); noise(0.02, 380, 0.1); beep(k === 1 ? 523 : 587, 0.12, 'square', 0.06); }
+    else if (k === 3) { sweep(76, 190, 0.9, 'sawtooth', 0.07, sfx); [0, 1, 2, 3].forEach(i => setTimeout(() => noise(0.035, 1400, 0.05), i * 230)); beep(659, 0.12, 'square', 0.06); }
+    else { sweep(150, 460, 0.7, 'sawtooth', 0.1, sfx); countdown(true); }
+  }
   const fanfare = () => [523, 659, 784, 1046, 1318].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'square', 0.07), i * 120));
   const lose = () => [392, 349, 311, 262].forEach((f, i) => setTimeout(() => beep(f, 0.3, 'triangle', 0.08), i * 160));
   const lap = () => { beep(880, 0.1, 'sine', 0.08); setTimeout(() => beep(1175, 0.2, 'sine', 0.08), 100); };
@@ -101,6 +108,10 @@ const Snd = (() => {
   // ---- музыка ----
   const BASS = [55, 0, 55, 0, 65.4, 0, 55, 0, 73.4, 0, 73.4, 0, 82.4, 0, 65.4, 0];
   const ARP = [220, 262, 330, 440, 330, 262, 220, 262, 247, 294, 370, 494, 370, 294, 247, 294];
+  const MENU_LEAD = [523,0,659,0,784,659,0,587,523,0,392,0,440,523,0,659];
+  const MENU_BASS = [65.4,0,0,0,82.4,0,0,0,73.4,0,0,0,55,0,0,0];
+  const WORLD_LEAD = [262,0,330,0,392,0,330,0,294,0,370,0,440,0,370,0];
+  const WORLD_BASS = [49,0,0,0,55,0,0,0,43.7,0,0,0,55,0,0,0];
   function note(f, t, d, type, v) {
     const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type; o.frequency.value = f;
     g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0008, t + d); o.connect(g); g.connect(mus); o.start(t); o.stop(t + d + 0.02);
@@ -122,17 +133,36 @@ const Snd = (() => {
   function mtick() {
     if (!ctx || mode === 'off' || !cfg.mus) return;
     const t=T()+0.05,s=step%16,race=mode==='race';
-    if(mode==='radio'){const tr=RADIO_TRACKS[radioIndex%RADIO_TRACKS.length];if(s%4===0)kick(t);if(s%2===0)hat(t);if(tr.bass[s])note(tr.bass[s],t,0.24,'triangle',0.12);if(tr.lead[s])note(tr.lead[s],t,0.2,'sawtooth',0.042);}
-    else{if(race?s%4===0:s%8===0)kick(t);if(race&&s%2===0)hat(t);if(BASS[s])note(BASS[s],t,race?0.16:0.3,'sawtooth',race?0.16:0.1);if(race||s%2===0)note(ARP[s],t,0.12,'square',race?0.03:0.015);}
+    if(mode==='radio'){
+      const tr=RADIO_TRACKS[radioIndex%RADIO_TRACKS.length];
+      if(s%4===0)kick(t); if(s%2===0)hat(t);
+      if(tr.bass[s])note(tr.bass[s],t,0.24,'triangle',0.12);
+      if(tr.lead[s])note(tr.lead[s],t,0.2,'sawtooth',0.042);
+    } else if(race){
+      if(s%4===0)kick(t); if(s%2===0)hat(t);
+      if(BASS[s])note(BASS[s],t,0.17,'sawtooth',0.16);
+      if(ARP[s])note(ARP[s],t,0.12,'square',0.034);
+      if(s%8===4)note(ARP[(s+4)%16]*2,t,0.08,'triangle',0.018);
+    } else if(mode==='background'){
+      if(s%8===0)note(WORLD_BASS[s],t,0.45,'triangle',0.065);
+      if(WORLD_LEAD[s])note(WORLD_LEAD[s],t,0.36,'sine',0.025);
+      if(s%4===2)note(WORLD_LEAD[(s+3)%16]*0.5,t,0.48,'triangle',0.018);
+    } else { // main menu: welcoming synthwave, restrained percussion
+      if(s%8===0)kick(t);
+      if(MENU_BASS[s])note(MENU_BASS[s],t,0.33,'triangle',0.075);
+      if(MENU_LEAD[s])note(MENU_LEAD[s],t,0.24,'sine',0.032);
+      if(s%4===2)note(ARP[(s+2)%16],t,0.1,'triangle',0.014);
+    }
     step++;
   }
   function music(m) {
-    if(m===mode)return;mode=m;clearInterval(timer);timer=null;if(m==='off'||!ctx)return;
-    const tempo=m==='race'?138:m==='radio'?RADIO_TRACKS[radioIndex%RADIO_TRACKS.length].tempo:92;timer=setInterval(mtick,60000/tempo/4);
+    if(m===mode)return;mode=m;step=0;clearInterval(timer);timer=null;if(m==='off'||!ctx)return;
+    const tempo=m==='race'?142:m==='background'?76:m==='radio'?RADIO_TRACKS[radioIndex%RADIO_TRACKS.length].tempo:92;
+    timer=setInterval(mtick,60000/tempo/4);
   }
-  function toggleRadio(){if(mode==='radio'){music('menu');return{on:false,name:RADIO_TRACKS[radioIndex].name};}music('radio');return{on:true,name:RADIO_TRACKS[radioIndex].name};}
+  function toggleRadio(){if(mode==='radio'){const back=radioReturnMode;music(back);return{on:false,name:RADIO_TRACKS[radioIndex].name};}radioReturnMode=(mode==='race'||mode==='background')?mode:'menu';music('radio');return{on:true,name:RADIO_TRACKS[radioIndex].name};}
   function nextRadio(){radioIndex=(radioIndex+1)%RADIO_TRACKS.length;step=0;if(mode==='radio'){clearInterval(timer);timer=setInterval(mtick,60000/RADIO_TRACKS[radioIndex].tempo/4);}return RADIO_TRACKS[radioIndex].name;}
   function radioInfo(){return{on:mode==='radio',name:RADIO_TRACKS[radioIndex].name,index:radioIndex};}
 
-  return { init, setCfg, update, idle, beep, bump, crash, coin, pickup, oil, jump, land, nitro, click, countdown, fanfare, lose, lap, crowd, setTheme, ambTick, music, toggleRadio, nextRadio, radioInfo };
+  return { init, setCfg, update, idle, beep, bump, crash, coin, pickup, oil, jump, land, nitro, click, countdown, countdownStep, fanfare, lose, lap, crowd, setTheme, ambTick, music, toggleRadio, nextRadio, radioInfo };
 })();

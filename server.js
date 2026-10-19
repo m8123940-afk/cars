@@ -23,6 +23,14 @@ const failed = new Map();    // ip -> {n, t}
 const ACCOUNT_FILE = path.join(__dirname, 'accounts.json');
 const WORLD_EDITS_FILE = path.join(__dirname, 'world-edits.json');
 const SOCIAL_FILE = path.join(__dirname, 'social-posts.json');
+const LEADERBOARD_FILE = path.join(__dirname, 'leaderboard.json');
+let leaderboardEntries = {};
+try {
+  const loaded = JSON.parse(fs.readFileSync(LEADERBOARD_FILE, 'utf8'));
+  if (loaded && typeof loaded === 'object' && !Array.isArray(loaded)) leaderboardEntries = loaded;
+} catch (_) {}
+function saveLeaderboard(){ const tmp=LEADERBOARD_FILE+'.tmp'; fs.writeFileSync(tmp, JSON.stringify(leaderboardEntries)); fs.renameSync(tmp, LEADERBOARD_FILE); }
+function publicLeaderboard(){ return Object.values(leaderboardEntries).filter(p=>p && typeof p.name==='string').sort((a,b)=>(Number(b.level)||1)-(Number(a.level)||1)||(Number(b.coins)||0)-(Number(a.coins)||0)||(Number(a.updatedAt)||0)-(Number(b.updatedAt)||0)).slice(0,100).map(p=>({name:String(p.name).slice(0,18),level:Math.max(1,Number(p.level)||1),coins:Math.max(0,Number(p.coins)||0)})); }
 let socialPosts = [];
 const socialRate = new Map();
 try { const saved = JSON.parse(fs.readFileSync(SOCIAL_FILE, 'utf8')); if(Array.isArray(saved)) socialPosts=saved.slice(0,80); } catch (_) {}
@@ -125,6 +133,22 @@ const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
   const json = (code, o) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(o)); };
   if (url === '/' || url === '/health') return json(200, { ok: true, online: clients.size });
+  // Public cross-device career leaderboard. Submission is rate-limited and only moves an existing record upward.
+  if (url === '/api/leaderboard' && req.method === 'GET') return json(200, { players: publicLeaderboard() });
+  if (url === '/api/leaderboard' && req.method === 'POST') {
+    const b = await readBody(req), ip = ipOf(req);
+    if (!socialRateAllowed('leaderboard:' + ip, 4500)) return json(429, { error: 'Подожди немного перед следующей синхронизацией' });
+    const name = clean(b.name) || 'Гонщик';
+    const key = name.toLocaleLowerCase();
+    const level = Math.max(1, Math.min(99999, Math.floor(Number(b.level) || 1)));
+    const coins = Math.max(0, Math.min(1000000000000000, Math.floor(Number(b.coins) || 0)));
+    const previous = leaderboardEntries[key] || {};
+    leaderboardEntries[key] = { name, level: Math.max(Number(previous.level)||1, level), coins: Math.max(Number(previous.coins)||0, coins), updatedAt: Date.now() };
+    const entries = Object.entries(leaderboardEntries).sort((a,b)=>(Number(b[1].level)||1)-(Number(a[1].level)||1)||(Number(b[1].coins)||0)-(Number(a[1].coins)||0)).slice(0,1000);
+    leaderboardEntries = Object.fromEntries(entries);
+    try { saveLeaderboard(); } catch (error) { console.error('Leaderboard could not persist', error); return json(500, { error: 'Не удалось сохранить рейтинг' }); }
+    return json(200, { ok: true, player: leaderboardEntries[key], players: publicLeaderboard() });
+  }
   if (url === '/api/world-edits' && req.method === 'GET') return json(200, worldEditsState);
   // Public, shared in-game photo feed. Images are small JPEG data URLs captured by the game.
   if (url === '/api/social-posts' && req.method === 'GET') return json(200, { posts: publicSocialPosts() });

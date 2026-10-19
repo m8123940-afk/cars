@@ -37,6 +37,13 @@
   }
 
   async function auth(mode) {
+    // Вход только по нику: без пароля и без сервера.
+    { const nm = ($('accountName').value || '').trim().slice(0, 14);
+      if (!nm) { status('Введите ник', true); return; }
+      localStorage.setItem('tr_account_name', nm); $('accountName').value = nm;
+      $('account').hidden = true; $('menu').hidden = false;
+      window.dispatchEvent(new CustomEvent('tr-account-login', { detail: { name: nm } }));
+      return; }
     const name = $('accountName').value.trim(), password = $('accountPass').value;
     if (!name || !password) { status('Введите имя и пароль', true); return; }
     const base = toHttp($('accountServer').value || DEFAULT_SERVER);
@@ -166,5 +173,6 @@
   $('registerAccount').addEventListener('click', () => auth('register'));
   $('accountPass').addEventListener('keydown', e => { if (e.key === 'Enter') auth('login'); });
   $('accountServer').addEventListener('keydown', e => { if (e.key === 'Enter') auth('login'); });
-  restoreSession();
+  // Ник сохраняется на устройстве; сервер для входа не нужен.
+  (() => { const nm = (localStorage.getItem('tr_account_name') || '').trim(); if (nm) { $('account').hidden = true; $('menu').hidden = false; window.dispatchEvent(new CustomEvent('tr-account-login', { detail: { name: nm, offline: true } })); } })();
 })();

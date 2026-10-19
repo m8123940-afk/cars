@@ -416,3 +416,150 @@ body.light .account h2 { color: #a34c08; text-shadow: none; }
 .world-dest{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:8px 11px;border-radius:12px;font-size:12px;white-space:nowrap}
 .world-dest span{font-size:17px}.world-dest b{font-weight:700}.world-dest i{font-style:normal;opacity:.7;font-size:11px}
 .world-dest-set{border-style:dashed}
+
+/* Ник-only вход: пароль и регистрация скрыты */
+#accountPass, #registerAccount, label.set:has(#accountPass) { display: none !important; }
+
+
+/* ===== Turbo Rivals enhanced garage, global ladder and alternate mobile steering ===== */
+.garage-screen{inset:0;bottom:auto;width:100%;height:100dvh;max-height:none;overflow:hidden;padding:calc(12px + max(env(safe-area-inset-top),var(--tg-safe-top,0px))) max(12px,env(safe-area-inset-right)) calc(12px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px))) max(12px,env(safe-area-inset-left));background:linear-gradient(90deg,#07111fee 0%,#091421db 31%,#07111f25 59%,#07111f05 100%);backdrop-filter:none;z-index:20;color:#f6f8fc;}
+.garage-top{position:relative;z-index:3;display:flex;align-items:center;gap:12px;margin:0 0 10px;max-width:100%;}
+.garage-top .btn{background:#0c1828d9;border-color:#8dbacb55;}
+.garage-top .coins{margin-left:auto;font-size:14px;color:#d5e9f7;}
+.garage-layout{height:calc(100% - 54px);min-height:0;display:grid;grid-template-columns:minmax(235px,29vw) minmax(0,1fr);gap:clamp(12px,2vw,28px);}
+.garage-list-panel{position:relative;z-index:2;min-height:0;display:flex;flex-direction:column;padding:clamp(12px,1.5vw,22px);border:1px solid #a5cbe630;border-radius:20px;background:linear-gradient(160deg,#101d2df0,#08121de8 86%);box-shadow:0 18px 55px #0005;backdrop-filter:blur(12px);}
+.garage-list-heading .eyebrow,.garage-car-info .eyebrow,.garage-preview-label{font:900 10px/1.2 system-ui,sans-serif;letter-spacing:1.8px;color:#6de2f0;}
+.garage-list-heading h3{font-size:clamp(18px,2vw,25px);margin:7px 0 5px;letter-spacing:.5px;}
+.garage-list-heading .sub{font-size:12px;color:#aebed0;}
+.garage-car-list{display:flex;flex-direction:column;gap:6px;overflow:auto;overscroll-behavior:contain;min-height:0;margin-top:14px;padding-right:4px;scrollbar-width:thin;}
+.garage-car-row{display:grid;grid-template-columns:35px minmax(0,1fr) 20px;align-items:center;gap:9px;width:100%;min-height:56px;padding:8px 9px;text-align:left;border:1px solid #d1e9f116;border-radius:12px;background:#ffffff06;color:#eaf3fa;cursor:pointer;font:600 12px/1.25 system-ui,sans-serif;transition:background .16s,border .16s,transform .16s;}
+.garage-car-row:hover{background:#61deeb12;border-color:#8cddeb55;}
+.garage-car-row.selected{background:linear-gradient(105deg,#2bd6e01f,#3c8ee21c);border-color:#65e8f4b8;box-shadow:inset 3px 0 #59e4ee;}
+.garage-car-index{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:#b3d7e512;color:#8aa9c1;font:900 11px/1 system-ui,sans-serif;}
+.garage-car-row.selected .garage-car-index{background:#5ce5ed1e;color:#85f7ff;}
+.garage-car-row-copy{min-width:0;display:flex;flex-direction:column;gap:4px;}
+.garage-car-row-copy b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;}
+.garage-car-row-copy small{font:800 9px/1 system-ui,sans-serif;letter-spacing:.85px;color:#8fa7ba;}
+.garage-car-row.owned .garage-car-row-copy small{color:#83d8ba;}
+.garage-car-state{text-align:center;color:#8cebf0;font-size:16px;font-weight:900;}
+.garage-detail-panel{display:flex;min-width:0;min-height:0;flex-direction:column;position:relative;isolation:isolate;}
+.garage-preview-label{align-self:flex-end;display:flex;align-items:center;gap:12px;padding:9px 13px;border:1px solid #f2f8ff25;border-radius:12px;background:#0a1625a8;color:#a9c6d8;backdrop-filter:blur(8px);}
+.garage-preview-label b{color:#72ecf5;font-size:10px;letter-spacing:1px;}
+.garage-car-info{align-self:flex-end;width:min(430px,75%);margin:clamp(8px,2vh,24px) 0 auto;padding:16px 18px;border:1px solid #a6d0e31f;border-radius:16px;background:linear-gradient(120deg,#07121bcf,#07121b46);backdrop-filter:blur(7px);}
+.garage-car-info h2{margin:5px 0 4px;font-size:clamp(22px,3.2vw,42px);line-height:1.02;color:#f7fbff;text-shadow:0 3px 24px #000a;}
+.garage-car-info .sub{color:#aebfd1;font-size:12px;}
+.garage-detail-bottom{align-self:flex-end;width:min(430px,82%);padding:15px 17px;border:1px solid #a5cbe62b;border-radius:18px;background:linear-gradient(145deg,#0b1725ec,#0a1420df);box-shadow:0 16px 50px #0005;backdrop-filter:blur(10px);}
+.garage-detail-bottom h3{margin:0 0 12px;color:#eaf6ff;font:900 12px/1 system-ui,sans-serif;letter-spacing:1.4px;}
+.garage-stat-row{display:grid;grid-template-columns:92px minmax(50px,1fr) 25px;gap:9px;align-items:center;margin:10px 0;color:#b2c5d4;font:600 11px/1.2 system-ui,sans-serif;}
+.garage-stat-row>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.garage-stat-row>b{text-align:right;color:#effbff;font-weight:900;}
+.garage-stat-bar{height:6px;overflow:hidden;border-radius:8px;background:#e5f5ff14;box-shadow:inset 0 1px 2px #0008;}
+.garage-stat-bar i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#40d6e6,#8df7e2);box-shadow:0 0 10px #4de2eb55;}
+.garage-actions{gap:8px;margin-top:14px;}
+.garage-actions>*{flex:1;min-width:0;}
+.garage-actions button.big{font-size:14px;padding:11px 13px;transform:none;border-radius:9px;color:#06131b;background:linear-gradient(110deg,#81f3e7,#52cce8);font-weight:900;}
+.garage-actions button.big:active{transform:translateY(1px);}
+.garage-actions .btn{font-size:12px;padding:9px;}
+.garage-footnote{margin:10px 0 0;font:500 10px/1.35 system-ui,sans-serif;color:#8198ab;}
+.leaderboard-mini{width:min(410px,100%);padding:10px 12px;border:1px solid #80dce732;border-radius:14px;background:linear-gradient(135deg,#071321df,#102a3ab8);box-shadow:0 10px 36px #0004;}
+.leaderboard-mini-head{display:flex;align-items:center;gap:8px;justify-content:space-between;color:#79e8f0;font:900 10px/1 system-ui,sans-serif;letter-spacing:1px;}
+.leaderboard-mini-head .btn{font-size:10px;padding:5px 8px;border-radius:7px;}
+.leaderboard-mini-rows{display:flex;flex-direction:column;gap:5px;margin-top:8px;max-height:145px;overflow:auto;}
+.leaderboard-row{display:grid;grid-template-columns:27px minmax(0,1fr) auto auto;gap:8px;align-items:center;min-height:34px;padding:6px 8px;border:1px solid #b8deef0e;border-radius:9px;background:#ffffff05;color:#dce8f1;font:600 12px/1.15 system-ui,sans-serif;}
+.leaderboard-rank{color:#7fb1c8;font-size:11px;font-weight:900;}
+.leaderboard-player-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.leaderboard-player-name small{font-weight:600;color:#55deed;font-size:10px;}
+.leaderboard-level{font:900 10px/1 system-ui,sans-serif;letter-spacing:.5px;color:#ffe09a;white-space:nowrap;}
+.leaderboard-coins{font:800 10px/1 system-ui,sans-serif;color:#a8d8c3;white-space:nowrap;}
+.leaderboard-row.mine{border-color:#62e0ed80;background:#43c6d40c;}
+.leaderboard-empty{display:block;padding:8px 3px;color:#a5bacb;font:500 11px/1.4 system-ui,sans-serif;}
+.leaderboard-screen{z-index:35;align-items:stretch;justify-content:flex-start;gap:13px;text-align:left;padding:clamp(18px,4vh,42px) max(18px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left));background:radial-gradient(ellipse at 88% 0%,#17445d9c,#09131ff5 55%,#050a12f9);}
+.leaderboard-title-row{display:flex;align-items:center;gap:16px;justify-content:space-between;width:min(900px,100%);align-self:center;}
+.leaderboard-title-row h2{font-size:clamp(28px,5vw,44px);color:#f7fbff;margin:4px 0;}
+.leaderboard-title-row .sub{color:#a9bdcd;}
+.leaderboard-title-row .eyebrow{font:900 10px/1 system-ui,sans-serif;letter-spacing:2px;color:#67e4ed;margin:0;}
+#leaderboardStatus{width:min(900px,100%);align-self:center;color:#a8c1d0;}
+.leaderboard-rows{display:flex;flex-direction:column;gap:7px;width:min(900px,100%);align-self:center;max-height:calc(100dvh - 245px);overflow:auto;padding:4px;overscroll-behavior:contain;}
+.leaderboard-screen .leaderboard-row{min-height:48px;padding:10px 13px;border-radius:12px;background:#d8efff08;font-size:14px;grid-template-columns:42px minmax(0,1fr) minmax(80px,auto) minmax(100px,auto);}
+.leaderboard-screen .leaderboard-rank{font-size:14px;}
+.leaderboard-screen .leaderboard-player-name{font-size:14px;}
+.leaderboard-screen .leaderboard-level{font-size:12px;}
+.leaderboard-screen .leaderboard-coins{font-size:12px;}
+.leaderboard-empty.large{padding:20px;text-align:center;border:1px dashed #b4d8ed33;border-radius:12px;}
+.leaderboard-screen>[data-back]{align-self:center;min-width:180px;}
+#touch #buttonSteering{transition:opacity .15s;}
+#touch.control-wheel #buttonSteering,#touch.control-slide #buttonSteering{display:none!important;}
+#wheelControl{position:fixed;z-index:30;left:max(18px,env(safe-area-inset-left));bottom:calc(20px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));width:clamp(125px,29vw,172px);height:clamp(125px,29vw,172px);display:grid;place-items:center;touch-action:none;pointer-events:auto;}
+#wheelBase{position:relative;width:100%;height:100%;border:9px solid #d6e6edcc;border-radius:50%;background:radial-gradient(circle,#233b4ab0 0 28%,#0b1923b8 30% 100%);box-shadow:0 8px 28px #0008,inset 0 0 0 5px #182e3c,inset 0 0 0 8px #79bbd160;touch-action:none;user-select:none;}
+#wheelBase:before,#wheelBase:after{content:"";position:absolute;left:50%;top:50%;width:10px;height:41%;border-radius:7px;background:linear-gradient(90deg,#dce6e9,#526b7a);transform:translate(-50%,-4%);transform-origin:50% 0;}
+#wheelBase:after{transform:translate(-50%,-4%) rotate(120deg);}
+#wheelHub{position:absolute;left:50%;top:50%;width:42%;height:42%;border:6px solid #96adba;border-radius:50%;transform:translate(-50%,-50%);background:radial-gradient(circle,#b5cbd6,#355367 70%);box-shadow:inset 0 2px 8px #0008;pointer-events:none;}
+#wheelBase>span{position:absolute;left:0;right:0;bottom:11%;text-align:center;color:#e8f8ff;font:900 10px/1 system-ui,sans-serif;letter-spacing:1.2px;text-shadow:0 2px 4px #000;pointer-events:none;}
+#slideControl{position:fixed;z-index:30;left:max(18px,env(safe-area-inset-left));bottom:calc(22px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));width:min(45vw,300px);min-width:180px;padding:12px 14px;display:flex;flex-direction:column;gap:9px;border:1px solid #c8eff55c;border-radius:17px;background:linear-gradient(135deg,#071521e8,#102d3ae8);box-shadow:0 10px 32px #0008;color:#dff7ff;touch-action:pan-y;pointer-events:auto;}
+#slideControl>span{text-align:center;font:900 10px/1 system-ui,sans-serif;letter-spacing:1.4px;}
+#slideSteerRange{width:100%;height:34px;margin:0;accent-color:#54e0ea;touch-action:pan-x;}
+#slideControl small{text-align:center;color:#a8c7d5;font:500 10px/1.25 system-ui,sans-serif;}
+#touch.control-wheel .grp.r,#touch.control-slide .grp.r{gap:8px;}
+body.light .garage-screen{background:linear-gradient(90deg,#f1f7f9f5 0%,#eef5fad9 31%,#e8f2f72b 59%,transparent 100%);color:#10202e;}
+body.light .garage-list-panel,body.light .garage-detail-bottom{background:linear-gradient(150deg,#f9fdffef,#eaf4f7e9);border-color:#517f9928;}
+body.light .garage-car-row{color:#183448;background:#09283d05;border-color:#09283d12;}
+body.light .garage-car-info{background:#edf7f4ad;border-color:#527e8d2b;}
+body.light .garage-car-info h2{color:#142d3b;text-shadow:none;}
+body.light .garage-detail-bottom h3,body.light .garage-stat-row>b{color:#193448;}
+body.light .garage-preview-label{background:#eef8f7c9;}
+@media(max-width:760px){
+  .garage-screen{padding:calc(8px + max(env(safe-area-inset-top),var(--tg-safe-top,0px))) 8px calc(8px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px))) 8px;}
+  .garage-layout{height:calc(100% - 46px);grid-template-columns:minmax(125px,36vw) minmax(0,1fr);gap:8px;}
+  .garage-list-panel{padding:9px 7px;border-radius:14px;}
+  .garage-list-heading .eyebrow{font-size:8px;letter-spacing:1px;}
+  .garage-list-heading h3{font-size:14px;margin:5px 0;}
+  .garage-list-heading .sub{font-size:10px;line-height:1.25;}
+  .garage-car-list{gap:5px;margin-top:8px;}
+  .garage-car-row{grid-template-columns:24px minmax(0,1fr) 14px;gap:5px;min-height:48px;padding:6px 5px;border-radius:9px;}
+  .garage-car-index{width:23px;height:23px;font-size:9px;border-radius:6px;}
+  .garage-car-row-copy b{font-size:10px;}
+  .garage-car-row-copy small{font-size:7px;letter-spacing:.3px;}
+  .garage-car-state{font-size:12px;}
+  .garage-preview-label{align-self:stretch;justify-content:space-between;gap:4px;padding:7px 8px;font-size:8px;letter-spacing:.7px;}
+  .garage-preview-label b{font-size:8px;letter-spacing:.25px;}
+  .garage-car-info{align-self:stretch;width:auto;margin:8px 0 auto;padding:10px;border-radius:11px;}
+  .garage-car-info .eyebrow{font-size:8px;letter-spacing:.8px;}
+  .garage-car-info h2{font-size:clamp(16px,4.5vw,25px);overflow-wrap:anywhere;}
+  .garage-car-info .sub{font-size:10px;line-height:1.3;}
+  .garage-detail-bottom{width:100%;padding:10px;border-radius:13px;}
+  .garage-detail-bottom h3{font-size:10px;margin-bottom:8px;}
+  .garage-stat-row{grid-template-columns:61px minmax(26px,1fr) 18px;gap:5px;font-size:9px;margin:7px 0;}
+  .garage-stat-bar{height:5px;}
+  .garage-actions{flex-direction:column;margin-top:9px;}
+  .garage-actions button.big,.garage-actions .btn{width:100%;min-height:37px;font-size:12px;padding:8px;}
+  .garage-footnote{font-size:8px;}
+  .leaderboard-mini{width:100%;padding:8px 9px;}
+  .leaderboard-mini-rows{max-height:116px;}
+  .leaderboard-mini .leaderboard-row{grid-template-columns:22px minmax(0,1fr) auto;gap:5px;padding:5px 6px;font-size:10px;}
+  .leaderboard-mini .leaderboard-coins{display:none;}
+  .leaderboard-screen{padding:calc(16px + max(env(safe-area-inset-top),var(--tg-safe-top,0px))) 12px calc(12px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));}
+  .leaderboard-title-row{align-items:flex-start;gap:8px;}
+  .leaderboard-title-row h2{font-size:27px;}
+  .leaderboard-title-row .sub{font-size:11px;}
+  .leaderboard-screen .leaderboard-row{grid-template-columns:27px minmax(0,1fr) auto;gap:7px;padding:8px;min-height:42px;}
+  .leaderboard-screen .leaderboard-coins{display:none;}
+  .leaderboard-rows{max-height:calc(100dvh - 220px);}
+  #wheelControl{left:8px;bottom:calc(10px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));width:clamp(116px,30vw,146px);height:clamp(116px,30vw,146px);}
+  #slideControl{left:8px;bottom:calc(10px + max(env(safe-area-inset-bottom),var(--tg-safe-bottom,0px)));min-width:145px;width:42vw;padding:9px;}
+}
+@media(max-height:560px) and (orientation:landscape){
+  .garage-layout{grid-template-columns:minmax(180px,25vw) minmax(0,1fr);height:calc(100% - 38px);}
+  .garage-screen{padding-top:5px;padding-bottom:5px;}
+  .garage-list-panel{padding:8px;}
+  .garage-list-heading .sub{display:none;}
+  .garage-car-row{min-height:38px;padding:5px;}
+  .garage-detail-bottom{padding:8px;}
+  .garage-stat-row{margin:4px 0;}
+  .garage-actions{flex-direction:row;margin-top:6px;}
+  .garage-footnote{display:none;}
+}
+
+/* Boss hierarchy: clear silhouette in the HUD without adding costly effects. */
+#bossTag.final-boss{color:#f0b6ff;text-shadow:0 0 8px #8d35ff,0 0 22px #6c27ff;font-weight:1000;letter-spacing:2.1px;animation:tr-boss-pulse 1.2s ease-in-out infinite alternate;}
+#bossTag.mini-boss{color:#9dfaff;text-shadow:0 0 8px #19d6e5,0 0 18px #078bba;font-weight:950;letter-spacing:1.8px;}
+@keyframes tr-boss-pulse{from{filter:brightness(.88)}to{filter:brightness(1.22)}}

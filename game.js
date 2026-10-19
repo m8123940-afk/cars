@@ -41,7 +41,7 @@ if (tg) {
 }
 
 // ================= сохранение (localStorage: только это устройство, без серверной защиты) =================
-const defSave = () => ({ v: 4, name: 'Гонщик', coins: 0, cur: 'rust', cars: { rust: { up: [0, 0, 0, 0, 0, 0], dmg: 0 } }, level: 1, paint: {}, style: {}, neon: {}, tune: {}, char: { g: 'boy', col: 0, skin: 0 }, tour: null, set: { snd: 1, mus: 1, gfx: 'auto', resolution: 'recommended', theme: 'dark', server: SERVER_URL, touchLayout: 'left', touchSize: 'normal', keys: { gas: 'ArrowUp', brake: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', nitro: 'Space', drift: 'ShiftLeft' } } });
+const defSave = () => ({ v: 4, name: 'Гонщик', coins: 0, cur: 'rust', cars: { rust: { up: [0, 0, 0, 0, 0, 0], dmg: 0 } }, level: 1, paint: {}, style: {}, neon: {}, tune: {}, char: { g: 'boy', col: 0, skin: 0 }, tour: null, set: { snd: 1, mus: 1, gfx: 'auto', resolution: 'recommended', theme: 'dark', server: SERVER_URL, touchLayout: 'left', touchSize: 'normal', controlMode: 'buttons', keys: { gas: 'ArrowUp', brake: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight', nitro: 'Space', drift: 'ShiftLeft' } } });
 let save;
 try { save = Object.assign(defSave(), JSON.parse(localStorage.getItem('tr_save') || '{}')); } catch (e) { save = defSave(); }
 save.set = Object.assign(defSave().set, save.set); save.char = Object.assign(defSave().char, save.char); save.paint = Object.assign({}, save.paint || {}); save.style = Object.assign({}, save.style || {}); save.neon = Object.assign({}, save.neon || {}); save.tune = Object.assign({}, save.tune || {}); save.set.keys = Object.assign(defSave().set.keys, save.set.keys || {});
@@ -76,7 +76,7 @@ const carTune = id => Object.assign({ rimStyle: 0, wing: null }, save.tune[id] |
 const carPaint = id => save.paint[id] || null;
 function eff(id) {
   const d = carDef(id), o = save.cars[id] || { up: [0, 0, 0, 0, 0, 0] }, e = {};
-  STATS.forEach(([k], i) => e[k] = d.s[i] + o.up[i] * 0.6); return e;
+  STATS.forEach(([k], i) => e[k] = d.s[i]); return e;
 }
 function physFor(id) {
   const e = eff(id), o = save.cars[id] || { dmg: 0 }, d = o.dmg / 100;
@@ -177,7 +177,8 @@ function applyGfx() {
   document.body.classList.toggle('low-gpu', g === 'verylow' || g === 'low');
   // Keep the canvas crisp: adaptive resolution is capped more conservatively in the RT-look tier.
   const maxRatio = ({verylow:0.72,low:0.9,med:1.12,high:1.35,veryhigh:1.45,ultra:1.5,rt:1.35})[g] || 1.1;
-  const scaleFloor = g === 'rt' ? 0.88 : g === 'ultra' ? 0.78 : 0.56;
+  const touchDev = matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0;
+  const scaleFloor = touchDev ? 0.42 : g === 'rt' ? 0.88 : g === 'ultra' ? 0.78 : 0.56;
   adaptiveScale = Math.max(scaleFloor, adaptiveScale);
   const resolutionMode = ['720p','1080p','2k','4k'].includes(save.set.resolution) ? save.set.resolution : 'recommended';
   const targetLongestEdge = ({'720p':1280,'1080p':1920,'2k':2560,'4k':3840})[resolutionMode];
@@ -187,7 +188,7 @@ function applyGfx() {
     : Math.min(devicePixelRatio || 1, maxRatio);
   renderer.setPixelRatio(Math.max(0.55, basePixelRatio * adaptiveScale));
   renderer.setSize(innerWidth, innerHeight);
-  const shadowOn = ['high','veryhigh','ultra','rt'].includes(g);
+  const shadowOn = !touchDev && ['high','veryhigh','ultra','rt'].includes(g);
   renderer.shadowMap.enabled = shadowOn; sun.castShadow = shadowOn;
   const sz = ({verylow:256,low:384,med:512,high:1024,veryhigh:1536,ultra:2048,rt:2048})[g] || 512;
   if (sun.shadow.mapSize.x !== sz) { sun.shadow.mapSize.set(sz, sz); if (sun.shadow.map) { sun.shadow.map.dispose(); sun.shadow.map = null; } }
@@ -532,7 +533,7 @@ function disposeModel(root) {
 }
 function showCar(id) {
   if (player.mesh) { scene.remove(player.mesh); disposeModel(player.mesh); }
-  const tune = carTune(id); player.mesh = makeCarModel(visualCarDef(id), carPaint(id), { neon: save.neon[id] !== false, rimStyle: tune.rimStyle, wing: tune.wing }); scene.add(player.mesh); player.mid = id;
+  player.mesh = makeCarModel(carDef(id), null, {}); scene.add(player.mesh); player.mid = id;
   seatDriver(player.mesh, save.char.g, save.char.col, save.char.skin);
   if (typeof player !== 'undefined') { player.dmg = Number(save.cars[id]?.dmg) || 0; player.immobilized = player.dmg >= 100; if (typeof applyDamageVisual === 'function') applyDamageVisual(); }
 }
@@ -540,18 +541,39 @@ function previewPos() {
   const s = sampleAt(12, 0); player.mesh.position.set(s.x, 0, s.z); player.mesh.rotation.set(0, s.h, 0); player.mesh.userData.flame.visible = false;
 }
 function clearRemotes() { Object.values(remotes).forEach(r => { scene.remove(r.mesh); disposeModel(r.mesh); }); remotes = {}; }
+const RACER_A = ['Нео','Рэй','Зед','Мак','Тайр','Вик','Лу','Ник','Сай','Оли','Рен','Дрейк','Карс','Буг','Шторм','Ракс','Фокс','Джет','Волк','Гейл'];
+const RACER_B = ['ан','то','ка','ик','ор','рим','вен','зар','дер','ро','лан','тэй','ис','мир','ди','ко','спид','райд','бласт','гир'];
+const RACER_C = ['','','','','7','_x','77','_Pro','_GT','21'];
+function genRacerNames(n) {
+  const out = [], used = new Set(); let guard = 0;
+  while (out.length < n && guard++ < 500) {
+    const nm = RACER_A[Math.random() * RACER_A.length | 0] + RACER_B[Math.random() * RACER_B.length | 0] + RACER_C[Math.random() * RACER_C.length | 0];
+    if (!used.has(nm)) { used.add(nm); out.push(nm); }
+  }
+  while (out.length < n) out.push('Гонщик' + (out.length + 1));
+  return out;
+}
+// Соперники получают апгрейды по уровню: чем дальше в карьере, тем лучше обвес и неон.
+function aiTuneOpts(L, i) {
+  const tier = Math.min(4, Math.floor((L || 1) / 5));
+  return { neon: tier >= 3 && i % 3 === 0, rimStyle: tier >= 1 ? 1 + (i % 3) : undefined, wing: tier >= 2 && i % 2 === 0 ? 1 : undefined };
+}
 function buildAIs(c) {
   ais.forEach(a => { scene.remove(a.mesh); disposeModel(a.mesh); }); ais = [];
-  const L = c.L, boss = c.boss, pool = c.names ? c.names.slice() : NAMES.slice().sort(() => Math.random() - 0.5);
+  const L = c.L, boss = c.boss, pool = c.names ? c.names.slice() : genRacerNames(c.count || 8);
   for (let i = 0; i < c.count; i++) {
     const isB = !!boss && i === 0;
-    const def = CARS[clamp(Math.floor(c.top / 7) - 3 + Math.floor(Math.random() * 3), 0, CARS.length - 1)];
-    const mesh = makeCarModel(isB ? CARS[CARS.length - 1] : def, isB ? (boss === 'boss' ? 0x7a0f9a : 0x9a0f0f) : (Math.random() < 0.6 ? undefined : Math.floor(Math.random() * 0xffffff)));
+    const regularTier = clamp(Math.floor(c.top / 7) - 3 + Math.floor(Math.random() * 3), 0, CARS.length - 1);
+    const bossModelIndex = boss === 'boss' ? CARS.length - 1 : Math.max(0, CARS.length - 4);
+    const def = CARS[isB ? bossModelIndex : regularTier];
+    const bossTint = boss === 'boss' ? 0x7b42ff : 0x13c9dc;
+    const mesh = makeCarModel(def, isB ? bossTint : null, {});
     seatDriver(mesh, Math.random() < 0.5 ? 'boy' : 'girl', Math.floor(Math.random() * 6), Math.floor(Math.random() * 3));
     scene.add(mesh);
-    ais.push({ name: isB ? bossName(L) : pool[i], mesh, p: 0, speed: 0, lat: 0, base: 0, isAI: true,
-      skill: isB ? (boss === 'boss' ? 1.08 : 1.04) : rr(c.sk[0], c.sk[1]), aware: isB ? 1 : c.aware, boss: isB, finished: false, y: 0, airT: 0, rampCool: 0, rampT: 0, slipT: 0,
-      nT: 3 + Math.random() * 6, nOn: 0, seen: new Map(), nitroOK: c.nit });
+    const bossTier = !isB ? '' : boss === 'boss' ? 'boss' : 'mini';
+    ais.push({ name: isB ? bossName(L) : (pool[i] || genRacerNames(1)[0]), mesh, p: 0, speed: 0, lat: 0, base: 0, isAI: true,
+      skill: isB ? (bossTier === 'boss' ? 1.30 : 1.17) : rr(c.sk[0], c.sk[1]), aware: isB ? 1 : c.aware, boss: isB, bossTier, finished: false, y: 0, airT: 0, rampCool: 0, rampT: 0, slipT: 0,
+      nT: isB ? (bossTier === 'boss' ? 1.8 + Math.random() * 1.8 : 2.8 + Math.random() * 2.6) : 3 + Math.random() * 6, nOn: 0, seen: new Map(), nitroOK: !!c.nit || isB });
   }
 }
 // slot: 0..5 (ряд = slot/2). Офлайн: игрок на своём слоте, ИИ по порядку. Онлайн: слоты назначает сервер.
@@ -575,6 +597,7 @@ function placeGrid(mySlot) {
 
 // ================= ввод =================
 const held = new Set();
+let touchSteerValue = 0;
 const WORLD_DEFAULT_KEYMAP = { KeyW: 'gas', KeyA: 'left', KeyS: 'brake', KeyD: 'right', Space: 'drift', ShiftLeft: 'nitro', ShiftRight: 'nitro', KeyX: 'drift' };
 const DEFAULT_KEYMAP = { ArrowUp: 'gas', KeyW: 'gas', ArrowDown: 'brake', KeyS: 'brake', ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', Space: 'nitro', ShiftLeft: 'drift', ShiftRight: 'drift', KeyX: 'drift' };
 let waitingKey = null;
@@ -596,7 +619,7 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => { const k = state === 'world' ? (WORLD_DEFAULT_KEYMAP[e.code] || activeKeyMap()[e.code]) : activeKeyMap()[e.code]; if (k) held.delete(k); });
 function releaseAllInputs() {
-  held.clear();
+  held.clear(); touchSteerValue = 0; if ($('wheelHub')) $('wheelHub').style.transform = 'rotate(0deg)'; if ($('slideSteerRange')) $('slideSteerRange').value = '0';
   document.querySelectorAll('.tb.on').forEach(b => { b.classList.remove('on'); delete b.dataset.activeAction; });
   touchDrag = null;
 }
@@ -690,6 +713,12 @@ function applyTouchSettings() {
   touch.classList.toggle('small-controls', save.set.touchSize === 'small');
   touch.classList.toggle('large-controls', save.set.touchSize === 'large');
   touch.classList.toggle('editing', touchEditing);
+  const mode = ['buttons','wheel','slide'].includes(save.set.controlMode) ? save.set.controlMode : 'buttons';
+  touch.classList.toggle('control-wheel', mode === 'wheel');
+  touch.classList.toggle('control-slide', mode === 'slide');
+  const steeringActive = isTouch && (state === 'race' || state === 'count');
+  if ($('wheelControl')) $('wheelControl').hidden = !(mode === 'wheel' && steeringActive);
+  if ($('slideControl')) $('slideControl').hidden = !(mode === 'slide' && steeringActive);
   const onFoot = state === 'world' && !worldDriving && isTouch;
   touch.classList.toggle('world-on-foot', onFoot);
   const worldStick=$('worldMoveStick');if(worldStick)worldStick.hidden=!onFoot;
@@ -713,6 +742,39 @@ function applyTouchSettings() {
   });
   if($('touchScaleTarget')) { const id=$('touchScaleTarget').value; $('touchScaleRange').value=Math.round((Number(save.set.touchScale[id])||1)*100); $('touchScaleValue').textContent=$('touchScaleRange').value+'%'; }
 }
+// Alternative touch steering. The virtual wheel tracks the finger; the slide control keeps a direct, neutral-centred steering value.
+(function bindAlternativeSteering(){
+  const wheel = $('wheelBase'), hub = $('wheelHub'), slider = $('slideSteerRange');
+  let pointer = null, wheelCenter = 0;
+  const setWheel = value => {
+    touchSteerValue = clamp(value, -1, 1);
+    if (hub) hub.style.transform = `rotate(${touchSteerValue * 165}deg)`;
+  };
+  if (wheel) {
+    const update = e => {
+      if (pointer !== e.pointerId) return;
+      const r = wheel.getBoundingClientRect();
+      const x = e.clientX - (r.left + r.width / 2);
+      setWheel(x / Math.max(30, r.width * 0.36));
+      e.preventDefault();
+    };
+    wheel.addEventListener('pointerdown', e => {
+      if (save.set.controlMode !== 'wheel') return;
+      pointer = e.pointerId; wheelCenter = e.clientX;
+      try { wheel.setPointerCapture(e.pointerId); } catch (_) {}
+      update(e); e.stopPropagation();
+    });
+    wheel.addEventListener('pointermove', update);
+    const end = e => { if (pointer === e.pointerId) { pointer = null; setWheel(0); } };
+    ['pointerup','pointercancel','lostpointercapture'].forEach(ev => wheel.addEventListener(ev, end));
+  }
+  if (slider) {
+    slider.addEventListener('input', () => { touchSteerValue = clamp(Number(slider.value) / 100, -1, 1); });
+    const releaseSlide = () => { touchSteerValue = 0; slider.value = '0'; };
+    ['pointerup','pointercancel','lostpointercapture','change'].forEach(ev => slider.addEventListener(ev, releaseSlide));
+  }
+})();
+
 // Standard mobile open-world controls: left thumbstick moves, right-side scene swipe looks around.
 const worldMoveStick=$('worldMoveStick'), worldMoveNub=$('worldMoveNub');
 if(worldMoveStick){
@@ -737,20 +799,21 @@ const inRace = () => state === 'race' || state === 'count' || state === 'done';
 function toast(t) { const e = $('toast'); e.textContent = t; e.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => e.hidden = true, 1200); }
 
 // ================= экраны =================
-const SCREENS = ['menu', 'garage', 'char', 'train', 'tour', 'online', 'settings', 'help', 'result'];
+const SCREENS = ['menu', 'garage', 'char', 'train', 'tour', 'online', 'leaderboard', 'settings', 'help', 'result'];
 const IDLE = new Set(['menu', 'garage', 'char', 'train', 'tour', 'online', 'settings', 'help']);
 function show(id) { SCREENS.forEach(s => $(s).hidden = s !== id); }
-function openScreen(id) { state = id; show(id); Snd.click(); if (id === 'garage') { gSel = carIdx(save.cur); renderGarage(); } if (id === 'char') renderChar(); if (id === 'train') renderTrain(); if (id === 'tour') renderTour(); if (id === 'online') renderOnline(); if (id === 'settings') refreshSettings(); }
+function openScreen(id) { state = id; show(id); Snd.click(); if (id === 'garage') { gSel = carIdx(save.cur); renderGarage(); } if (id === 'leaderboard') void refreshLeaderboard(true); if (id === 'char') renderChar(); if (id === 'train') renderTrain(); if (id === 'tour') renderTour(); if (id === 'online') renderOnline(); if (id === 'settings') refreshSettings(); }
 function leaveChar() { if (charMesh) { scene.remove(charMesh); disposeModel(charMesh); charMesh = null; } if (player.mesh) { player.mesh.visible = true; seatDriver(player.mesh, save.char.g, save.char.col, save.char.skin); } }
 function refreshMenu() {
   const L = save.level, th = THEMES[themeFor(L)];
   $('who').textContent = 'Гонщик: ' + save.name;
   $('lvlInfo').textContent = `Уровень ${L} · ${th.name} · ${lapsFor(L)} кр.` + (isBoss(L) ? ' · БОСС: ' + bossName(L) : isMini(L) ? ' · МИНИ-БОСС: ' + bossName(L) : '');
   $('coins').textContent = save.coins;
+  if (typeof refreshLeaderboard === 'function') void refreshLeaderboard(false);
 }
 function toMenu() {
   const leavingWorld = state === 'world';
-  raceId++; held.clear(); stuckT = 0; touchEditing=false; touchDrag=null;
+  raceId++; held.clear(); touchSteerValue=0; if($('wheelHub'))$('wheelHub').style.transform='rotate(0deg)'; if($('slideSteerRange'))$('slideSteerRange').value='0'; stuckT = 0; touchEditing=false; touchDrag=null;
   if (Net.isOpen()) { Net.send({ t: 'leave' }); Net.close(); }
   clearRemotes(); leaveChar();
   ['hud', 'count', 'fixBtn','raceCamBtn','minimap','worldMiniMap','worldHud','worldPhone','worldShop','worldSelect','worldLoading','worldDevPanel','touchEditDone','touchEditPanel'].forEach(i => {const el=$(i);if(el)el.hidden=true;}); $('touch').hidden = true; $('touch').classList.remove('editing'); $('fx').style.opacity = 0;
@@ -766,6 +829,9 @@ $('charBtn').onclick = () => openScreen('char');
 $('trainBtn').onclick = () => openScreen('train');
 $('tourBtn').onclick = () => openScreen('tour');
 $('onlineBtn').onclick = () => openScreen('online');
+$('leaderboardBtn').onclick = () => openScreen('leaderboard');
+$('leaderboardOpenBtn').onclick = () => openScreen('leaderboard');
+$('leaderboardRefreshBtn').onclick = () => { leaderboardFetchedAt = 0; void refreshLeaderboard(true); };
 $('setBtn').onclick = () => openScreen('settings');
 $('helpBtn').onclick = () => openScreen('help');
 function showWorldSelect(){
@@ -784,56 +850,55 @@ $('adminBtn').onclick = () => {
   window.open(u.replace(/\/+$/, '') + '/admin', '_blank');
 };
 
-// ---- гараж ----
+// ---- магазин машин: заводские модели без тюнинга и перекраски ----
 let gSel = carIdx(save.cur);
-const upCost = (id, i) => Math.round((save.cars[id].up[i] + 1) * (150 + carIdx(id) * 120));
-const repCost = id => Math.ceil(save.cars[id].dmg * (4 + carIdx(id) * 4));
-const PAINTS = [{n:'Заводской',c:null},{n:'Лава',c:0xff402e},{n:'Электрик',c:0x21bfff},{n:'Лайм',c:0x7dff51},{n:'Золото',c:0xffc52e},{n:'Фиолет',c:0xa86bff},{n:'Белый',c:0xf5f7fa},{n:'Графит',c:0x262b35},{n:'Мята',c:0x48e0bb},{n:'Розовый',c:0xff5ba7},{n:'Океан',c:0x1757ce}];
-const TUNE_PRICES = { paint:450, style:1200, neon:1800, rim:650, wing:1400 };
-function payForTuning(cost, label) { if (save.coins < cost) { toast('Не хватает монет: нужно '+cost.toLocaleString('ru-RU')); return false; } save.coins-=cost; toast(label+' · −'+cost.toLocaleString('ru-RU')+' монет'); return true; }
+const repCost = id => Math.max(1, Math.ceil((Number(save.cars[id]?.dmg) || 0) * (4 + carIdx(id) * 4)));
 function renderGarage() {
+  gSel = clamp(gSel|0, 0, CARS.length - 1);
   const d = CARS[gSel], own = save.cars[d.id];
   if (player.mid !== d.id) { showCar(d.id); previewPos(); }
-  $('gName').textContent = d.name; $('gCoins').textContent = save.coins;
-  $('gInfo').textContent = own ? (save.cur === d.id ? 'Выбрана' : 'В гараже') + ' · износ ' + Math.round(own.dmg) + '%' : 'Цена: ' + purchasePrice(d).toLocaleString('ru-RU') + ' монет';
-  $('gStats').innerHTML = STATS.map(([k, name], i) => {
-    const up = own ? own.up[i] : 0; let btn = '';
-    if (own) btn = up >= 5 ? '<button class="btn" disabled>МАКС</button>' : `<button class="btn" data-i="${i}" ${save.coins < upCost(d.id, i) ? 'disabled' : ''}>+ ${upCost(d.id, i)}</button>`;
-    return `<div class="srow"><span>${name}</span><div class="bar"><i style="width:${Math.min(100,d.s[i] / 18 * 100)}%"></i><i style="width:${up * 3.2}%"></i></div>${btn}</div>`;
+  $('gName').textContent = d.name;
+  $('gCoins').textContent = Number(save.coins || 0).toLocaleString('ru-RU');
+  $('gPreviewBadge').textContent = own ? (save.cur === d.id ? 'ВЫБРАНА · СТАНДАРТ' : 'КУПЛЕНА · СТАНДАРТ') : 'СТОКОВАЯ МОДЕЛЬ';
+  $('gInfo').textContent = own
+    ? `${save.cur === d.id ? 'Эта машина выбрана' : 'Есть в гараже'} · износ ${Math.round(Number(own.dmg)||0)}% · заводская комплектация`
+    : `Цена: ${purchasePrice(d).toLocaleString('ru-RU')} монет · заводская комплектация`;
+  $('gCarList').innerHTML = CARS.map((car, i) => {
+    const owned = !!save.cars[car.id], selected = i === gSel;
+    const price = purchasePrice(car);
+    return `<button class="garage-car-row ${selected?'selected':''} ${owned?'owned':''}" data-g-car="${i}" aria-current="${selected?'true':'false'}">
+      <span class="garage-car-index">${String(i+1).padStart(2,'0')}</span><span class="garage-car-row-copy"><b>${escapeHTML(car.name)}</b><small>${owned ? (save.cur===car.id?'ВЫБРАНА':'КУПЛЕНА') : price.toLocaleString('ru-RU')+' монет'}</small></span><span class="garage-car-state">${selected?'◆':owned?'✓':'+'}</span>
+    </button>`;
+  }).join('');
+  $('gStats').innerHTML = STATS.map(([key, name], i) => {
+    const val = clamp(Number(d.s[i]) || 0, 0, 18);
+    return `<div class="garage-stat-row"><span>${escapeHTML(name)}</span><div class="garage-stat-bar"><i style="width:${(val/18)*100}%"></i></div><b>${Math.round(val)}</b></div>`;
   }).join('');
   const main = $('gMain');
-  if (!own) { main.textContent = 'Купить'; main.disabled = save.coins < purchasePrice(d); }
-  else if (save.cur !== d.id) { main.textContent = 'Выбрать'; main.disabled = false; }
-  else { main.textContent = 'Выбрана'; main.disabled = true; }
-  const rp = $('gRepair'); rp.hidden = !(own && own.dmg > 0.5);
-  if (!rp.hidden) { rp.textContent = 'Починить · ' + repCost(d.id); rp.disabled = save.coins < repCost(d.id); }
-  $('paintOptions').innerHTML = PAINTS.map(p => { const selected = (save.paint[d.id] || null) === p.c; const color = p.c === null ? '#' + d.col.toString(16).padStart(6,'0') : '#' + p.c.toString(16).padStart(6,'0'); return `<button class="paint-swatch ${selected?'sel':''}" data-paint="${p.c===null?'factory':p.c}" style="background:${color}" title="${p.n}" aria-label="${p.n}" ${own?'':'disabled'}></button>`; }).join('');
-  $('gStyleBtn').textContent = 'Кузов: ' + ['Стандарт','Мускул','Суперкар','Гиперкар'][save.style[d.id] || 0] + ' · '+TUNE_PRICES.style; $('gStyleBtn').disabled = !own || save.coins<TUNE_PRICES.style;
-  $('gNeonBtn').textContent = 'Неон: ' + (save.neon[d.id] === false ? 'выкл.' : 'вкл.') + (save.neon[d.id]===false?' · '+TUNE_PRICES.neon:''); $('gNeonBtn').disabled = !own || (save.neon[d.id]===false && save.coins<TUNE_PRICES.neon);
-  const tune = carTune(d.id), rimNames = ['Серебро','Бронза','Чёрный','Кибер','Золото'], wingNames = ['Без спойлера','Низкий','GT','Гипер','Заводской'];
-  $('gRimBtn').textContent = 'Диски: ' + rimNames[((tune.rimStyle|0) + rimNames.length) % rimNames.length] + ' · '+TUNE_PRICES.rim; $('gRimBtn').disabled = !own || save.coins<TUNE_PRICES.rim;
-  $('gWingBtn').textContent = 'Спойлер: ' + (tune.wing == null ? wingNames[4] : wingNames[Math.max(0, Math.min(3, tune.wing|0))]) + ' · '+TUNE_PRICES.wing; $('gWingBtn').disabled = !own || save.coins<TUNE_PRICES.wing;
+  if (!own) { main.textContent = 'Купить машину'; main.disabled = Number(save.coins||0) < purchasePrice(d); }
+  else if (save.cur !== d.id) { main.textContent = 'Выбрать машину'; main.disabled = false; }
+  else { main.textContent = 'Уже выбрана'; main.disabled = true; }
+  const repair = $('gRepair'), damage = Number(own && own.dmg) || 0;
+  repair.hidden = !(own && damage > 0.5);
+  if (!repair.hidden) { repair.textContent = `Починить · ${repCost(d.id).toLocaleString('ru-RU')} монет`; repair.disabled = Number(save.coins||0) < repCost(d.id); }
 }
-$('paintOptions').onclick = e => { const b=e.target.closest('[data-paint]'); if(!b) return; const id=CARS[gSel].id; if(!save.cars[id]) return; const next=b.dataset.paint==='factory'?null:parseInt(b.dataset.paint,10); if((save.paint[id]??null)===next) return; const cost=next===null?0:TUNE_PRICES.paint; if(cost&&!payForTuning(cost,'Покраска')) return; save.paint[id]=next; store(); refreshMenu(); showCar(id); previewPos(); renderGarage(); };
-$('gStyleBtn').onclick = () => { const id=CARS[gSel].id; if(!save.cars[id]||!payForTuning(TUNE_PRICES.style,'Стиль кузова')) return; save.style[id]=((save.style[id]||0)+1)%STYLE_SHAPES.length; store(); refreshMenu(); showCar(id); previewPos(); renderGarage(); };
-$('gNeonBtn').onclick = () => { const id=CARS[gSel].id; if(!save.cars[id]) return; const turningOn=save.neon[id]===false; if(turningOn&&!payForTuning(TUNE_PRICES.neon,'Неоновая подсветка')) return; save.neon[id]=!turningOn; store(); refreshMenu(); showCar(id); previewPos(); renderGarage(); };
-$('gRimBtn').onclick = () => { const id=CARS[gSel].id; if(!save.cars[id]||!payForTuning(TUNE_PRICES.rim,'Новые диски')) return; const t=carTune(id); t.rimStyle=((t.rimStyle|0)+1)%5; save.tune[id]=t; store(); refreshMenu(); showCar(id); previewPos(); renderGarage(); };
-$('gWingBtn').onclick = () => { const id=CARS[gSel].id; if(!save.cars[id]||!payForTuning(TUNE_PRICES.wing,'Спойлер')) return; const t=carTune(id); t.wing=t.wing==null?0:t.wing>=3?null:t.wing+1; save.tune[id]=t; store(); refreshMenu(); showCar(id); previewPos(); renderGarage(); };
-$('gStats').onclick = e => {
-  const b = e.target.closest('button[data-i]'); if (!b) return;
-  const id = CARS[gSel].id, i = +b.dataset.i, c = upCost(id, i);
-  if (save.coins >= c && save.cars[id].up[i] < 5) { save.coins -= c; save.cars[id].up[i]++; store(); Snd.pickup(); renderGarage(); }
+$('gCarList').onclick = e => {
+  const b = e.target.closest('[data-g-car]'); if (!b) return;
+  gSel = clamp(Number(b.dataset.gCar)||0, 0, CARS.length-1); Snd.click(); renderGarage();
 };
 $('gMain').onclick = () => {
   const d = CARS[gSel];
-  if (!save.cars[d.id]) { if (save.coins < purchasePrice(d)) return; save.coins -= purchasePrice(d); save.cars[d.id] = { up: [0, 0, 0, 0, 0, 0], dmg: 0 }; save.cur = d.id; Snd.coin(); }
-  else { save.cur = d.id; Snd.click(); }
-  store(); renderGarage();
+  if (!save.cars[d.id]) {
+    const price = purchasePrice(d); if (Number(save.coins||0) < price) { toast('Не хватает монет: нужно '+price.toLocaleString('ru-RU')); return; }
+    save.coins -= price; save.cars[d.id] = { up: [0,0,0,0,0,0], dmg: 0 }; Snd.coin();
+  } else Snd.click();
+  save.cur = d.id; phys = physFor(d.id); store(); showCar(d.id); previewPos(); refreshMenu(); renderGarage();
 };
-$('gRepair').onclick = () => { const id = CARS[gSel].id, c = repCost(id); if (save.coins >= c) { save.coins -= c; save.cars[id].dmg = 0; store(); Snd.pickup(); renderGarage(); } };
-$('gPrev').onclick = () => { gSel = (gSel + CARS.length - 1) % CARS.length; Snd.click(); renderGarage(); };
-$('gNext').onclick = () => { gSel = (gSel + 1) % CARS.length; Snd.click(); renderGarage(); };
-
+$('gRepair').onclick = () => {
+  const id = CARS[gSel].id, own = save.cars[id]; if (!own) return;
+  const cost = repCost(id); if (Number(save.coins||0) < cost) { toast('Не хватает монет на ремонт'); return; }
+  save.coins -= cost; own.dmg = 0; Snd.pickup(); store(); showCar(id); previewPos(); refreshMenu(); renderGarage();
+};
 // ---- персонаж ----
 function renderChar() {
   if (charMesh) { scene.remove(charMesh); disposeModel(charMesh); }
@@ -890,7 +955,8 @@ function refreshSettings() {
   $('nameIn').value = save.name; $('srvIn').value = save.set.server || '';
   $('sndBtn').textContent = save.set.snd ? 'Вкл' : 'Выкл'; $('musBtn').textContent = save.set.mus ? 'Вкл' : 'Выкл';
   $('gfxBtn').textContent = GFX[save.set.gfx] || GFX.auto; if ($('resolutionBtn')) $('resolutionBtn').textContent = RESOLUTION_LABELS[save.set.resolution] || RESOLUTION_LABELS.recommended; $('themeBtn').textContent = save.set.theme === 'light' ? 'Светлая' : 'Тёмная';
-  $('touchLayoutBtn').textContent = save.set.touchLayout === 'right' ? 'Руль справа' : 'Руль слева';
+  $('controlModeBtn').textContent = ({buttons:'Кнопки',wheel:'Виртуальный руль',slide:'Слайд-руль'})[save.set.controlMode || 'buttons'];
+  $('touchLayoutBtn').textContent = save.set.touchLayout === 'right' ? 'Сторона справа' : 'Сторона слева';
   $('touchSizeBtn').textContent = ({small:'Маленькие',normal:'Обычные',large:'Большие'})[save.set.touchSize] || 'Обычные';
   $('settingsAccountName').textContent = 'Аккаунт: ' + (localStorage.getItem('tr_account_name') || save.name || 'не определён');
   document.body.classList.toggle('light', save.set.theme === 'light'); Snd.setCfg(save.set.snd, save.set.mus); renderKeyBindings(); applyTouchSettings();
@@ -903,6 +969,12 @@ $('musBtn').onclick = () => { save.set.mus = save.set.mus ? 0 : 1; store(); refr
 $('gfxBtn').onclick = () => { const k = ['auto','verylow','low','med','high','veryhigh','ultra','rt']; save.set.gfx = k[(k.indexOf(save.set.gfx) + 1) % k.length]; adaptiveScale=1; store(); refreshSettings(); applyGfx(); builtL = -1; toast('Детализация: '+GFX[save.set.gfx]); };
 if ($('resolutionBtn')) $('resolutionBtn').onclick = () => { const k = ['recommended','720p','1080p','2k','4k']; save.set.resolution = k[(k.indexOf(save.set.resolution || 'recommended') + 1) % k.length]; adaptiveScale=1; store(); refreshSettings(); applyGfx(); toast('Разрешение: '+RESOLUTION_LABELS[save.set.resolution]); };
 $('themeBtn').onclick = () => { save.set.theme = save.set.theme === 'light' ? 'dark' : 'light'; store(); refreshSettings(); };
+$('controlModeBtn').onclick = () => {
+  const modes = ['buttons','wheel','slide'];
+  save.set.controlMode = modes[(modes.indexOf(save.set.controlMode || 'buttons') + 1) % modes.length];
+  store(); refreshSettings(); applyTouchSettings();
+  toast('Управление: ' + ({buttons:'кнопки',wheel:'виртуальный руль',slide:'слайд-руль'})[save.set.controlMode]);
+};
 $('touchLayoutBtn').onclick = () => {
   save.set.touchLayout = save.set.touchLayout === 'right' ? 'left' : 'right';
   // Keep the player's custom layout useful: mirror every saved control across the screen when swapping sides.
@@ -945,6 +1017,53 @@ $('logoutAccountBtn').onclick = async () => { if(window.TRAccount) await window.
 $('copyAccountNameBtn').onclick = async () => { const n=localStorage.getItem('tr_account_name') || save.name || ''; if(!n || n==='Гонщик'){toast('Сначала войдите в аккаунт');return;} try { await navigator.clipboard.writeText(n); toast('Имя аккаунта скопировано'); } catch(_) { toast('Имя аккаунта: '+n); } };
 $('resetBtn').onclick = () => { if (confirm('Удалить весь игровой прогресс? Аккаунт останется.')) { const s = save.set, n = save.name; save = defSave(); save.set = s; save.name = n; store(); builtL = -1; toMenu(); } };
 
+// ---- общий лидерборд: синхронизация с сервером всех игроков ----
+let leaderboardCache = [], leaderboardFetchedAt = 0, leaderboardBusy = false, leaderboardSubmitAt = 0;
+function renderLeaderboardRows(rows, full = false) {
+  const current = String(save.name || '').toLocaleLowerCase();
+  const list = Array.isArray(rows) ? rows : [];
+  const markup = list.map((p, i) => {
+    const name = String(p.name || 'Гонщик').slice(0, 18), level = Math.max(1, Number(p.level)||1), coins = Math.max(0, Number(p.coins)||0);
+    const mine = name.toLocaleLowerCase() === current;
+    return `<div class="leaderboard-row ${mine?'mine':''}"><span class="leaderboard-rank">${i===0?'👑':String(i+1).padStart(2,'0')}</span><b class="leaderboard-player-name">${escapeHTML(name)}${mine?' <small>(вы)</small>':''}</b><span class="leaderboard-level">УР. ${level}</span>${full?`<span class="leaderboard-coins">◈ ${coins.toLocaleString('ru-RU')}</span>`:''}</div>`;
+  }).join('');
+  $('leaderboardMiniRows').innerHTML = markup || '<span class="leaderboard-empty">Пока никто не попал в рейтинг. Подключи сервер и заверши гонку!</span>';
+  $('leaderboardRows').innerHTML = markup || '<div class="leaderboard-empty large">Рейтинг пока пуст.</div>';
+  if (full) $('leaderboardStatus').textContent = `Игроков в таблице: ${list.length} · обновлено ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`;
+}
+async function refreshLeaderboard(force = false) {
+  if (leaderboardBusy) return;
+  if (!force && Date.now() - leaderboardFetchedAt < 30000) { renderLeaderboardRows(leaderboardCache, state === 'leaderboard'); return; }
+  const base = typeof getWorldApiBase === 'function' ? getWorldApiBase() : '';
+  if (!base) {
+    const note = 'Укажи адрес сервера в Настройках, чтобы открыть общий рейтинг.';
+    $('leaderboardMiniRows').innerHTML = `<span class="leaderboard-empty">${note}</span>`;
+    $('leaderboardStatus').textContent = note;
+    return;
+  }
+  leaderboardBusy = true;
+  if (state === 'leaderboard') $('leaderboardStatus').textContent = 'Синхронизация прогресса и загрузка рейтинга…';
+  try {
+    if (Date.now() - leaderboardSubmitAt > 4500) {
+      try {
+        await fetch(base + '/api/leaderboard', {method:'POST', headers:{'Content-Type':'application/json'}, cache:'no-store', body:JSON.stringify({name:save.name,level:save.level,coins:save.coins})});
+        leaderboardSubmitAt = Date.now();
+      } catch (_) {}
+    }
+    const response = await fetch(base + '/api/leaderboard', {cache:'no-store'});
+    if (!response.ok) throw new Error('HTTP '+response.status);
+    const data = await response.json();
+    leaderboardCache = Array.isArray(data.players) ? data.players.slice(0,100) : [];
+    leaderboardFetchedAt = Date.now();
+    renderLeaderboardRows(leaderboardCache, state === 'leaderboard');
+  } catch (error) {
+    const note = 'Общий рейтинг недоступен. Проверь адрес сервера и попробуй обновить.';
+    $('leaderboardMiniRows').innerHTML = `<span class="leaderboard-empty">${note}</span>`;
+    $('leaderboardStatus').textContent = note;
+    if (state === 'leaderboard') $('leaderboardRows').innerHTML = `<div class="leaderboard-empty large">${note}</div>`;
+  } finally { leaderboardBusy = false; }
+}
+
 // ================= онлайн =================
 let myId = 0, onlinePlace = 0, sendT = 0, connecting = false, privateRoom = null, pendingInvite = new URLSearchParams(location.search).get('room') || '';
 const inviteUrl = code => `${location.origin}${location.pathname}?room=${encodeURIComponent(code)}`;
@@ -957,7 +1076,7 @@ function wakeServer() { // бесплатный хостинг засыпает:
   if (/^wss?:\/\//i.test(u)) { try { fetch(httpBase(u) + '/health', { mode: 'no-cors', cache: 'no-store' }).catch(() => {}); } catch (e) {} }
 }
 let connectAbort = false;
-function helloPacket() { const t=carTune(save.cur); return { t:'hello', name:save.name, carId:save.cur, gender:save.char.g, outfit:save.char.col, skin:save.char.skin, paint:carPaint(save.cur), style:save.style[save.cur]||0, neon:save.neon[save.cur]!==false, rimStyle:t.rimStyle|0, wing:t.wing }; }
+function helloPacket() { return { t:'hello', name:save.name, carId:save.cur, gender:save.char.g, outfit:save.char.col, skin:save.char.skin }; }
 async function connectOnlineAction(action, payload={}) {
   const url=(save.set.server||'').trim();
   if(!/^wss?:\/\//i.test(url)){setOn('Укажите адрес сервера в Настройках (wss://…)');return;}
@@ -1018,7 +1137,7 @@ Net.on('room', m => {
   clearRemotes(); ais.forEach(a => { scene.remove(a.mesh); disposeModel(a.mesh); }); ais = [];
   m.players.forEach(p => {
     if (p.id === myId) return;
-    const rd=carDef(p.carId), rshape=STYLE_SHAPES[p.style||0], remoteDef=rshape&&rshape!=='original'?Object.assign({},rd,{shape:rshape}):rd; const mesh = makeCarModel(remoteDef, p.paint, {neon:p.neon!==false, rimStyle:p.rimStyle|0, wing:p.wing}); seatDriver(mesh, p.gender, p.outfit, p.skin); scene.add(mesh);
+    const rd=carDef(p.carId); const mesh = makeCarModel(rd, null, {}); seatDriver(mesh, p.gender, p.outfit, p.skin); scene.add(mesh);
     remotes[p.id] = { isRemote: true, id: p.id, name: p.name, slot: p.slot, mesh, x: 0, z: 0, h: 0, y: 0, tx: 0, tz: 0, th: 0, ty: 0, p: 0, speed: 0, lat: 0, finished: false };
   });
   onlinePlace = 0; beginRace(m.you, m.startIn);
@@ -1029,7 +1148,7 @@ function startRace(c) {
   Snd.init(); cfg = c; Snd.setTheme(themeFor(c.L));
   if (c.mode === 'online') { buildTrack(c.L, c.seed || c.L * 977 + 13); builtL = c.L; } else { buildTrack(c.L); builtL = c.L; }
   clearRemotes(); buildAIs(c); onlinePlace = 0;
-  beginRace(c.count, 3000);
+  beginRace(c.count, 5000);
 }
 function beginRace(mySlot, startIn) {
   leaveChar(); showCar(save.cur); phys = physFor(save.cur); player.dmg = save.cars[save.cur].dmg; player.immobilized=player.dmg>=100; criticalRespawnAt=player.immobilized?performance.now():0;criticalRespawnReady=false;player.engineStall=0; applyDamageVisual();
@@ -1038,15 +1157,16 @@ function beginRace(mySlot, startIn) {
   nitro = phys.nCap; raceCoins = 0; raceStartedAt = performance.now(); player.finished = false; stuckT = 0; fixCool = 0; held.clear();
   state = 'count'; raceCamMode=2;updateRaceCameraLabel();$('raceCamBtn').hidden=false; show(null); $('hud').hidden = false; $('minimap').hidden=false; $('worldHud').hidden=true; $('worldSelect').hidden=true; $('touch').hidden = !isTouch; $('fixBtn').hidden = true; applyTouchSettings();requestGameFullscreen();
   const L = cfg.L, tag = $('bossTag');
-  tag.hidden = !cfg.boss; tag.textContent = (cfg.boss === 'boss' ? 'БОСС: ' : 'МИНИ-БОСС: ') + bossName(L);
+  tag.hidden = !cfg.boss; tag.classList.toggle('final-boss', cfg.boss === 'boss'); tag.classList.toggle('mini-boss', cfg.boss === 'mini'); tag.textContent = (cfg.boss === 'boss' ? '⚠ БОСС · ЭКСТРЕМАЛЬНЫЙ ЗАЕЗД: ' : 'МИНИ-БОСС · ЭЛИТНЫЙ ЗАЕЗД: ') + bossName(L);
   Snd.music('race');
   const id = ++raceId, c = $('count'); c.hidden = false; c.textContent = '';
-  const base = Math.max(0, startIn - 3000);
-  [['3', 0], ['2', 1000], ['1', 2000], ['GO!', 3000]].forEach(([t, ms]) => setTimeout(() => {
+  const goAt = Math.max(startIn, 4800);
+  const steps = [['1', goAt - 4800, 1], ['2', goAt - 3300, 2], ['3', goAt - 1800, 3], ['GO!', goAt, 4]];
+  steps.forEach(([t, at, k]) => setTimeout(() => {
     if (id !== raceId) return;
-    c.textContent = t; Snd.countdown(t === 'GO!');
-    if (t === 'GO!') { state = 'race'; setTimeout(() => { if (id === raceId) c.hidden = true; }, 700); }
-  }, base + ms));
+    c.textContent = t; Snd.countdownStep(k);
+    if (k === 4) { state = 'race'; setTimeout(() => { if (id === raceId) c.hidden = true; }, 700); }
+  }, Math.max(0, at)));
 }
 function startCareer() {
   const L = save.level;
@@ -1091,7 +1211,9 @@ function updatePlayer(dt) {
   player.engineStall = Math.max(0, player.engineStall - dt); player.rampCooldown = Math.max(0, player.rampCooldown - dt);
   const disabledEngine = player.immobilized || player.engineStall > 0;
   const gas = racing && held.has('gas') && !disabledEngine, brk = racing && held.has('brake'), drift = racing && held.has('drift');
-  let steer = racing ? (held.has('right') ? 1 : 0) - (held.has('left') ? 1 : 0) : 0;
+  const buttonSteer = (held.has('right') ? 1 : 0) - (held.has('left') ? 1 : 0);
+  const steerMode = save.set.controlMode || 'buttons';
+  let steer = racing ? (isTouch && steerMode !== 'buttons' ? touchSteerValue : buttonSteer) : 0;
 
   if (player.nLock && nitro >= P.nCap * 0.25) player.nLock = false;
   const boost = racing && held.has('nitro') && !player.nLock && nitro > 0;
@@ -1141,24 +1263,39 @@ function updatePlayer(dt) {
   wallT -= dt;
   const wc = pos[bi], wt = tan[bi];
   const signedLat = (m.x - wc.x) * wt.z - (m.z - wc.z) * wt.x;
-  if (Math.abs(signedLat) > WALL) {
-    const side = signedLat >= 0 ? 1 : -1, limit = WALL - 0.12;
-    // Ставим машину на границу дорожного коридора вдоль нормали трассы — не в центр кривой.
-    m.x = wc.x + wt.z * limit * side; m.z = wc.z - wt.x * limit * side;
-    const vn = player.vx * wt.z - player.vz * wt.x; // скорость по нормали к борту
-    if (vn * side > 0.025) {
-      // Reflect the outward component along the track normal; do not multiply by side twice.
-      // This used to invert the response on one side and could pin the car against the barrier.
-      // A solid guardrail removes outward velocity; it does not launch the car backwards.
-      // Remaining tangential velocity lets the body scrape and slide along the rail.
-      player.vx -= vn * wt.z;
-      player.vz += vn * wt.x;
-      const mag = Math.hypot(player.vx, player.vz);
-      if (mag > 0.55) { player.speed = mag * 0.9; player.h = Math.atan2(player.vx, player.vz); }
-      else { player.speed = 0; player.vx = 0; player.vz = 0; }
-      if (wallT <= 0 && racing) {
-        wallT = 0.32; Snd.bump(); const impact = clamp(Math.abs(vn) * 0.28, 0.8, 7.5); addDmg(impact);
-        spawnSparks(m.x, m.y + 0.55, m.z, clamp(Math.floor(Math.abs(vn)*1.1),6,20));
+  // Swept side-rail response. Keep the car body inside the racing corridor, remove
+  // most outward velocity, and preserve tangential velocity so a scrape doesn't pinball.
+  const carHalfWidth = Math.max(0.85, (Number(player.mesh.userData.hitboxWidth) || Number(player.mesh.userData.S?.w) || 2.05) * 0.46);
+  const wallLimit = WALL - carHalfWidth * 0.84;
+  if (Math.abs(signedLat) > wallLimit) {
+    const side = signedLat >= 0 ? 1 : -1;
+    m.x = wc.x + wt.z * wallLimit * side; m.z = wc.z - wt.x * wallLimit * side;
+    const vn = player.vx * wt.z - player.vz * wt.x;
+    const outward = vn * side;
+    if (outward > 0.015) {
+      const impactNormal = Math.abs(vn);
+      // Resolve normal impact with a small restitution (rubber/metal guardrail), then
+      // apply speed-dependent rail friction to the along-wall component.
+      const tangentX = player.vx - vn * wt.z;
+      const tangentZ = player.vz + vn * wt.x;
+      const restitution = impactNormal > 13 ? 0.10 : 0.035;
+      const scrapeGrip = clamp(1 - impactNormal * 0.009 - Math.abs(player.speed) * 0.0007, 0.72, 0.97);
+      player.vx = tangentX * scrapeGrip - (vn * restitution) * wt.z;
+      player.vz = tangentZ * scrapeGrip + (vn * restitution) * wt.x;
+      const forward = player.vx * Math.sin(player.h) + player.vz * Math.cos(player.h);
+      player.speed = clamp(forward, -14, Math.max(0, P.max * 1.15));
+      // Tiny yaw correction tracks along the barrier instead of snapping the car around.
+      if (Math.abs(player.speed) > 2) {
+        const velocityHeading = Math.atan2(player.vx, player.vz);
+        player.h += angDiff(velocityHeading, player.h) * clamp(impactNormal * 0.012, 0.03, 0.18);
+      }
+      if (wallT <= 0 && racing && (impactNormal > 2.5 || Math.abs(player.speed) > 18)) {
+        wallT = impactNormal > 10 ? 0.18 : 0.28;
+        if (impactNormal > 6) Snd.crash(); else Snd.bump(0.18);
+        const impact = clamp((impactNormal - 1.8) * 0.23 + Math.abs(player.speed) * 0.012, 0.25, 6.8);
+        if (impact > 0.9) addDmg(impact);
+        spawnSparks(m.x + wt.z * side * carHalfWidth, m.y + 0.48, m.z - wt.x * side * carHalfWidth, clamp(Math.floor(impactNormal * 1.55) + 7, 8, 28));
+        if (impactNormal > 10) spawnSparks(m.x, m.y + 0.22, m.z, 8, 0xc4ccd4);
       }
     }
   }
@@ -1184,9 +1321,10 @@ function updateAI(a, dt) {
   const curv = 1 - Math.min(0.4, ang * 1.2);
   const gap = a.p - player.p;
   const rubber = a.boss || !cfg.rubber ? 1 : 1 - clamp(gap * 0.0006, -0.06, 0.1);
-  a.nT -= dt; if (a.nT <= 0) { a.nOn = a.nitroOK ? 1.4 : 0; a.nT = 8 + Math.random() * 7; }
-  const nit = a.nOn > 0 ? 1.12 : 1; a.nOn -= dt; a.rampT = Math.max(0, a.rampT - dt); a.slipT = Math.max(0, a.slipT - dt);
-  let target = racing ? cfg.top * a.skill * curv * rubber * nit * (a.rampT > 0 ? 1.4 : 1) * (a.slipT > 0 ? 0.5 : 1) : 0;
+  a.nT -= dt; if (a.nT <= 0) { a.nOn = a.nitroOK ? (a.bossTier === 'boss' ? 2.2 : a.bossTier === 'mini' ? 1.85 : 1.4) : 0; a.nT = a.bossTier === 'boss' ? 3.6 + Math.random() * 1.8 : a.bossTier === 'mini' ? 4.8 + Math.random() * 2.2 : 8 + Math.random() * 7; }
+  const nit = a.nOn > 0 ? (a.bossTier === 'boss' ? 1.28 : a.bossTier === 'mini' ? 1.18 : 1.12) : 1; a.nOn -= dt; a.rampT = Math.max(0, a.rampT - dt); a.slipT = Math.max(0, a.slipT - dt);
+  a.collisionSlow = Math.max(0, (a.collisionSlow || 0) - dt);
+  let target = racing ? cfg.top * a.skill * curv * rubber * nit * (a.rampT > 0 ? 1.4 : 1) * (a.slipT > 0 ? 0.5 : 1) * (a.collisionSlow > 0 ? 0.72 : 1) : 0;
 
   // объезд ловушек — только если ИИ их «заметил» (зависит от сложности); иначе может врезаться
   let tl = a.base;
@@ -1234,13 +1372,16 @@ function updateRemotes(dt) {
 }
 
 let collisionCooldown = 0, impactBursts = [];
-function spawnSparks(x,y,z,count=12) {
-  if (resolvedGfx()==='verylow' || resolvedGfx()==='low') count=Math.min(count,8);
-  while(impactBursts.length>=7){const old=impactBursts.shift();scene.remove(old.points);old.geometry.dispose();old.material.dispose();}
+function spawnSparks(x,y,z,count=12,color=0xffb348) {
+  const gfx = resolvedGfx();
+  if (gfx==='verylow' || gfx==='low') count=Math.min(count,10);
+  else if (gfx==='med') count=Math.min(count,24);
+  else count=Math.min(count,40);
+  while(impactBursts.length >= (gfx==='verylow'||gfx==='low'?5:gfx==='med'?9:12)){const old=impactBursts.shift();scene.remove(old.points);old.geometry.dispose();old.material.dispose();}
   const positions=new Float32Array(count*3), velocities=[];
   for(let i=0;i<count;i++){positions[i*3]=x;positions[i*3+1]=y;positions[i*3+2]=z;const a=Math.random()*Math.PI*2,sp=4+Math.random()*15;velocities.push([Math.cos(a)*sp,2+Math.random()*8,Math.sin(a)*sp]);}
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));
-  const material=new THREE.PointsMaterial({color:0xffb348,size:resolvedGfx()==='rt'?0.36:0.27,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true});
+  const material=new THREE.PointsMaterial({color,size:gfx==='rt'?0.34:gfx==='verylow'||gfx==='low'?0.19:0.27,transparent:true,opacity:0.95,blending:color===0xffb348?THREE.AdditiveBlending:THREE.NormalBlending,depthWrite:false,sizeAttenuation:true});
   const points=new THREE.Points(geometry,material);points.frustumCulled=false;scene.add(points);impactBursts.push({points,geometry,material,velocities,life:0.38,age:0});
 }
 function updateImpactBursts(dt){
@@ -1270,55 +1411,96 @@ function carFootprintOverlap(a, b) {
 function collide(dt) {
   collisionCooldown = Math.max(0, collisionCooldown - dt);
   const pm = player.mesh.position;
-  const playerRadius = 1.88;
-  for (const a of [...ais, ...Object.values(remotes)]) {
+  const opponents = [...ais, ...Object.values(remotes)];
+  for (const a of opponents) {
     a.hitCooldown = Math.max(0, (a.hitCooldown || 0) - dt);
     const am = a.mesh.position;
-    if (Math.abs(pm.y - am.y) >= 1.75) continue;
-    // Rotated bounding boxes follow the actual vehicle length and width; nearby cars
-    // no longer collide merely because their circular centre distances are small.
-    const contact=carFootprintOverlap(player,a);if(!contact)continue;
-    const {nx,nz}=contact;const overlap=contact.overlap;
-    // Push both cars out of the shared volume. AI is driven by lane position, so also
-    // update its lane offset; remote cars are corrected via their interpolation target.
-    pm.x += nx * overlap * 0.53; pm.z += nz * overlap * 0.53;
+    if (Math.abs(pm.y - am.y) >= 1.8) continue;
+    const contact = carFootprintOverlap(player, a);
+    if (!contact) continue;
+    const { nx, nz } = contact;
+    const overlap = Math.max(0, contact.overlap - 0.015);
+    if (overlap <= 0) continue;
+
+    // SAT gives a contact normal pointing from the other car toward the player.
+    // Separate both cars using inverse mass so heavy supercars displace light cars less.
+    const massA = clamp(Number(player.mesh.userData.mass) || 1.1, 0.8, 2.4);
+    const massB = clamp(Number(a.mesh.userData.mass) || 1.1, 0.8, 2.4);
+    const invA = 1 / massA;
+    const invB = a.isRemote ? 0.35 / massB : 1 / massB;
+    const invSum = invA + invB;
+    const correction = Math.min(overlap * 0.82, 1.25);
+    pm.x += nx * correction * (invA / invSum);
+    pm.z += nz * correction * (invA / invSum);
     if (a.isAI) {
-      const side = (nx * Math.cos(a.h || 0) - nz * Math.sin(a.h || 0)) >= 0 ? 1 : -1;
-      a.lat = clamp(a.lat - side * overlap * 0.53, -ROAD_W + 2.1, ROAD_W - 2.1);
-      a.mesh.position.x -= nx * overlap * 0.47; a.mesh.position.z -= nz * overlap * 0.47;
+      am.x -= nx * correction * (invB / invSum);
+      am.z -= nz * correction * (invB / invSum);
+      const laneDelta = (nx * Math.cos(a.h || 0) - nz * Math.sin(a.h || 0));
+      a.lat = clamp((a.lat || 0) - laneDelta * correction * 0.9, -ROAD_W + 2.0, ROAD_W - 2.0);
+      a.p -= clamp((nx * Math.sin(a.h || 0) + nz * Math.cos(a.h || 0)) * correction * 0.25, -0.8, 0.8);
     } else if (a.isRemote) {
-      a.tx = (Number.isFinite(a.tx) ? a.tx : am.x) - nx * overlap * 0.47;
-      a.tz = (Number.isFinite(a.tz) ? a.tz : am.z) - nz * overlap * 0.47;
+      a.tx = (Number.isFinite(a.tx) ? a.tx : am.x) - nx * correction * (invB / invSum) * 0.55;
+      a.tz = (Number.isFinite(a.tz) ? a.tz : am.z) - nz * correction * (invB / invSum) * 0.55;
     }
-    if (a.hitCooldown > 0) continue;
-    const otherSpeed = Number.isFinite(a.speed) ? a.speed : 0;
-    const playerVx = Number.isFinite(player.vx) ? player.vx : Math.sin(player.h) * player.speed;
-    const playerVz = Number.isFinite(player.vz) ? player.vz : Math.cos(player.h) * player.speed;
-    const otherVx = Number.isFinite(a.vx) ? a.vx : Math.sin(a.h || 0) * otherSpeed;
-    const otherVz = Number.isFinite(a.vz) ? a.vz : Math.cos(a.h || 0) * otherSpeed;
-    const relNormal = (playerVx - otherVx) * nx + (playerVz - otherVz) * nz;
-    const impactSpeed = Math.abs(relNormal);
-    // Cars should recoil a little, not pinball away. A glancing contact mostly changes
-    // lateral velocity; a head-on contact loses more forward speed.
-    const playerMass=Number(player.mesh.userData.mass)||1.0;
-    const otherMass=Number(a.mesh.userData.mass)||1.0;
-    const invA=1/playerMass,invB=1/otherMass;
-    const impulse=clamp(impactSpeed*0.72,0,12)/(invA+invB||1);
-    player.vx = playerVx + nx * impulse * invA;
-    player.vz = playerVz + nz * impulse * invA;
-    const nextOtherVx=otherVx-nx*impulse*invB,nextOtherVz=otherVz-nz*impulse*invB;
-    if(a.isAI){a.vx=nextOtherVx;a.vz=nextOtherVz;a.speed=Math.hypot(a.vx,a.vz);}
-    else if(a.isRemote){a.tx=(Number.isFinite(a.tx)?a.tx:am.x)+nx*overlap*0.35;a.tz=(Number.isFinite(a.tz)?a.tz:am.z)+nz*overlap*0.35;a.speed=Math.hypot(nextOtherVx,nextOtherVz);}
-    if(Math.abs(relNormal)>0.2) player.speed *= impactSpeed>14?0.68:0.84;
-    else player.speed *= 0.94;
-    player.lat = clamp(player.lat + (nx * Math.cos(player.h) - nz * Math.sin(player.h)) * overlap * 0.16, -ROAD_W + 1.9, ROAD_W - 1.9);
-    if (a.isRemote && cfg && cfg.mode === 'online') Net.send({ t: 'bump', target: a.id });
-    if (performance.now() - bumpT > 300) { Snd.bump(); bumpT = performance.now(); }
-    if (impactSpeed > 4.5) {
-      addDmg(clamp((impactSpeed - 3) * 0.16, 0.5, 5.5));
-      spawnSparks(pm.x, pm.y + 0.55, pm.z, clamp(Math.floor(impactSpeed * 0.24), 5, 16));
+
+    const headingA = Number.isFinite(player.h) ? player.h : player.mesh.rotation.y;
+    const headingB = Number.isFinite(a.h) ? a.h : (a.mesh.rotation.y || 0);
+    const vAx = Number.isFinite(player.vx) ? player.vx : Math.sin(headingA) * player.speed;
+    const vAz = Number.isFinite(player.vz) ? player.vz : Math.cos(headingA) * player.speed;
+    const vBx = a.isRemote ? Math.sin(headingB) * (a.speed || 0) : (Number.isFinite(a.vx) ? a.vx : Math.sin(headingB) * (a.speed || 0));
+    const vBz = a.isRemote ? Math.cos(headingB) * (a.speed || 0) : (Number.isFinite(a.vz) ? a.vz : Math.cos(headingB) * (a.speed || 0));
+    const relX = vAx - vBx, relZ = vAz - vBz;
+    const relNormal = relX * nx + relZ * nz;
+    const closingSpeed = Math.max(0, -relNormal);
+    let normalImpulse = 0;
+
+    if (relNormal < 0) {
+      const restitution = closingSpeed > 15 ? 0.08 : 0.16;
+      normalImpulse = -(1 + restitution) * relNormal / invSum;
+      player.vx = vAx + normalImpulse * invA * nx;
+      player.vz = vAz + normalImpulse * invA * nz;
+      if (a.isAI) {
+        const bVx = vBx - normalImpulse * invB * nx;
+        const bVz = vBz - normalImpulse * invB * nz;
+        const bForward = bVx * Math.sin(headingB) + bVz * Math.cos(headingB);
+        a.speed = Math.max(0, Math.min(a.speed || 0, bForward));
+        a.collisionSlow = Math.max(a.collisionSlow || 0, closingSpeed > 10 ? 1.0 : 0.45);
+        a.slipT = Math.max(a.slipT || 0, closingSpeed > 12 ? 0.45 : 0.2);
+      } else if (a.isRemote) {
+        a.tx -= nx * Math.min(1.4, normalImpulse * invB * 0.08);
+        a.tz -= nz * Math.min(1.4, normalImpulse * invB * 0.08);
+      }
+      // A small friction impulse bleeds relative side-slip; no artificial spin or launch.
+      const tx = -nz, tz = nx;
+      const relTangent = relX * tx + relZ * tz;
+      const tangentImpulse = clamp(-relTangent / invSum, -normalImpulse * 0.18, normalImpulse * 0.18);
+      player.vx += tangentImpulse * invA * tx;
+      player.vz += tangentImpulse * invA * tz;
+      player.speed = clamp(player.vx * Math.sin(headingA) + player.vz * Math.cos(headingA), -14, phys.max * 1.15);
+      player.steerS = clamp(player.steerS + (nx * Math.cos(headingA) - nz * Math.sin(headingA)) * clamp(closingSpeed * 0.012, 0, 0.18), -1.2, 1.2);
+    } else {
+      // Resting contact still slides apart; it no longer causes repeated braking every frame.
+      player.speed *= 1 - Math.min(0.035, overlap * 0.008);
     }
-    a.hitCooldown = 0.48; collisionCooldown = 0.28;
+
+    if (a.isAI) {
+      const side = (nx * Math.cos(headingB) - nz * Math.sin(headingB)) >= 0 ? 1 : -1;
+      a.lat = clamp((a.lat || 0) - side * overlap * 0.2, -ROAD_W + 2.0, ROAD_W - 2.0);
+    }
+    const canPlayImpact = closingSpeed > 3.0 || overlap > 0.16;
+    if (canPlayImpact && a.hitCooldown <= 0) {
+      if (closingSpeed > 11) Snd.crash(); else Snd.bump(clamp(0.12 + closingSpeed * 0.012, 0.12, 0.32));
+      if (closingSpeed > 4.2) {
+        const damage = clamp((closingSpeed - 3.6) * 0.14 + (closingSpeed > 14 ? 0.9 : 0), 0.35, 6.8);
+        addDmg(damage);
+        const cx = (pm.x + am.x) * 0.5, cz = (pm.z + am.z) * 0.5;
+        spawnSparks(cx, Math.max(pm.y, am.y) + 0.5, cz, clamp(Math.floor(closingSpeed * 0.42) + 8, 8, 28));
+        if (closingSpeed > 11) spawnSparks(cx, Math.max(pm.y, am.y) + 0.18, cz, 7, 0xc9d1db);
+      }
+      if (a.isRemote && cfg && cfg.mode === 'online') Net.send({ t: 'bump', target: a.id });
+      a.hitCooldown = 0.45;
+      collisionCooldown = 0.14;
+    }
   }
 }
 function itemsUpdate(dt) {
@@ -1394,6 +1576,7 @@ function finishRace() {
   save.coins += reward + bankedRaceCoins; store();
   title = place === 1 ? 'Победа!' : place + '-е место';
   if (place <= 3) Snd.fanfare(); else Snd.lose();
+  if (!table) table = fullOrder().map((e, i) => `<div class="trow ${e === player ? 'me' : ''}"><span>${i + 1}. ${e === player ? save.name : e.name}</span><b>${e.finished ? 'финиш' : 'в гонке'}</b></div>`).join('');
   $('resTitle').textContent = title; $('resSub').textContent = sub; $('resTable').innerHTML = table;
   $('resCoins').textContent = reward + bankedRaceCoins; $('againBtn').textContent = btn; $('againBtn').onclick = act;
   setTimeout(() => { if (state === 'done') { $('hud').hidden = true; show('result'); } }, 1400);
@@ -1434,9 +1617,13 @@ function updateCamera(dt) {
   if (state === 'world') { updateWorldCamera(dt); return; }
   if (state === 'touchsetup') return;
   if (IDLE.has(state)) {
-    menuT += dt * 0.3; const ch = state === 'char' && charMesh, m = ch ? charMesh.position : player.mesh.position, r = ch ? 4.2 : 8;
-    cam.position.set(m.x + Math.sin(menuT) * r, ch ? 1.5 : 2.8, m.z + Math.cos(menuT) * r);
-    cam.lookAt(m.x, ch ? 1 : 0.9, m.z); cam.fov = 55; cam.updateProjectionMatrix(); return;
+    menuT += dt * (state === 'garage' ? 0.16 : 0.3);
+    const ch = state === 'char' && charMesh, m = ch ? charMesh.position : player.mesh.position, r = ch ? 4.2 : 8;
+    const orbitX = Math.sin(menuT) * r, orbitZ = Math.cos(menuT) * r;
+    cam.position.set(m.x + orbitX, ch ? 1.5 : state === 'garage' ? 3.15 : 2.8, m.z + orbitZ);
+    if (state === 'garage') cam.lookAt(m.x - Math.cos(menuT) * 4.4, 1.05, m.z + Math.sin(menuT) * 4.4);
+    else cam.lookAt(m.x, ch ? 1 : 0.9, m.z);
+    cam.fov = state === 'garage' ? 49 : 55; cam.updateProjectionMatrix(); return;
   }
   const m = player.mesh.position;
   camH += angDiff(player.h, camH) * Math.min(1, 4 * dt);
@@ -1461,7 +1648,7 @@ let last = performance.now(), tAcc = 0;
 function loop(now) {
   requestAnimationFrame(loop);
   const rawDt = (now - last) / 1000; const dt = Math.min(rawDt, 0.05); last = now; tAcc += dt; fixCool -= dt;
-  fpsSamples += 1; fpsTime += rawDt; if (fpsTime >= 2) { const fps=fpsSamples/fpsTime; { if (fps<49) lowFpsWindows++; else lowFpsWindows=Math.max(0,lowFpsWindows-1); if (lowFpsWindows>=2 && adaptiveScale>0.56) { adaptiveScale=Math.max(0.56,adaptiveScale-0.1); applyGfx(); lowFpsWindows=0; } else if (fps>59 && adaptiveScale<1) { adaptiveScale=Math.min(1,adaptiveScale+0.035); applyGfx(); } } fpsSamples=0; fpsTime=0; }
+  fpsSamples += 1; fpsTime += rawDt; if (fpsTime >= 2) { const fps=fpsSamples/fpsTime; { if (fps<49) lowFpsWindows++; else lowFpsWindows=Math.max(0,lowFpsWindows-1); const floor = LOW_DEVICE ? 0.42 : 0.5; if (lowFpsWindows>=2 && adaptiveScale>floor) { adaptiveScale=Math.max(floor,adaptiveScale-0.1); applyGfx(); lowFpsWindows=0; } else if (fps>59 && adaptiveScale<0.98) { adaptiveScale=Math.min(0.98,adaptiveScale+0.025); applyGfx(); } } fpsSamples=0; fpsTime=0; }
   if (state === 'world') {
     updateOpenWorld(dt); $('minimap').hidden = true;
   } else if (inRace()) {
@@ -1542,11 +1729,24 @@ worldCanvas.addEventListener('pointerdown', e => {
   e.preventDefault();
 });
 worldCanvas.addEventListener('pointermove', e => {
+  if (document.pointerLockElement === worldCanvas) return;
   if (!worldLookDrag || worldLookDrag.id !== e.pointerId || state !== 'world') return;
   const dx=e.clientX-worldLookDrag.x, dy=e.clientY-worldLookDrag.y; worldLookDrag.x=e.clientX; worldLookDrag.y=e.clientY;
   worldCamOrbitYaw -= dx*0.006; worldCamOrbitPitch=clamp(worldCamOrbitPitch-dy*0.004,-0.36,0.38); e.preventDefault();
 });
 ['pointerup','pointercancel','lostpointercapture'].forEach(type => worldCanvas.addEventListener(type, e => { if(worldLookDrag&&worldLookDrag.id===e.pointerId)worldLookDrag=null; }));
+// Desktop mouse capture: a click on the open world locks the pointer; mouse movement then turns the camera. Esc releases it.
+worldCanvas.addEventListener('click', e => {
+  if (state !== 'world' || isTouchDevice() || e.pointerType === 'touch') return;
+  if (!$('worldPhone').hidden || !$('worldShop').hidden) return;
+  if (document.pointerLockElement !== worldCanvas) { try { worldCanvas.requestPointerLock(); } catch (_) {} }
+});
+document.addEventListener('mousemove', e => {
+  if (document.pointerLockElement !== worldCanvas || state !== 'world') return;
+  worldCamOrbitYaw -= e.movementX * 0.0028;
+  worldCamOrbitPitch = clamp(worldCamOrbitPitch - e.movementY * 0.002, -0.36, 0.38);
+});
+function isTouchDevice(){ return matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0; }
 const WORLD_NAMES = ['Артём','Саша','Мира','Даня','Ника','Рустам','Лейла','Тимур','Алиса','Марк','Илья','Зара','Амир','Ева','Матвей','Амина','Дамир','Лина','Рома','Самира','Эмир','Даша','Камиль','Яна','Тим','Адель','Ренат','Малика','Вадим','Алия','Женя','Марат'];
 const WORLD_LINES = ['Классная машина!','Сегодня в городе настоящий движ.','На площади скоро стартует турнир.','Заедь в мастерскую — там хорошие детали.','Неплохой дрифт видел на южной улице!','Добро пожаловать в наш район.','У меня сегодня выходной — гуляю по городу.','Говорят, ночной заезд будет сложным.'];
 function wmat(color, roughness=0.8, metalness=0){return new THREE.MeshStandardMaterial({color,roughness,metalness});}
@@ -2062,7 +2262,7 @@ function buildOpenWorld(regionId=worldRegionId){
   worldG.children.forEach(child=>{child.userData=child.userData||{};child.userData.trLegacyBlockout=true;});
   // Фасады — отдельные здания, оконные панели и кондиционеры инстансированы.
   const winMax=['verylow','low'].includes(resolvedGfx())?1700:5200,winMesh=new THREE.InstancedMesh(new THREE.BoxGeometry(1.5,1.35,0.12),windowMat,winMax);winMesh.castShadow=false;
-  let wn=0;const colliders=[];const specialCells=new Map([['-1,-1',{kind:'apartment',name:'АПАРТАМЕНТЫ',sub:'HOME · 24/7',col:0x7e8d9d}],['0,-1',{kind:'market',name:'MARKET 24/7',sub:'ЕЖЕДНЕВНЫЕ ТОВАРЫ',col:0x2c7867}],['1,0',{kind:'garage',name:'AUTO LAB',sub:'РЕМОНТ · ТЮНИНГ',col:0x305c7d}],['-1,0',{kind:'fashion',name:'CITY MODA',sub:'ОДЕЖДА · СТИЛЬ',col:0x82537d}]]);
+  let wn=0;const colliders=[];const specialCells=new Map([['-1,-1',{kind:'apartment',name:'АПАРТАМЕНТЫ',sub:'HOME · 24/7',col:0x7e8d9d}],['0,-1',{kind:'market',name:'MARKET 24/7',sub:'ЕЖЕДНЕВНЫЕ ТОВАРЫ',col:0x2c7867}],['1,0',{kind:'garage',name:'AUTO LAB',sub:'РЕМОНТ · МОДЕЛИ',col:0x305c7d}],['-1,0',{kind:'fashion',name:'CITY MODA',sub:'ОДЕЖДА · СТИЛЬ',col:0x82537d}]]);
   const addFacade=(x,z,w,d,h,color,special=null)=>{
     const facadeStart=worldG.children.length;
     const mat=wmat(color,0.78,0.05);wbox(worldG,w,h,d,mat,x,h/2,z);wbox(worldG,w+0.8,0.42,d+0.8,wmat(0x343d47,0.82,0.2),x,h+0.12,z);
@@ -2140,7 +2340,7 @@ function buildOpenWorld(regionId=worldRegionId){
   if(!player.mesh){showCar(save.cur);}player.mesh.position.set(9,0,8);player.mesh.rotation.set(0,0,0);player.mesh.visible=false;worldYaw=0;
   worldInteractables.push({type:'raceboard',x:-28,z:12,r:10,name:'Городские заезды'},{type:'plaza',x:0,z:50,r:12,name:'Центральная площадь'});
   // Пешеходы: разнообразные лица, куртки и обувь; прохожие гуляют, машут рукой и радуются рядом с гонщиком.
-  const pedCount=quality==='verylow'?6:quality==='low'?12:quality==='med'?18:quality==='high'?26:quality==='veryhigh'?34:40;
+  const pedCount=(matchMedia('(hover:none)').matches||navigator.maxTouchPoints>0)?6:quality==='verylow'?6:quality==='low'?12:quality==='med'?18:quality==='high'?26:quality==='veryhigh'?34:40;
   for(let i=0;i<pedCount;i++){
     const axis=Math.random()<0.5?'x':'z',road=Math.floor(Math.random()*9-4)*100+(Math.random()<0.5?-1:1)*13;
     const centerX=axis==='x'?road:(Math.random()*850-425),centerZ=axis==='z'?road:(Math.random()*850-425);
@@ -2247,7 +2447,7 @@ function registerWorldEditor(){
   const panel=$('worldDevPanel'),btn=$('worldDevBtn');if(!panel||panel.dataset.bound)return;panel.dataset.bound='1';
   btn.onclick=()=>{panel.hidden=!panel.hidden;if(!panel.hidden){$('devPass').focus();loadSharedWorldEdits();}};
   $('devClose').onclick=()=>{panel.hidden=true;devPickMode=false;devDragState=null;};
-  $('devUnlock').onclick=async()=>{devPassword=$('devPass').value;const base=getWorldApiBase();let globalOK=false;try{if(!base)throw new Error('Не указан API URL сервера');const r=await fetch(base+'/api/world-edits/auth',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Pass':devPassword},body:'{}'});globalOK=r.ok;if(!r.ok)throw new Error('Пароль сервера не принят');}catch(e){console.warn(e);}
+  $('devUnlock').onclick=async()=>{if($('devPass').value!=='123mirs123'){toast('Неверный пароль');return;}devPassword=$('devPass').value;const base=getWorldApiBase();let globalOK=false;try{if(!base)throw new Error('Не указан API URL сервера');const r=await fetch(base+'/api/world-edits/auth',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Pass':devPassword},body:'{}'});globalOK=r.ok;if(!r.ok)throw new Error('Пароль сервера не принят');}catch(e){console.warn(e);}
     devUnlocked=true;$('devLockRow').hidden=true;$('devControls').hidden=false;$('devStatus').textContent=globalOK?'Доступ открыт · общие изменения включены':'Локальный доступ · для всех недоступно';$('devApplyAll').disabled=!globalOK;$('devApplyAll').title=globalOK?'Изменения будут отправлены на сервер':'Нужны ADMIN_PASSWORD и правильный адрес сервера';toast(globalOK?'Редактор открыт':'Редактор открыт только для себя');};
   $('devPick').onclick=()=>{devPickMode=true;$('devStatus').textContent='Нажми на объект в городе';toast('Коснись здания или предмета');};
   $('devPickCity').onclick=()=>{const city=getCityEditorRoot();if(city)refreshEditorSelection(city,'__city__');else toast('Сначала загрузи Нью-Йорк');};
@@ -2520,6 +2720,7 @@ $('worldQuickDest')?.addEventListener('click',e=>{
   const d=worldDestinations().find(v=>v.id===id);if(d)setWorldRoute(d,true);
 });
 $('worldHomeBtn')?.addEventListener('click',()=>{const d=worldDestinations().find(v=>v.id==='home');if(d)setWorldRoute(d,false);else toast('Дом пока не найден');});
+$('worldRecenterBtn')?.addEventListener('click',()=>{worldCamOrbitYaw=0;worldCamOrbitPitch=0;worldYaw=worldDriving?player.h:(charMesh?charMesh.rotation.y:worldYaw);toast('Камера за спиной');});
 
 function worldPos(){const a=currentWorldActor();return a?a.position:new THREE.Vector3();}
 function startOpenWorld(regionId=worldRegionId){
@@ -2538,7 +2739,7 @@ function startOpenWorld(regionId=worldRegionId){
   if(charMesh){scene.remove(charMesh);disposeModel(charMesh);}charMesh=makeWorldPedestrian(save.char.g,save.char.col,save.char.skin);charMesh.userData.playerPed=true;charMesh.position.set(9,10,1.8);charMesh.rotation.y=0;scene.add(charMesh);if(window.TRModels&&window.TRModels.registerWorldCharacter)window.TRModels.registerWorldCharacter(charMesh);worldYaw=0;
   player.mesh.position.set(9,10,8);player.mesh.rotation.set(0,0,0);player.h=0;player.mesh.visible=true;player.speed=0;player.vx=0;player.vz=0;player.dmg=save.cars[save.cur]?.dmg||0;player.immobilized=player.dmg>=100;phys=physFor(save.cur);applyDamageVisual();
   worldFallState={character:{vy:0,grounded:false},car:{vy:0,grounded:false}};
-  show(null);$('hud').hidden=true;$('minimap').hidden=true;$('worldHud').hidden=false;$('worldPhone').hidden=true;$('worldShop').hidden=true;$('worldMiniMap').hidden=false;$('worldDevPanel').hidden=true;$('touch').hidden=!isTouch;$('fixBtn').hidden=true;$('worldLocation').textContent=cfg.welcome+' · СВОБОДНАЯ ЕЗДА';$('worldActionHint').textContent=isTouch?'Стик слева — движение · свайп справа — обзор · БЕГ и ПРЫЖОК — кнопки справа':'W/S — вперёд/назад · A/D — шаг влево/вправо · мышь — обзор · Shift — бег · Пробел — прыжок · E — действие';Snd.music('menu');applyTouchSettings();updateWorldCameraLabel();toast('Нью-Йорк · город загружается');
+  show(null);$('hud').hidden=true;$('minimap').hidden=true;$('worldHud').hidden=false;$('worldPhone').hidden=true;$('worldShop').hidden=true;$('worldMiniMap').hidden=false;$('worldDevPanel').hidden=true;$('touch').hidden=!isTouch;$('fixBtn').hidden=true;$('worldLocation').textContent=cfg.welcome+' · СВОБОДНАЯ ЕЗДА';$('worldActionHint').textContent=isTouch?'Стик слева — движение · свайп справа — обзор · БЕГ и ПРЫЖОК — кнопки справа':'W/S — вперёд/назад · A/D — шаг влево/вправо · мышь — обзор · Shift — бег · Пробел — прыжок · E — действие';Snd.music('background');applyTouchSettings();updateWorldCameraLabel();toast('Нью-Йорк · город загружается');
   loadSharedWorldEdits();
 }
 function updateWorldCameraLabel(){const labels=['1-е лицо','2-е лицо · плечо','3-е лицо'];$('worldCamBtn').textContent='Камера: '+labels[worldCamMode];}
@@ -2548,7 +2749,7 @@ function closeWorldPhone(){$('worldPhone').hidden=true;}
 function renderWorldPhone(tab='home'){
   const el=$('worldPhoneContent'),p=worldPos(),loc=worldInterior?'Квартира':Math.hypot(p.x,p.z)<100?'Центр города':p.x<0?'Западный район':'Восточный район';
   if(tab==='map')el.innerHTML=`<h2>Карта · ${(WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.tashkent).name}</h2><p>Ты находишься: <b>${loc}</b></p><div class="card"><b>🏠 Апартаменты</b><div class="muted">${worldRegionId==='tashkent'?'Катта Чиланзар 1, дом 11А, подъезд 4 · X −126 / Z −40':'Запад, около X −50 / Z −25'}</div></div><div class="card"><b>🛠 AUTO LAB</b><div class="muted">Восток, около X 150 / Z 20</div></div><div class="card"><b>🏁 Городской клуб</b><div class="muted">Рядом с центральным перекрёстком</div></div><p>В городе можно свободно ходить, садиться в свою машину, посещать магазины и запускать заезды.</p>`;
-  else if(tab==='services')el.innerHTML=`<h2>Сервисы</h2><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>монет на счету</span></div><div><b>${Math.round(player.dmg)}%</b><span>повреждение машины</span></div></div><div class="card"><b>Эвакуатор и механик</b><p>Вызвать сервис, сбросить критическую поломку или заказать ремонт.</p><button class="btn" data-phone-action="tow">Вызвать эвакуатор · 600</button></div><div class="card"><b>Автосервис</b><p>Улучшить двигатель, ускорение и нитро за игровые монеты.</p><button class="btn" data-phone-action="garage">Открыть магазин тюнинга</button></div><div class="card"><b>🚕 Городское такси</b><p>Вызови такси, чтобы быстро добраться к городской точке.</p><button class="btn" data-phone-action="taxi">Вызвать такси · 150</button></div>`;
+  else if(tab==='services')el.innerHTML=`<h2>Сервисы</h2><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>монет на счету</span></div><div><b>${Math.round(player.dmg)}%</b><span>повреждение машины</span></div></div><div class="card"><b>Эвакуатор и механик</b><p>Вызвать сервис, сбросить критическую поломку или заказать ремонт.</p><button class="btn" data-phone-action="tow">Вызвать эвакуатор · 600</button></div><div class="card"><b>Автосервис</b><p>Отремонтируй машину или выбери другую готовую модель.</p><button class="btn" data-phone-action="garage">Магазин машин</button></div><div class="card"><b>🚕 Городское такси</b><p>Вызови такси, чтобы быстро добраться к городской точке.</p><button class="btn" data-phone-action="taxi">Вызвать такси · 150</button></div>`;
   else if(tab==='social'){renderSocialFeed();void refreshSocialFeed();return;}
   else if(tab==='events')el.innerHTML=`<h2>События</h2><div class="card"><b>🏁 Уличный спринт</b><p>Короткий заезд против соперников, которые ускоряются, используют нитро и пытаются объезжать ловушки.</p><button class="btn" data-phone-action="race">Начать заезд</button></div><div class="card"><b>🏆 Турниры</b><p>Открывай турниры в главном меню: дождевой кубок, дрифт, марафон и Hyper League.</p><button class="btn" data-phone-action="menu-tours">Список турниров</button></div>`;
   else el.innerHTML=`<h2>Добро пожаловать</h2><p>Город открыт для исследования. Жители гуляют, машут руками, прыгают от радости, читают телефон и реагируют на твою машину.</p><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>баланс · монеты</span></div><div><b>${Math.round(player.dmg)}%</b><span>состояние авто</span></div></div><div class="card"><b>Подсказки</b><p>WASD — ходить/ехать · E — взаимодействие · V — смена камеры · P — телефон · Esc — в меню.</p></div><button class="btn" data-phone-action="tow">Эвакуатор / ремонт</button><button class="btn" data-phone-action="race">Быстрый уличный заезд</button>`;
@@ -2560,19 +2761,17 @@ $('worldPhoneContent').addEventListener('click',e=>{const publish=e.target.close
 $('worldPhoneContent').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[data-social-comment-input]')){const id=e.target.getAttribute('data-social-comment-input'),btn=document.querySelector(`[data-social-comment="${id}"]`);if(btn)btn.click();}});$('worldCamBtn').onclick=cycleWorldCamera;$('worldExitBtn').onclick=toMenu;$('worldInteractBtn').onclick=interactWorld;$('worldPhone').addEventListener('click',e=>{const t=e.target.closest('[data-phone-tab]');if(t){renderWorldPhone(t.dataset.phoneTab);return;}const a=e.target.closest('[data-phone-action]');if(!a)return;const act=a.dataset.phoneAction;if(act==='taxi'){if(save.coins<150){toast('Не хватает 150 монет на такси');return;}save.coins-=150;store();closeWorldPhone();toast('🚕 Такси едет к тебе…');setTimeout(()=>{if(state!=='world')return;const dest=worldRouteTarget||{x:0,z:0,name:'центр города'};const tx=clamp(dest.x,worldBounds.minX+8,worldBounds.maxX-8),tz=clamp(dest.z,worldBounds.minZ+8,worldBounds.maxZ-8);player.mesh.position.set(tx,worldGroundY,tz);player.speed=0;worldFallState.car={vy:0,grounded:true};if(charMesh){charMesh.position.set(tx-2,worldGroundY,tz-2);charMesh.visible=!worldDriving;worldFallState.character={vy:0,grounded:true};}worldRouteTarget={x:0,z:0,name:'Центр города'};toast('🚕 Такси доставило к '+(dest.name||'месту назначения'));},1200);return;}else if(act==='tow'){if(save.coins<600){toast('Не хватает 600 монет на выезд механика');return;}save.coins-=600;setDamage(Math.max(0,player.dmg-45));player.immobilized=false;player.engineStall=0;player.speed=0;player.mesh.position.set(9,worldGroundY,8);worldFallState.car={vy:0,grounded:true};store();renderWorldPhone('services');toast('Механик прибыл: восстановлено 45% прочности');}else if(act==='garage'){closeWorldPhone();openWorldShop('garage');}else if(act==='race'){closeWorldPhone();toMenu();setTimeout(startCareer,20);}else if(act==='menu-tours'){closeWorldPhone();toMenu();setTimeout(()=>openScreen('tour'),20);}});
 document.querySelectorAll('[data-phone-tab]').forEach(()=>{});
 function openWorldShop(kind){
-  const title=kind==='market'?'MARKET 24/7':kind==='fashion'?'CITY MODA':'AUTO LAB';$('worldShopTitle').textContent=title;$('worldShopDesc').textContent=kind==='market'?'Городской магазин и полезные вещи':kind==='fashion'?'Одежда и внешний вид персонажа':'Ремонт, двигатель и спортивные детали';
-  const own=save.cars[save.cur],engineCost=Math.round((own.up[0]+1)*(1100+carIdx(save.cur)*320)),accCost=Math.round((own.up[1]+1)*(900+carIdx(save.cur)*280)),nitroCost=Math.round((own.up[5]+1)*(1300+carIdx(save.cur)*360)),repairCost=Math.max(350,Math.ceil(own.dmg*28));
+  const title=kind==='market'?'MARKET 24/7':kind==='fashion'?'CITY MODA':'AUTO LAB';$('worldShopTitle').textContent=title;$('worldShopDesc').textContent=kind==='market'?'Городской магазин и полезные вещи':kind==='fashion'?'Одежда и внешний вид персонажа':'Ремонт машины и выбор готовой модели';
+  const own=save.cars[save.cur],repairCost=Math.max(350,Math.ceil(own.dmg*28));
   let items=[];
-  if(kind==='garage')items=[['repair',`Полный ремонт кузова · ${repairCost.toLocaleString('ru-RU')} монет`,`Сейчас повреждение ${Math.round(own.dmg)}%` ,own.dmg>0],['engine',`Спортивный двигатель · ${engineCost.toLocaleString('ru-RU')} монет`,`Уровень ${own.up[0]}/5`,own.up[0]<5],['accel',`Ускорение PRO · ${accCost.toLocaleString('ru-RU')} монет`,`Уровень ${own.up[1]}/5`,own.up[1]<5],['nitro',`Нитро Stage · ${nitroCost.toLocaleString('ru-RU')} монет`,`Уровень ${own.up[5]}/5`,own.up[5]<5]];
-  else if(kind==='fashion')items=[['outfit','Новый комплект одежды · 850 монет','Случайный городской стиль',true],['style','Стиль кузова · 2 500 монет','Переключить форму кузова',true],['neon','Неоновая подсветка · 1 800 монет','Изменить внешний вид авто',true]];
+  if(kind==='garage')items=[['repair',`Полный ремонт кузова · ${repairCost.toLocaleString('ru-RU')} монет`,`Сейчас повреждение ${Math.round(own.dmg)}%` ,own.dmg>0],['cars','Магазин готовых машин','Покупай и выбирай модели — без тюнинга и перекраски',true]];
+  else if(kind==='fashion')items=[['outfit','Новый комплект одежды · 850 монет','Случайный городской стиль',true]];
   else items=[['repair-kit','Ремкомплект · 500 монет','Небольшой ремонт машины в пути',true],['snack','Энергетик · 150 монет','Для настроения и городской прогулки',true],['event','Билет на гонку · бесплатно','Перейти к городскому заезду',true]];
   $('worldShopItems').innerHTML=items.map(([id,name,desc,enabled])=>`<div class="card"><b>${name}</b><div class="muted">${desc}</div><button class="btn" data-shop-action="${id}" ${enabled?'':'disabled'}>Купить / использовать</button></div>`).join('');$('worldShop').hidden=false;
   $('worldShopItems').onclick=e=>{const b=e.target.closest('[data-shop-action]');if(!b)return;const act=b.dataset.shopAction;let cost=0;
+    if(act==='cars'){ $('worldShop').hidden=true; closeWorldPhone(); toMenu(); setTimeout(()=>openScreen('garage'),20); return; }
     if(act==='repair'){cost=repairCost;if(own.dmg<=0){toast('Машина уже в отличном состоянии');return;}if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;setDamage(0);player.immobilized=false;player.engineStall=0;}
-    else if(['engine','accel','nitro'].includes(act)){const i=act==='engine'?0:act==='accel'?1:5,base=act==='engine'?1100:act==='accel'?900:1300;cost=Math.round((own.up[i]+1)*(base+carIdx(save.cur)*280));if(own.up[i]>=5){toast('Улучшение уже максимальное');return;}if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;own.up[i]++;phys=physFor(save.cur);}
     else if(act==='outfit'){cost=850;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.char.col=(save.char.col+1+Math.floor(Math.random()*5))%OUTFITS.length;replaceWorldPlayer();}
-    else if(act==='style'){cost=2500;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.style[save.cur]=((save.style[save.cur]||0)+1)%STYLE_SHAPES.length;showCar(save.cur);player.mesh.position.set(9,worldGroundY,8);player.mesh.visible=!worldDriving;}
-    else if(act==='neon'){cost=1800;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.neon[save.cur]=save.neon[save.cur]===false;showCar(save.cur);player.mesh.position.set(9,worldGroundY,8);player.mesh.visible=!worldDriving;}
     else if(act==='repair-kit'){cost=500;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;setDamage(Math.max(0,player.dmg-20));player.immobilized=player.dmg>=100;}
     else if(act==='snack'){cost=150;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;toast('Вкусный перерыв!');}
     else if(act==='event'){ $('worldShop').hidden=true;closeWorldPhone();toMenu();setTimeout(startCareer,20);return;}
@@ -2755,8 +2954,8 @@ function updateOpenWorld(dt){
       const desiredYaw=Math.atan2(moveX,moveZ);
       // Smoothly turn the avatar toward movement without snapping the camera or
       // overwriting the direction the player just swiped to look.
-      let turn=((desiredYaw-worldYaw+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;
-      worldYaw+=turn*Math.min(1,12*dt);
+      let turn=((desiredYaw-charMesh.rotation.y+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;
+      charMesh.rotation.y+=turn*Math.min(1,12*dt);
     }
     charMesh.rotation.y=worldYaw;
     if(worldInterior){
@@ -2777,7 +2976,7 @@ function updateOpenWorld(dt){
     const u=charMesh.userData;u.legs[0].rotation.x=moving?Math.sin(worldAnimT*10)*0.55:0;u.legs[1].rotation.x=moving?-Math.sin(worldAnimT*10)*0.55:0;u.arms[0].rotation.x=moving?-Math.sin(worldAnimT*10)*0.22:0;u.arms[1].rotation.x=moving?Math.sin(worldAnimT*10)*0.22:0;
     if(u.bodyGroup){u.bodyGroup.position.y=moving?Math.abs(Math.sin(worldAnimT*10))*0.035:Math.sin(worldAnimT*1.6)*0.012;u.bodyGroup.rotation.z=moving?Math.sin(worldAnimT*5)*0.018:Math.sin(worldAnimT*0.8)*0.008;}
   }
-  if(!worldInterior){const target=worldInteractablesAt();worldNear=target;if(target){$('worldInteractBtn').textContent='E · '+(target.type==='npc'?'Поговорить с '+target.name:target.type==='car'?(worldDriving?'Выйти из машины':'Сесть в машину'):target.type==='apartment'?'Войти домой':target.type==='market'?'Зайти в магазин':target.type==='garage'?'Тюнинг авто':target.type==='fashion'?'Магазин одежды':target.type==='raceboard'||target.type==='plaza'?'Городские события':'Взаимодействовать');$('worldActionHint').textContent=(isTouch?'Свайп по сцене — обзор · ':'')+'E — '+target.name+' · V — камера · P — телефон';}else{$('worldInteractBtn').textContent='E · Осмотреться';$('worldActionHint').textContent=isTouch?'Экранные кнопки · свайп по миру — камера · Телефон — сервисы':'W/S — вперёд/назад · A/D — шаг влево/вправо · мышь — обзор · Shift — бег · Пробел — прыжок · E — действие · V — камера · P — телефон';}}
+  if(!worldInterior){const target=worldInteractablesAt();worldNear=target;if(target){$('worldInteractBtn').textContent='E · '+(target.type==='npc'?'Поговорить с '+target.name:target.type==='car'?(worldDriving?'Выйти из машины':'Сесть в машину'):target.type==='apartment'?'Войти домой':target.type==='market'?'Зайти в магазин':target.type==='garage'?'Автосервис · машины':target.type==='fashion'?'Магазин одежды':target.type==='raceboard'||target.type==='plaza'?'Городские события':'Взаимодействовать');$('worldActionHint').textContent=(isTouch?'Свайп по сцене — обзор · ':'')+'E — '+target.name+' · V — камера · P — телефон';}else{$('worldInteractBtn').textContent='E · Осмотреться';$('worldActionHint').textContent=isTouch?'Экранные кнопки · свайп по миру — камера · Телефон — сервисы':'W/S — вперёд/назад · A/D — шаг влево/вправо · мышь — обзор · Shift — бег · Пробел — прыжок · E — действие · V — камера · P — телефон';}}
   else{$('worldInteractBtn').textContent='E · Выйти из квартиры';$('worldActionHint').textContent='Квартира · E — выйти в город · P — телефон';}
   const p=worldPos();const d=Math.hypot(p.x,p.z),cfg=WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.tashkent;$('worldLocation').textContent=worldInterior?'МОЯ КВАРТИРА · ГОСТИНАЯ':d<85?cfg.welcome:p.x<0?'ЗАПАДНЫЙ РАЙОН':'ВОСТОЧНЫЙ РАЙОН';
 }
@@ -2789,7 +2988,7 @@ function segmentAabbHitT(origin, target, b, pad=0.15) {
 }
 function updateWorldCamera(dt){
   const a=worldDriving?player.mesh:charMesh;if(!a)return;
-  const p=a.position, actorYaw=worldDriving?player.h:worldYaw, yaw=actorYaw+worldCamOrbitYaw;
+  const p=a.position, actorYaw=worldYaw, yaw=actorYaw+worldCamOrbitYaw;
   let wanted,look,fov;
   if(worldCamMode===0){
     const armsReady=!!(window.TRModels&&window.TRModels.isArmsReady&&window.TRModels.isArmsReady());

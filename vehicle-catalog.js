@@ -277,6 +277,8 @@ function makeCarModel(def, colOverride, options = {}) {
     wheels, tailMat, flame, len: S.l, S, driver: null, damageMarks,
     damageSmoke: smoke, damageBumper: bentBumper, damageChip: chip,
     carId: def.id, carIndex: Math.max(0, CARS.findIndex(c => c.id === def.id)),
+    // Индивидуальная условная масса нужна для более естественного импульса при столкновениях.
+    mass: Math.max(0.82, Math.min(2.35, 0.88 + (Number(def.s && def.s[0]) || 8) * 0.045 + Math.log10(Math.max(10, Number(def.price) || 10)) * 0.08)),
     baseParts: g.children.slice(), externalCarRoot: null, externalWheels: []
   };
   if (window.TRModels) window.TRModels.registerCar(g, def.id, g.userData.carIndex);
@@ -286,6 +288,7 @@ function makeCarModel(def, colOverride, options = {}) {
 // ---------- персонажи ----------
 function makeCharacter(gender, outfit, skinIdx, bust) {
   const girl = gender === 'girl', g = new THREE.Group();
+  g.userData.trGender = girl ? 'girl' : 'boy';
   const M = (c, r) => new THREE.MeshStandardMaterial({ color: c, roughness: r === undefined ? 0.7 : r });
   const skin = M(SKINS[skinIdx] || SKINS[0], 0.6), top = M(OUTFITS[outfit] || OUTFITS[0], 0.75), top2 = M(OUTFITS[(outfit + 2) % 6], 0.75);
   const jeans = M(girl ? 0x20263a : 0x2a3550, 0.85), shoe = M(0xf2f2f2, 0.5), sole = M(0x222222, 0.9), hair = M(girl ? 0x5a2e12 : 0x241811, 0.5);
@@ -347,7 +350,7 @@ function makeCharacter(gender, outfit, skinIdx, bust) {
   return g;
 }
 function makeDriver(gender, outfit, skinIdx) {
-  const d = makeCharacter(gender, outfit, skinIdx, true); d.scale.setScalar(0.62);
+  const d = makeCharacter(gender, outfit, skinIdx, true); d.userData.trGender = gender === 'girl' ? 'girl' : 'boy'; d.scale.setScalar(0.62);
   // Racing helmet and tinted visor make the driver read more clearly through the windshield.
   const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.192 * 0.62, 16, 12), new THREE.MeshPhysicalMaterial({ color: OUTFITS[outfit] || 0xe04a3a, roughness: 0.26, metalness: 0.2, clearcoat: 0.8 }));
   helmet.position.set(0, 1.72 * 0.62, -0.025);

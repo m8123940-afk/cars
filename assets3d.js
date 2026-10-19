@@ -313,10 +313,40 @@
     }
     if(forceSeconds>0){state.forcedName=name;state.forcedUntil=characterMotionClock+forceSeconds;}
   }
+  function addFemaleStyling(model) {
+    if (!model || !model.userData || model.getObjectByName('TR female hairstyle')) return;
+    // The exact same new_person.glb is retained for both characters; a compact hair assembly gives the girl avatar a clear silhouette.
+    const hair = new THREE.Group(); hair.name = 'TR female hairstyle';
+    const hairMat = new THREE.MeshStandardMaterial({ color: 0x382017, roughness: 0.88, metalness: 0.02 });
+    const hairLight = new THREE.MeshStandardMaterial({ color: 0x5b3021, roughness: 0.78, metalness: 0.02 });
+    const accessory = new THREE.MeshStandardMaterial({ color: 0xe78bbf, roughness: 0.42, metalness: 0.1 });
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.185, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), hairMat);
+    cap.position.set(0, 1.735, -0.005); cap.scale.set(1.02, 1.0, 1.0); hair.add(cap);
+    const fringe = new THREE.Mesh(new THREE.SphereGeometry(0.115, 12, 8), hairLight);
+    fringe.position.set(0, 1.72, 0.115); fringe.scale.set(1.04, 0.36, 0.58); hair.add(fringe);
+    for (const side of [-1, 1]) {
+      const strand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 9, 7), hairMat);
+      strand.position.set(side * 0.15, 1.655, 0.005); strand.scale.set(0.72, 1.2, 0.82); hair.add(strand);
+    }
+    const pony = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.072, 0.28, 10), hairMat);
+    pony.position.set(0.135, 1.535, -0.145); pony.rotation.x = -0.28; pony.rotation.z = -0.18; hair.add(pony);
+    const ponyTip = new THREE.Mesh(new THREE.SphereGeometry(0.082, 10, 8), hairLight);
+    ponyTip.position.set(0.145, 1.405, -0.19); ponyTip.scale.set(0.72, 1.25, 0.72); hair.add(ponyTip);
+    const tie = new THREE.Mesh(new THREE.TorusGeometry(0.052, 0.014, 6, 12), accessory);
+    tie.position.set(0.135, 1.62, -0.145); tie.rotation.x = Math.PI / 2; hair.add(tie);
+    for (const side of [-1, 1]) {
+      const clip = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.018, 0.012), accessory);
+      clip.position.set(side * 0.095, 1.725, 0.157); clip.rotation.z = side * 0.16; hair.add(clip);
+    }
+    hair.traverse(o => { if (o.isMesh) { o.castShadow = false; o.frustumCulled = false; } });
+    model.add(hair);
+  }
+
   function attachWorldCharacter(root) {
     if (!root || !root.userData || root.userData.trNewPersonAttached || !personTemplate) return;
     const model = makePersonInstance();
     if (!model) return;
+    if ((root.userData.trGender || root.userData.gender) === 'girl') addFemaleStyling(model);
     model.name = 'TR visible player character';
     model.visible = true;
     model.traverse(o => { if (o.isMesh) { o.visible = true; o.frustumCulled = false; } });
@@ -340,6 +370,7 @@
     if (!root || !root.userData || root.userData.trNewPersonAttached || !personTemplate) return;
     const model = makePersonInstance();
     if (!model) return;
+    if ((root.userData.trGender || root.userData.gender) === 'girl') addFemaleStyling(model);
     // Attach the supplied model first; only then hide the old driver meshes.
     model.rotation.x = -0.08;
     model.scale.y *= 0.94;

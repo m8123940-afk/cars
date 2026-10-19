@@ -32,10 +32,12 @@
 
 <div id="touch" hidden>
   <div id="worldMoveStick" hidden aria-label="Стик движения"><div class="world-stick-base"><div id="worldMoveNub" class="world-stick-nub"></div></div><span>ДВИЖЕНИЕ</span></div>
-  <div class="grp l">
+  <div class="grp l" id="buttonSteering">
     <button class="tb" data-button="left" data-k="left">◀</button>
     <button class="tb" data-button="right" data-k="right">▶</button>
   </div>
+  <div id="wheelControl" hidden aria-label="Виртуальный руль"><div id="wheelBase"><div id="wheelHub"></div><span>РУЛЬ</span></div></div>
+  <div id="slideControl" hidden aria-label="Слайд-руль"><span>← РУЛЬ →</span><input id="slideSteerRange" type="range" min="-100" max="100" value="0" step="1"><small>Передвинь ползунок для поворота</small></div>
   <div class="grp r">
     <button class="tb nit" data-button="nitro" data-k="nitro">N</button>
     <button class="tb brk" data-button="brake" data-k="brake">▼</button>
@@ -56,12 +58,17 @@
   <h1>TURBO<br>RIVALS 3D</h1>
   <p class="sub" id="who"></p>
   <div class="lvl" id="lvlInfo"></div>
+  <section id="leaderboardMini" class="leaderboard-mini" aria-label="Общий рейтинг">
+    <div class="leaderboard-mini-head"><b>🏆 ОБЩИЙ РЕЙТИНГ</b><button id="leaderboardOpenBtn" class="btn">Весь список</button></div>
+    <div id="leaderboardMiniRows" class="leaderboard-mini-rows"><span>Подключение к рейтингу…</span></div>
+  </section>
   <button id="startBtn" class="big">Карьера</button>
   <div class="grid">
     <button id="trainBtn" class="btn">Тренировка</button>
     <button id="tourBtn" class="btn">Турниры</button>
     <button id="onlineBtn" class="btn">Онлайн</button>
-    <button id="garageBtn" class="btn">Гараж и магазин</button>
+    <button id="leaderboardBtn" class="btn">🏆 Общий рейтинг</button>
+    <button id="garageBtn" class="btn">Магазин машин</button>
     <button id="charBtn" class="btn">Персонаж</button>
     <button id="setBtn" class="btn">Настройки</button>
     <button id="helpBtn" class="btn">Как играть</button>
@@ -71,23 +78,24 @@
   <p class="coins">Монеты: <b id="coins">0</b></p>
 </div>
 
-<div id="garage" class="panel" hidden>
-  <div class="gtop">
+<div id="garage" class="panel garage-screen" hidden>
+  <div class="gtop garage-top">
     <button class="btn" data-back>← Меню</button>
     <span class="coins"><b id="gCoins">0</b> монет</span>
   </div>
-  <div class="gbody">
-    <div class="gnav">
-      <button id="gPrev" class="btn sq">◀</button>
-      <div class="gtitle"><h3 id="gName"></h3><p id="gInfo"></p></div>
-      <button id="gNext" class="btn sq">▶</button>
-    </div>
-    <div id="gStats"></div>
-    <div class="tuning"><h3>Тюнинг кузова</h3><p class="sub">Тюнинг платный: краска 450, стиль кузова 1 200, диски 650, спойлер 1 400, установка неона 1 800 монет. Каждый элемент сохраняется за автомобилем.</p><div id="paintOptions" class="paint-options"></div><div class="row tuning-actions"><button id="gStyleBtn" class="btn">Кузов: стандарт</button><button id="gNeonBtn" class="btn">Неон: выкл.</button><button id="gRimBtn" class="btn">Диски: Серебро</button><button id="gWingBtn" class="btn">Спойлер: Заводской</button></div></div>
-    <div class="row">
-      <button id="gMain" class="big sm"></button>
-      <button id="gRepair" class="btn"></button>
-    </div>
+  <div class="garage-layout">
+    <aside class="garage-list-panel">
+      <div class="garage-list-heading"><span class="eyebrow">TURBO RIVALS · SHOWROOM</span><h3>МОДЕЛИ МАШИН</h3><p class="sub">Выбери машину слева, чтобы осмотреть 3D-модель справа.</p></div>
+      <div id="gCarList" class="garage-car-list"></div>
+    </aside>
+    <main class="garage-detail-panel">
+      <div class="garage-preview-label"><span>3D SHOWROOM</span><b id="gPreviewBadge">ТЕКУЩАЯ МОДЕЛЬ</b></div>
+      <div class="garage-car-info"><div class="eyebrow">ВЫБРАННАЯ МОДЕЛЬ</div><h2 id="gName"></h2><p id="gInfo" class="sub"></p></div>
+      <div class="garage-detail-bottom"><h3>ХАРАКТЕРИСТИКИ</h3><div id="gStats"></div>
+        <div class="row garage-actions"><button id="gMain" class="big sm"></button><button id="gRepair" class="btn"></button></div>
+        <p class="garage-footnote">Только готовые модели автомобилей — без изменения цвета и тюнинга.</p>
+      </div>
+    </main>
   </div>
 </div>
 
@@ -128,6 +136,13 @@
   <button class="btn" data-back>Назад</button>
 </div>
 
+<div id="leaderboard" class="overlay leaderboard-screen" hidden>
+  <div class="leaderboard-title-row"><div><p class="eyebrow">TURBO RIVALS · ONLINE</p><h2>Общий рейтинг</h2><p class="sub">Гонщики со всех устройств, сортировка по уровню карьеры.</p></div><button id="leaderboardRefreshBtn" class="btn">↻ Обновить</button></div>
+  <p id="leaderboardStatus" class="sub">Загружаем таблицу…</p>
+  <div id="leaderboardRows" class="leaderboard-rows"></div>
+  <button class="btn" data-back>← В меню</button>
+</div>
+
 <div id="settings" class="overlay" hidden>
   <h2>Настройки</h2>
   <label class="set">Имя <input id="nameIn" maxlength="14" autocomplete="off"></label>
@@ -138,6 +153,7 @@
   <p class="sub settings-note">«RT-стиль» — усиленное освещение и тени. Это WebGL-пресет, а не настоящая аппаратная трассировка лучей; фильтр размытия отключён для чёткого изображения.</p>
   <label class="set">Тема меню <button id="themeBtn" class="btn"></button></label>
   <h3 class="settings-section-title">Управление</h3><h4 class="settings-subtitle">Экран телефона</h4>
+  <label class="set">Тип управления <button id="controlModeBtn" class="btn">Кнопки</button></label>
   <label class="set">Кнопки телефона <button id="touchLayoutBtn" class="btn"></button></label>
   <label class="set">Размер кнопок <button id="touchSizeBtn" class="btn"></button></label>
   <label class="set">Управление · Экран <button id="editTouchBtn" class="btn">Переместить кнопки</button></label>
@@ -169,7 +185,7 @@
 
 <div id="worldHud" hidden>
   <div class="world-location"><b id="worldLocation">Центр города</b><span id="worldWeatherTag">☀ День · Ясно</span><span id="worldActionHint">WASD — движение · E — взаимодействие · V — камера</span></div>
-  <div class="world-actions"><button id="worldPhoneBtn" class="world-action">📱 Телефон</button><button id="worldHomeBtn" class="world-action">🏠 Домой</button><button id="worldBigMapBtn" class="world-action">🗺 Карта</button><button id="worldRadioBtn" class="world-action">📻 Включить радио</button><button id="worldCamBtn" class="world-action">Камера: 3-е лицо</button><button id="worldInteractBtn" class="world-action">E · Осмотреться</button><button id="worldDevBtn" class="world-action">🛠 Разработчик</button><button id="worldExitBtn" class="world-action">В меню</button></div>
+  <div class="world-actions"><button id="worldPhoneBtn" class="world-action">📱 Телефон</button><button id="worldHomeBtn" class="world-action">🏠 Домой</button><button id="worldRecenterBtn" class="world-action">🎯 Камера сзади</button><button id="worldBigMapBtn" class="world-action">🗺 Карта</button><button id="worldRadioBtn" class="world-action">📻 Включить радио</button><button id="worldCamBtn" class="world-action">Камера: 3-е лицо</button><button id="worldInteractBtn" class="world-action">E · Осмотреться</button><button id="worldDevBtn" class="world-action">🛠 Разработчик</button><button id="worldExitBtn" class="world-action">В меню</button></div>
 </div>
 <div id="worldPhone" class="overlay world-phone" hidden>
   <div class="phone-shell"><div class="phone-notch"></div><div class="phone-head"><span>TR MOBILE</span><button id="worldPhoneClose" class="btn">✕</button></div>
