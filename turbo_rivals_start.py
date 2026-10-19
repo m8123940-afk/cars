@@ -10,7 +10,7 @@ from aiogram.types import (
 router = Router()
 
 # Replace this with the real HTTPS URL of your Turbo Rivals game.
-GAME_URL = "https://YOUR-GAME-URL"
+GAME_URL = "https://m8123940-afk.github.io/cars/"
 
 
 @router.message(CommandStart())
