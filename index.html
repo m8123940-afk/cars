@@ -169,7 +169,7 @@
 
 <div id="worldHud" hidden>
   <div class="world-location"><b id="worldLocation">Центр города</b><span id="worldWeatherTag">☀ День · Ясно</span><span id="worldActionHint">WASD — движение · E — взаимодействие · V — камера</span></div>
-  <div class="world-actions"><button id="worldPhoneBtn" class="world-action">📱 Телефон</button><button id="worldBigMapBtn" class="world-action">🗺 Карта</button><button id="worldRadioBtn" class="world-action">📻 Включить радио</button><button id="worldCamBtn" class="world-action">Камера: 3-е лицо</button><button id="worldInteractBtn" class="world-action">E · Осмотреться</button><button id="worldDevBtn" class="world-action">🛠 Разработчик</button><button id="worldExitBtn" class="world-action">В меню</button></div>
+  <div class="world-actions"><button id="worldPhoneBtn" class="world-action">📱 Телефон</button><button id="worldHomeBtn" class="world-action">🏠 Домой</button><button id="worldBigMapBtn" class="world-action">🗺 Карта</button><button id="worldRadioBtn" class="world-action">📻 Включить радио</button><button id="worldCamBtn" class="world-action">Камера: 3-е лицо</button><button id="worldInteractBtn" class="world-action">E · Осмотреться</button><button id="worldDevBtn" class="world-action">🛠 Разработчик</button><button id="worldExitBtn" class="world-action">В меню</button></div>
 </div>
 <div id="worldPhone" class="overlay world-phone" hidden>
   <div class="phone-shell"><div class="phone-notch"></div><div class="phone-head"><span>TR MOBILE</span><button id="worldPhoneClose" class="btn">✕</button></div>
@@ -185,6 +185,7 @@
   <div class="world-big-map-shell">
     <div class="world-big-map-toolbar"><b>🗺 Карта Нью-Йорка</b><input id="worldMapMarkName" maxlength="48" placeholder="Название отметки"><button id="worldMapSaveMark" class="btn">📍 Сохранить отметку</button><button id="worldMapRouteBtn" class="btn">Построить маршрут</button><button id="worldBigMapClose" class="btn">Закрыть ✕</button></div>
     <p class="world-map-help">Нажми на карту, чтобы выбрать место. Сохранённые отметки останутся на этом устройстве; маршрут появится на мини-карте.</p>
+    <div id="worldQuickDest" class="world-quick-dest" aria-label="Быстрые маршруты"></div>
     <canvas id="worldBigMapCanvas" width="980" height="760" aria-label="Карта Нью-Йорка: нажмите, чтобы поставить отметку"></canvas>
     <div id="worldMapMarks" class="world-map-marks"></div>
   </div>

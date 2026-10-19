@@ -2410,11 +2410,12 @@ function drawWorldBigMap(){
  const span=worldMiniMapWorldSpan||500,cx=worldMiniMapCenterX,cz=worldMiniMapCenterZ;
  const mapX=x=>(x-(cx-span/2))/span*canvas.width,mapY=z=>(z-(cz-span/2))/span*canvas.height;
  for(const m of readWorldMapMarks()){const x=mapX(m.x),y=mapY(m.z);ctx.fillStyle='#ffd44f';ctx.strokeStyle='#111b22';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='bold 16px Arial';ctx.fillStyle='#fff';ctx.strokeStyle='#17212a';ctx.lineWidth=3;ctx.strokeText(m.name||'Отметка',x+11,y+5);ctx.fillText(m.name||'Отметка',x+11,y+5);}
+ for(const d of worldDestinations()){if(d.id.startsWith('mark'))continue;const x=mapX(d.x),y=mapY(d.z);ctx.fillStyle='#0b1b27e6';ctx.strokeStyle='#8fe9ff';ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,15,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.font='17px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#fff';ctx.fillText(d.icon,x,y+1);ctx.textAlign='start';ctx.textBaseline='alphabetic';}
  if(worldRouteTarget){ctx.strokeStyle='#ffe16b';ctx.lineWidth=4;ctx.setLineDash([10,6]);ctx.beginPath();const actor=currentWorldActor();if(actor){ctx.moveTo(mapX(actor.position.x),mapY(actor.position.z));ctx.lineTo(mapX(worldRouteTarget.x),mapY(worldRouteTarget.z));}ctx.stroke();ctx.setLineDash([]);}
  const a=currentWorldActor();if(a){ctx.fillStyle='#50ebff';ctx.beginPath();ctx.arc(mapX(a.position.x),mapY(a.position.z),7,0,Math.PI*2);ctx.fill();}
 }
 function renderWorldMapMarks(){const el=$('worldMapMarks');if(!el)return;el.innerHTML=readWorldMapMarks().map(m=>`<div class="world-map-mark"><span>📍 ${String(m.name||'Отметка').replace(/[<>]/g,'')}</span><button class="btn" data-map-route="${m.id}">Маршрут</button><button class="btn" data-map-tp="${m.id}">Телепорт</button></div>`).join('')||'<p class="sub">Пока нет отметок. Нажми на карту и сохрани место.</p>';}
-function showWorldBigMap(){const el=$('worldBigMapOverlay');if(!el)return;el.hidden=false;worldMapSelectedPoint=null;drawWorldBigMap();renderWorldMapMarks();}
+function showWorldBigMap(){const el=$('worldBigMapOverlay');if(!el)return;el.hidden=false;worldMapSelectedPoint=null;drawWorldBigMap();renderWorldMapMarks();renderWorldQuickDest();}
 function hideWorldBigMap(){const el=$('worldBigMapOverlay');if(el)el.hidden=true;}
 function runDeveloperCommand(raw){if(!devUnlocked){toast('Сначала открой панель разработчика');return;}const txt=String(raw||'').trim().toLowerCase();const parts=txt.split(/\s+/);const cmd=parts[0];
  if(cmd==='/ghost'){worldGhostMode=!worldGhostMode;if(worldGhostMode)worldFlyMode=false;toast('Ghost '+(worldGhostMode?'включён':'выключен'));return;}
@@ -2472,7 +2473,7 @@ function activateImportedNewYork(){
     // safe start itself is still outside building footprints. Never deactivate NYC
     // and leave the player in the placeholder coordinates because only the side spot failed.
     safePed=safePed||safeStart;
-    charMesh.position.set(safePed.x,worldGroundY+10,safePed.z);charMesh.rotation.y=0;charMesh.visible=!worldDriving;worldFallState.character={vy:0,grounded:false};
+    worldSpawnPoint={x:safePed.x,z:safePed.z};charMesh.position.set(safePed.x,worldGroundY+10,safePed.z);charMesh.rotation.y=0;charMesh.visible=!worldDriving;worldFallState.character={vy:0,grounded:false};
   }
   // Relocate pedestrians onto cells with clear vertical footprints. The previous
   // generic-city coordinates placed citizens inside imported NYC buildings.
@@ -2492,6 +2493,34 @@ function activateImportedNewYork(){
   toast('Нью-Йорк загружен · коллизии проверяются по геометрии объектов');
 }
 function currentWorldActor(){return worldDriving?player.mesh:charMesh;}
+// ================= Быстрые маршруты на карте =================
+let worldSpawnPoint = null;
+function readWorldHome(){try{const h=JSON.parse(localStorage.getItem('tr_world_home')||'null');if(h&&Number.isFinite(h.x)&&Number.isFinite(h.z))return h;}catch(_){}return null;}
+function worldDestinations(){
+  const list=[],home=readWorldHome()||worldSpawnPoint;
+  if(home)list.push({id:'home',icon:'🏠',name:'Дом',x:home.x,z:home.z});
+  if(player&&player.mesh&&!worldDriving&&state==='world'&&player.mesh.visible!==false)list.push({id:'car',icon:'🚗',name:'Моя машина',x:player.mesh.position.x,z:player.mesh.position.z});
+  const rb=worldInteractables.find(i=>i.type==='raceboard');if(rb)list.push({id:'race',icon:'🏁',name:'Городские заезды',x:rb.x,z:rb.z});
+  const pl=worldInteractables.find(i=>i.type==='plaza');if(pl)list.push({id:'plaza',icon:'⛲',name:'Центральная площадь',x:pl.x,z:pl.z});
+  list.push({id:'empire',icon:'🏙',name:'Empire State Building',x:0,z:-190});
+  readWorldMapMarks().slice(0,4).forEach(m=>list.push({id:'mark'+m.id,icon:'📍',name:m.name||'Отметка',x:m.x,z:m.z}));
+  return list.map(d=>({...d,x:clamp(d.x,worldBounds.minX+3,worldBounds.maxX-3),z:clamp(d.z,worldBounds.minZ+3,worldBounds.maxZ-3)}));
+}
+function worldDistanceTo(d){const a=currentWorldActor();return a?Math.round(Math.hypot(a.position.x-d.x,a.position.z-d.z)):0;}
+function setWorldRoute(d,closeMap){worldRouteTarget={x:d.x,z:d.z,name:d.name};if(closeMap)hideWorldBigMap();toast('Маршрут: '+d.icon+' '+d.name+' · '+worldDistanceTo(d)+' м');}
+function renderWorldQuickDest(){
+  const el=$('worldQuickDest');if(!el)return;
+  const items=worldDestinations();
+  el.innerHTML=items.map(d=>`<button class="btn world-dest" data-dest="${d.id}"><span>${d.icon}</span><b>${String(d.name).replace(/[<>&]/g,'')}</b><i>${worldDistanceTo(d)} м</i></button>`).join('')+
+    '<button class="btn world-dest world-dest-set" data-dest="__sethome">🏠 Дом — здесь</button>';
+}
+$('worldQuickDest')?.addEventListener('click',e=>{
+  const b=e.target.closest('[data-dest]');if(!b)return;const id=b.dataset.dest;
+  if(id==='__sethome'){const a=currentWorldActor();if(!a)return;localStorage.setItem('tr_world_home',JSON.stringify({x:a.position.x,z:a.position.z}));toast('🏠 Дом сохранён здесь');renderWorldQuickDest();drawWorldBigMap();return;}
+  const d=worldDestinations().find(v=>v.id===id);if(d)setWorldRoute(d,true);
+});
+$('worldHomeBtn')?.addEventListener('click',()=>{const d=worldDestinations().find(v=>v.id==='home');if(d)setWorldRoute(d,false);else toast('Дом пока не найден');});
+
 function worldPos(){const a=currentWorldActor();return a?a.position:new THREE.Vector3();}
 function startOpenWorld(regionId=worldRegionId){
   if(!save.set.tutorialComplete&&!tutorialPermitStart){pendingTutorialRegion=regionId||'newyork';const panel=$('tutorialOverlay');if(panel){panel.hidden=false;return;}}
@@ -2716,8 +2745,9 @@ function updateOpenWorld(dt){
     if(isTouch&&worldStickInput.active){forward=clamp(forward-worldStickInput.y,-1,1);strafe=clamp(strafe+worldStickInput.x,-1,1);}
     const walkSpeed=held.has('nitro')?14:8.3;
     const viewYaw=worldYaw+worldCamOrbitYaw;
-    let moveX=Math.sin(viewYaw)*forward+Math.cos(viewYaw)*strafe;
-    let moveZ=Math.cos(viewYaw)*forward-Math.sin(viewYaw)*strafe;
+    // Камера смотрит вдоль (sin, cos); её «право» = (-cos, sin). Раньше знак был обратным, и стик/D шли влево.
+    let moveX=Math.sin(viewYaw)*forward-Math.cos(viewYaw)*strafe;
+    let moveZ=Math.cos(viewYaw)*forward+Math.sin(viewYaw)*strafe;
     const moveLength=Math.hypot(moveX,moveZ);if(moveLength>1){moveX/=moveLength;moveZ/=moveLength;}
     charMesh.position.x+=moveX*walkSpeed*dt;charMesh.position.z+=moveZ*walkSpeed*dt;
     const moving=Math.hypot(moveX,moveZ)>0.03;

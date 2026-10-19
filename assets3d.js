@@ -106,12 +106,114 @@
     return holder;
   }
 
+  // ---- Оптимизация шаблонов машин (один раз на модель, клоны используют общие геометрию/материалы) ----
+  function optimizeCarTemplate(template) {
+    if (!template || template.userData.trOptimized) return;
+    template.userData.trOptimized = true;
+    template.updateMatrixWorld(true);
+    const whole = new THREE.Box3().setFromObject(template);
+    const L = Math.max(whole.getSize(new THREE.Vector3()).length() * 0.5, 0.001);
+    const cache = new Map();
+    const lite = m => {
+      if (!m) return m;
+      if (Array.isArray(m)) return m.map(lite);
+      if (cache.has(m)) return cache.get(m);
+      let out = m;
+      // MeshPhysicalMaterial (clearcoat/specular) очень дорог на телефоне
+      if (isMobileGPU && m.isMeshPhysicalMaterial) {
+        out = new THREE.MeshStandardMaterial({
+          color: m.color, map: m.map, normalMap: m.normalMap, roughness: m.roughness, metalness: m.metalness,
+          roughnessMap: m.roughnessMap, metalnessMap: m.metalnessMap, emissive: m.emissive, emissiveMap: m.emissiveMap,
+          emissiveIntensity: m.emissiveIntensity, transparent: m.transparent, opacity: m.opacity, side: m.side,
+          alphaTest: m.alphaTest, vertexColors: m.vertexColors
+        });
+        out.name = m.name;
+      }
+      [out.map, out.normalMap, out.roughnessMap, out.metalnessMap, out.emissiveMap].forEach(t => { if (t) t.anisotropy = isMobileGPU ? 1 : Math.min(4, t.anisotropy || 4); });
+      cache.set(m, out); return out;
+    };
+    template.traverse(o => {
+      if (!o.isMesh) return;
+      // дублирующее «разбитое» стекло Ford даёт мерцание и лишний draw call
+      if (/glass_dam|_dam$/i.test(o.name || '')) { o.visible = false; return; }
+      o.material = lite(o.material);
+      o.frustumCulled = true;
+      if (o.geometry && !o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
+      const b = new THREE.Box3().setFromObject(o);
+      const big = b.getSize(new THREE.Vector3()).length() > L * 0.55;
+      o.castShadow = !isMobileGPU ? true : big;   // на телефоне тени бросают только крупные детали
+      o.receiveShadow = false;
+    });
+  }
+
+  // ---- Автоопределение ориентации машины (перед = +Z, верх = +Y) ----
+  // В паках у моделей есть собственные повороты (Ultimate: X -90°, Ford: матрица Sketchfab).
+  // Раньше код ставил model.rotation.y = PI: это ЗАМЕНЯЛО Y-угол Эйлера и ломало поворот,
+  // из-за чего машины ехали задом наперёд и стояли «вверх ногами».
+  // Теперь поворот делается через отдельную обёртку и подбирается по самой геометрии.
+  const carOrientCache = new WeakMap();
+  function measureCarOrientation(pivot) {
+    pivot.updateMatrixWorld(true);
+    const all = new THREE.Box3(), tires = [], front = [], rear = [];
+    pivot.traverse(o => {
+      if (!o.isMesh) return;
+      const b = new THREE.Box3().setFromObject(o);
+      if (b.isEmpty()) return;
+      all.union(b);
+      const c = b.getCenter(new THREE.Vector3());
+      const nm = String(o.name || '') + ' ' + String((o.parent && o.parent.name) || '');
+      if (/tire|tyre|wheel|rim/i.test(nm)) { tires.push(c); return; }
+      if (/front/i.test(nm)) front.push(c);
+      else if (/rear|back/i.test(nm)) rear.push(c);
+    });
+    const mean = list => list.reduce((a, v) => a.add(v), new THREE.Vector3()).multiplyScalar(1 / Math.max(1, list.length));
+    const size = all.getSize(new THREE.Vector3()), center = all.getCenter(new THREE.Vector3());
+    return {
+      size, center,
+      upDelta: tires.length ? mean(tires).y - center.y : null,
+      fwdDelta: front.length && rear.length ? mean(front).z - mean(rear).z : null
+    };
+  }
+  function rotateWorld(pivot, axis, angle) {
+    pivot.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(axis, angle));
+  }
+  function getCarOrientation(source, pivot) {
+    const cached = carOrientCache.get(source);
+    if (cached) return cached.clone();
+    const X = new THREE.Vector3(1, 0, 0), Y = new THREE.Vector3(0, 1, 0), Z = new THREE.Vector3(0, 0, 1);
+    pivot.quaternion.identity();
+    let m = measureCarOrientation(pivot);
+    // 1) модель лежит на боку / стоит торчком: высота должна быть минимальной осью
+    if (m.size.y > Math.max(m.size.x, m.size.z) * 0.85) {
+      const q0 = pivot.quaternion.clone(); let best = null;
+      for (const [axis, ang] of [[X, Math.PI / 2], [X, -Math.PI / 2], [Z, Math.PI / 2], [Z, -Math.PI / 2]]) {
+        pivot.quaternion.copy(q0); rotateWorld(pivot, axis, ang);
+        const t = measureCarOrientation(pivot);
+        if (!best || t.size.y < best.h) best = { h: t.size.y, q: pivot.quaternion.clone() };
+      }
+      pivot.quaternion.copy(best.q); m = measureCarOrientation(pivot);
+    }
+    // 2) вверх ногами: колёса выше центра кузова
+    if (m.upDelta !== null && m.upDelta > 0) { rotateWorld(pivot, Z, Math.PI); m = measureCarOrientation(pivot); }
+    // 3) длинная ось должна идти по Z
+    if (m.size.x > m.size.z * 1.15) { rotateWorld(pivot, Y, Math.PI / 2); m = measureCarOrientation(pivot); }
+    // 4) нос должен смотреть в +Z (в игре машина едет по направлению (sin h, cos h))
+    if (m.fwdDelta !== null) { if (m.fwdDelta < 0) rotateWorld(pivot, Y, Math.PI); }
+    else rotateWorld(pivot, Y, Math.PI); // нет имён деталей — прежнее поведение (нос в -Z)
+    const result = pivot.quaternion.clone();
+    carOrientCache.set(source, result);
+    return result.clone();
+  }
+
   function buildCarVisual(record) {
     const root = record.root;
     if (!root || !root.userData || root.userData.externalCarRoot) return;
     const index = Math.max(0, Number(record.index) || 0);
     // Every garage and traffic slot uses a model from Ultimate Car Pack.
-    const source = carPackTemplates.length ? carPackTemplates[mod(index, carPackTemplates.length)] : null;
+    // Класс машины -> модель: самые дешёвые получают самую простую модель, самые дорогие — самую красивую (Ford GT).
+    const total = (typeof CARS !== 'undefined' && CARS.length) ? CARS.length : 22;
+    const tier = Math.min(carPackTemplates.length - 1, Math.floor(Math.max(0, index) * carPackTemplates.length / total));
+    const source = carPackTemplates.length ? carPackTemplates[tier] : null;
     if (!source) return;
 
     const model = cloneModel(source);
@@ -121,8 +223,11 @@
     external.name = 'Ultimate pack — external visual';
     // Every car in the Ultimate pack faces -Z in the source scene; rotate its local
     // model once so the game's +Z forward direction is used for every garage slot.
-    model.rotation.y = Math.PI;
-    external.add(model);
+    const orient = new THREE.Group();
+    orient.name = 'TR car orientation fix';
+    orient.add(model);
+    orient.quaternion.copy(getCarOrientation(source, orient));
+    external.add(orient);
     external.visible = !(firstPersonWanted && (firstPersonContext === 'drive' || firstPersonContext === 'race'));
     external.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(external);
@@ -157,14 +262,27 @@
   }
   function ensureCarAssets() {
     if (carAssetsPromise) return carAssetsPromise;
-    carAssetsPromise = loadGLB('ford_gt_2006.glb').then(fordGltf => {
-      // Используем Ford GT как единственную импортированную модель для машин.
-      // Все автомобили получают эту модель; характеристики/цены остаются из каталога.
-      carPackTemplates = [fordGltf.scene];
+    carAssetsPromise = Promise.all([
+      loadGLB('ultimate_car_pack.glb'),
+      loadGLB('ford_gt_2006.glb')
+    ]).then(([packGltf, fordGltf]) => {
+      // Объединяем обе коллекции: модели Ultimate + Ford GT 2006.
+      // Каждая модель выбирается по индексу автомобиля в гараже/трафике.
+      const packRoot = packGltf.scene.getObjectByName('RootNode');
+      const ultimateModels = packNames
+        .map(name => packRoot && packRoot.children.find(child => child.name === name))
+        .filter(Boolean);
+      // От самой простой к самой красивой. В паке Ultimate модели с суффиксом .001 — копии, их не берём.
+      const rankOrder = ['Urus', 'Mercedes', 'Mustang', 'M8', 'Porsche', 'GTR', 'P1GTR'];
+      const ranked = rankOrder.map(n => ultimateModels.find(m => m.name === n)).filter(Boolean);
+      ultimateModels.forEach(m => { if (!/\.001$/.test(m.name) && !ranked.includes(m)) ranked.push(m); });
+      carPackTemplates = [...ranked, fordGltf.scene];
+      carPackTemplates.forEach(optimizeCarTemplate);
+      if (!carPackTemplates.length) throw new Error('Не найдены модели Ultimate или Ford');
       applyAllCars();
-      console.info('[Turbo Rivals] Подключена модель Ford GT 2006.');
+      console.info(`[Turbo Rivals] Подключены Ultimate (${ultimateModels.length}) + Ford GT 2006.`);
     }).catch(error => {
-      console.error('[Turbo Rivals] Не удалось загрузить Ford GT 2006.', error);
+      console.error('[Turbo Rivals] Не удалось загрузить оба автомобильных пака.', error);
       carAssetsPromise = null;
     });
     return carAssetsPromise;
