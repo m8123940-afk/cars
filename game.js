@@ -178,7 +178,7 @@ function applyGfx() {
   // Keep the canvas crisp: adaptive resolution is capped more conservatively in the RT-look tier.
   const maxRatio = ({verylow:0.72,low:0.9,med:1.12,high:1.35,veryhigh:1.45,ultra:1.5,rt:1.35})[g] || 1.1;
   const touchDev = matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0;
-  const scaleFloor = touchDev ? 0.42 : g === 'rt' ? 0.88 : g === 'ultra' ? 0.78 : 0.56;
+  const scaleFloor = touchDev ? 0.72 : g === 'rt' ? 0.88 : g === 'ultra' ? 0.78 : 0.56;
   adaptiveScale = Math.max(scaleFloor, adaptiveScale);
   const resolutionMode = ['720p','1080p','2k','4k'].includes(save.set.resolution) ? save.set.resolution : 'recommended';
   const targetLongestEdge = ({'720p':1280,'1080p':1920,'2k':2560,'4k':3840})[resolutionMode];
@@ -186,7 +186,7 @@ function applyGfx() {
   const basePixelRatio = targetLongestEdge
     ? Math.min(3, targetLongestEdge / screenLongestEdge)
     : Math.min(devicePixelRatio || 1, maxRatio);
-  renderer.setPixelRatio(Math.max(0.55, basePixelRatio * adaptiveScale));
+  renderer.setPixelRatio(Math.max(touchDev ? 0.85 : 0.55, basePixelRatio * adaptiveScale));
   renderer.setSize(innerWidth, innerHeight);
   const shadowOn = !touchDev && ['high','veryhigh','ultra','rt'].includes(g);
   renderer.shadowMap.enabled = shadowOn; sun.castShadow = shadowOn;
@@ -613,6 +613,7 @@ addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
   if (state === 'world' && worldKey(e.code)) { e.preventDefault(); return; }
   if (e.code === 'KeyV' && state === 'race') { cycleRaceCamera(); e.preventDefault(); return; }
+  if (e.code === 'KeyZ' && state === 'world' && !isTouchDevice()) { e.preventDefault(); if (document.pointerLockElement === worldCanvas) document.exitPointerLock(); else { try { worldCanvas.requestPointerLock(); } catch (_) {} } return; }
   if (e.code === 'KeyF' && (state === 'race' || state === 'world')) { photoRequested = true; e.preventDefault(); return; }
   if (e.code === 'KeyR') { fixPlayer(); return; }
   const k = state === 'world' ? (WORLD_DEFAULT_KEYMAP[e.code] || activeKeyMap()[e.code]) : activeKeyMap()[e.code]; if (k) { held.add(k); e.preventDefault(); }
@@ -1155,7 +1156,7 @@ function beginRace(mySlot, startIn) {
   if (cfg.mode !== 'online') mySlot = ais.length;     // игрок на последнем месте решётки
   placeGrid(mySlot); resetItems();
   nitro = phys.nCap; raceCoins = 0; raceStartedAt = performance.now(); player.finished = false; stuckT = 0; fixCool = 0; held.clear();
-  state = 'count'; raceCamMode=2;updateRaceCameraLabel();$('raceCamBtn').hidden=false; show(null); $('hud').hidden = false; $('minimap').hidden=false; $('worldHud').hidden=true; $('worldSelect').hidden=true; $('touch').hidden = !isTouch; $('fixBtn').hidden = true; applyTouchSettings();requestGameFullscreen();
+  state = 'count'; introCamT = introTotal; raceCamMode=2;updateRaceCameraLabel();$('raceCamBtn').hidden=false; show(null); $('hud').hidden = false; $('minimap').hidden=false; $('worldHud').hidden=true; $('worldSelect').hidden=true; $('touch').hidden = !isTouch; $('fixBtn').hidden = true; applyTouchSettings();requestGameFullscreen();
   const L = cfg.L, tag = $('bossTag');
   tag.hidden = !cfg.boss; tag.classList.toggle('final-boss', cfg.boss === 'boss'); tag.classList.toggle('mini-boss', cfg.boss === 'mini'); tag.textContent = (cfg.boss === 'boss' ? '⚠ БОСС · ЭКСТРЕМАЛЬНЫЙ ЗАЕЗД: ' : 'МИНИ-БОСС · ЭЛИТНЫЙ ЗАЕЗД: ') + bossName(L);
   Snd.music('race');
@@ -1194,7 +1195,187 @@ function setDamage(value) {
   if(player.dmg<100){criticalRespawnAt=0;criticalRespawnReady=false;}
   else if(player.dmg>=86 && before<86 && Math.random()<0.65){player.engineStall=rr(1.4,3.4);player.speed*=0.18;toast('Двигатель заглох от сильного удара!');}
 }
-function addDmg(v) { const amt=Math.max(0,Number(v)||0); if(amt>=1.8&&window.TRModels&&typeof window.TRModels.dentCar==='function')window.TRModels.dentCar(player.mesh,amt); setDamage(player.dmg + amt); if(amt>=1.6) spawnCrashDebris(amt); }
+function pickPedTarget(rec){
+  const p=rec.mesh.position, leash=rec.leash||13;
+  // Random new heading, not the one that just failed; a little bias back toward home.
+  const ang=Math.random()*Math.PI*2, d=3+Math.random()*6;
+  let tx=p.x+Math.sin(ang)*d, tz=p.z+Math.cos(ang)*d;
+  const hx=tx-rec.centerX, hz=tz-rec.centerZ, hd=Math.hypot(hx,hz);
+  if(hd>leash){tx=rec.centerX+hx/hd*leash;tz=rec.centerZ+hz/hd*leash;}
+  rec.tx=tx; rec.tz=tz;
+  rec.pickT=4+Math.random()*5;
+  rec.pauseT=Math.random()<0.22?1.5+Math.random()*2.5:0;
+  rec.stuckT=0;
+}
+function updatePedestrianWalk(rec,dt){
+  const p=rec.mesh;
+  if(rec.leash===undefined)rec.leash=13;
+  if(rec.tx===undefined)pickPedTarget(rec);
+  rec.pickT=(rec.pickT||0)-dt;
+  if(rec.pauseT>0){rec.pauseT-=dt;return;}
+  const dx=rec.tx-p.position.x, dz=rec.tz-p.position.z, dist=Math.hypot(dx,dz);
+  if(dist<0.4||rec.pickT<=0){pickPedTarget(rec);return;}
+  const step=Math.min(dist,rec.walk*1.35*dt);
+  const nx=p.position.x+dx/dist*step, nz=p.position.z+dz/dist*step;
+  // Walls and buildings: turn around to a new target instead of walking into them.
+  // Raycasts are only worth it for NPCs near the player.
+  const near=Math.hypot(p.position.x-player.mesh.position.x,p.position.z-player.mesh.position.z);
+  if(near<70&&cityWallHit(p.position.x,p.position.z,nx,nz,0.4,1.0)){rec.stuckT=(rec.stuckT||0)+dt;pickPedTarget(rec);return;}
+  p.position.x=nx; p.position.z=nz;
+  const targetYaw=Math.atan2(dx,dz);
+  p.rotation.y+=angDiff(targetYaw,p.rotation.y)*Math.min(1,dt*6);
+  rec.phase+=step*2.2;
+}
+// MARKET 24/7: a separate walkable interior. Entering teleports the player inside,
+// the glass door leads out again. The counter opens the shop menu.
+let shopG = null;
+// Solid furniture in the shop and the garage: boxes the player cannot walk through (x, z centre; half sizes).
+const SHOP_BOXES=[{x:0,z:-6,hw:1.0,hd:0.4},{x:-7,z:-11.6,hw:0.65,hd:0.25},{x:7,z:-11.6,hw:0.65,hd:0.25},{x:-11.6,z:-3,hw:0.25,hd:0.65},{x:-11.6,z:4,hw:0.25,hd:0.65},{x:11.6,z:-3,hw:0.25,hd:0.65},{x:8.7,z:-10.2,hw:0.8,hd:0.4},{x:-4,z:3,hw:0.7,hd:0.45},{x:4,z:3,hw:0.7,hd:0.45}];
+const GARAGE_BOXES=[{x:0,z:0,hw:2.6,hd:3.2},{x:0,z:-10.6,hw:4.1,hd:0.7},{x:-8,z:6.6,hw:1.3,hd:0.7},{x:9.4,z:-9,hw:1.7,hd:0.4}];
+function pushOutOfInterior(p){
+  const boxes=activeInteriorG===shopG?SHOP_BOXES:activeInteriorG===garageG?GARAGE_BOXES:null;
+  if(!boxes)return;
+  const pad=0.4;
+  for(const b of boxes){
+    const dx=p.x-b.x,dz=p.z-b.z,ox=b.hw+pad-Math.abs(dx),oz=b.hd+pad-Math.abs(dz);
+    if(ox>0&&oz>0){ if(ox<oz)p.x=b.x+Math.sign(dx||1)*(b.hw+pad); else p.z=b.z+Math.sign(dz||1)*(b.hd+pad); }
+  }
+}
+function createShopInterior(){
+  const grp=new THREE.Group(); grp.name='MARKET 24/7 interior';
+  const floor=wmat(0xcdc7b9,0.7), wall=wmat(0xf1efe8,0.9), accent=wmat(0x2c7867,0.6), dark=wmat(0x2a2f36,0.6);
+  const light=new THREE.MeshBasicMaterial({color:0xfff6dc});
+  wbox(grp,24,0.3,24,floor,0,-0.18,0);
+  wbox(grp,24,0.3,24,dark,0,5.4,0);
+  wbox(grp,24,5.4,0.35,wall,0,2.7,-12);
+  wbox(grp,0.35,5.4,24,wall,-12,2.7,0);
+  wbox(grp,0.35,5.4,24,wall,12,2.7,0);
+  wbox(grp,8,5.4,0.35,wall,-8,2.7,12);
+  wbox(grp,8,5.4,0.35,wall,8,2.7,12);
+  wbox(grp,8,1.2,0.35,wall,0,4.8,12);
+  wbox(grp,6,0.7,0.14,accent,0,4.6,11.8);
+  for(const x of [-6,0,6]) wbox(grp,3,0.06,1.5,light,x,5.22,0,{shadow:false});
+  return grp;
+}
+function populateShopProps(grp){
+  if(!window.TRModels||!window.TRModels.loadProp)return;
+  const place=[
+    ['shop_counter.glb',0,-6,0],
+    ['shop_shelf.glb',-7,-11.6,0],['shop_shelf.glb',7,-11.6,0],
+    ['shop_shelf.glb',-11.6,-3,Math.PI/2],['shop_shelf.glb',-11.6,4,Math.PI/2],['shop_shelf.glb',11.6,-3,-Math.PI/2],
+    ['shop_cooler.glb',8.7,-10.2,0],
+    ['shop_table.glb',-4,3,0],['shop_table.glb',4,3,0]
+  ];
+  for(const [file,x,z,ry] of place){
+    window.TRModels.loadProp(file).then(obj=>{
+      if(!obj||!shopG||grp!==shopG)return;
+      obj.position.set(x,0,z); obj.rotation.y=ry;
+      obj.traverse(o=>{if(o.isMesh){o.castShadow=false;o.receiveShadow=true;}});
+      grp.add(obj);
+    });
+  }
+}
+function enterShop(target){
+  if(!shopG){shopG=createShopInterior();populateShopProps(shopG);scene.add(shopG);}
+  worldCarVisibleBeforeInterior=!!player.mesh.visible;
+  worldInterior=true;worldJumpRemaining=0;worldJumpWasHeld=held.has('drift');if(charMesh)charMesh.position.y=0;
+  worldG.visible=false;apartmentG.visible=false;if(schoolG)schoolG.visible=false;if(garageG)garageG.visible=false;
+  shopG.visible=true;activeInteriorG=shopG;
+  interiorExit={x:target.x,z:target.z+1.5};
+  charMesh.position.set(0,0,9);charMesh.rotation.y=Math.PI;
+  player.mesh.visible=false;worldLookDrag=null;
+  $('worldLocation').textContent='MARKET 24/7 · ЕЖЕДНЕВНЫЕ ТОВАРЫ';
+  if(window.Snd&&Snd.music)Snd.music('shop');
+  toast('Ты в MARKET 24/7. E у кассы — витрина, E у двери — выход.');
+}
+// AUTO LAB: a walkable repair bay. Enter at the door, the workbench opens the repair and car menu.
+let garageG = null;
+function createGarageInterior(){
+  const grp=new THREE.Group(); grp.name='AUTO LAB interior';
+  const floor=wmat(0x6e7175,0.85), wall=wmat(0x8a9097,0.9), dark=wmat(0x2a2d31,0.6), steel=wmat(0xb9c0c8,0.35), yellow=wmat(0xe8b423,0.5), wood=wmat(0x6a4b2f,0.7);
+  const light=new THREE.MeshBasicMaterial({color:0xfff2d6});
+  wbox(grp,24,0.3,24,floor,0,-0.18,0);
+  wbox(grp,24,0.3,24,dark,0,5.4,0);
+  wbox(grp,24,5.4,0.35,wall,0,2.7,-12);
+  wbox(grp,0.35,5.4,24,wall,-12,2.7,0);
+  wbox(grp,0.35,5.4,24,wall,12,2.7,0);
+  wbox(grp,8,5.4,0.35,wall,-8,2.7,12);
+  wbox(grp,8,5.4,0.35,wall,8,2.7,12);
+  wbox(grp,8,1.2,0.35,wall,0,4.8,12);
+  wbox(grp,6,0.7,0.14,yellow,0,4.6,11.8);
+  for(const x of [-6,0,6]) wbox(grp,3,0.06,1.5,light,x,5.22,0,{shadow:false});
+  // lift: two posts and a platform
+  for(const x of [-2.2,2.2]) for(const z of [-2.4,2.4]) wbox(grp,0.35,3.6,0.35,steel,x,1.8,z);
+  wbox(grp,4.8,0.25,6.2,steel,0,0.2,0);
+  // workbench along the back wall, with tools
+  wbox(grp,8,0.12,1.2,wood,0,1.0,-10.6);
+  for(const x of [-3.6,3.6]) wbox(grp,0.12,1.0,1.1,dark,x,0.5,-10.6);
+  for(let k=0;k<5;k++) wbox(grp,0.5,0.22,0.9,dark,-3+k*1.5,1.2,-10.6,{});
+  // tyre stacks and a parts shelf in the corners
+  for(let k=0;k<3;k++) for(let j=0;j<2;j++) wbox(grp,1.0,0.36,1.0,dark,-9+j*1.2,0.18+k*0.36,6.6);
+  wbox(grp,3.2,2.6,0.6,steel,9.4,1.3,-9);
+  return grp;
+}
+function enterGarage(target){
+  if(!garageG){garageG=createGarageInterior();scene.add(garageG);}
+  worldCarVisibleBeforeInterior=!!player.mesh.visible;
+  worldInterior=true;worldJumpRemaining=0;worldJumpWasHeld=held.has('drift');if(charMesh)charMesh.position.y=0;
+  worldG.visible=false;apartmentG.visible=false;if(schoolG)schoolG.visible=false;if(shopG)shopG.visible=false;
+  garageG.visible=true;activeInteriorG=garageG;
+  interiorExit={x:target.x,z:target.z+1.5};
+  charMesh.position.set(0,0,9);charMesh.rotation.y=Math.PI;
+  player.mesh.visible=false;worldLookDrag=null;
+  $('worldLocation').textContent='AUTO LAB · РЕМОНТНАЯ';
+  toast('Ты в AUTO LAB. E у верстака — ремонт, E у двери — выход.');
+}
+let pendingRepairCost = 0;
+function formatAgo(ms){const m=Math.round(ms/60000);if(m<1)return 'меньше минуты назад';if(m<60)return m+' мин назад';return Math.round(m/60)+' ч назад';}
+function recordRepair(){
+  const log=Array.isArray(save.repairLog)?save.repairLog:[];
+  const prev=log.length?log[log.length-1].t:null;
+  save.repairLog=log.slice(-9).concat([{t:Date.now(),c:pendingRepairCost}]);
+  store();
+  toast('Ремонт за '+pendingRepairCost+' монет записан в телефон'+(prev?'. Предыдущий: '+formatAgo(Date.now()-prev):'.'));
+}
+function repairLogHtml(){
+  const log=Array.isArray(save.repairLog)?save.repairLog:[];
+  if(!log.length)return '<p>Ремонтов ещё не было.</p>';
+  return log.slice().reverse().map(r=>'<p>'+new Date(r.t).toLocaleString('ru-RU')+' · '+Number(r.c).toLocaleString('ru-RU')+' монет</p>').join('');
+}
+function playRepairCutscene(onDone) {
+  const ov = document.createElement('div');
+  ov.id = 'repairCutscene';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:200;background:#000;display:flex;align-items:center;justify-content:center;color:#f2f7ff;font:600 22px system-ui,sans-serif;text-align:center;padding:24px;opacity:0;transition:opacity 1s ease;';
+  document.body.appendChild(ov);
+  requestAnimationFrame(() => { ov.style.opacity = '1'; });
+  const lines = [
+    { t: 'Машина заезжает в мастерскую…', d: 2800 },
+    { t: 'Через несколько часов…', d: 3600 },
+    { t: 'Машина готова. Можно ехать.', d: 2600 },
+  ];
+  const speak = txt => {
+    try {
+      if ('speechSynthesis' in window) {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(txt); u.lang = 'ru-RU'; u.rate = 0.95; speechSynthesis.speak(u);
+      }
+    } catch (_) {}
+  };
+  let i = 0;
+  const step = () => {
+    if (i >= lines.length) {
+      if (onDone) onDone();
+      ov.style.opacity = '0';
+      setTimeout(() => ov.remove(), 1100);
+      return;
+    }
+    const L = lines[i++];
+    ov.textContent = L.t; speak(L.t);
+    setTimeout(step, L.d);
+  };
+  setTimeout(step, 1100);
+}
+function addDmg(v) { const amt=Math.max(0,Number(v)||0); if(amt>=3.2&&typeof Snd!=='undefined'&&Snd.crash)Snd.crash(); if(amt>=1.8&&window.TRModels&&typeof window.TRModels.dentCar==='function'){window.TRModels.dentCar(player.mesh,amt);if(amt>=4.5)window.TRModels.dentCar(player.mesh,amt*0.8);} setDamage(player.dmg + amt); if(amt>=1.6) spawnCrashDebris(amt); }
 const angDiff = (a, b) => ((a - b + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
 
 function fixPlayer() {
@@ -1206,8 +1387,11 @@ function fixPlayer() {
   camH = s.h; stuckT = 0; toast('Машина выровнена'); Snd.pickup();
 }
 
+function spinWheel(w, amt) { const s = (w.userData && w.userData.spin) || w; const ax = (w.userData && w.userData.spinAxis) || 'x'; s.rotation[ax] += amt; }
+function setWheelSteer(ud, ang) { if (!ud) return; for (const w of [...(ud.wheels || []), ...(ud.externalWheels || [])]) if (w.userData && w.userData.front) w.rotation.y = ang; }
 function updatePlayer(dt) {
   const racing = state === 'race', P = phys;
+  if (player.mesh && player.mesh.userData && player.mesh.userData.driver) player.mesh.userData.driver.visible = !racing;
   player.engineStall = Math.max(0, player.engineStall - dt); player.rampCooldown = Math.max(0, player.rampCooldown - dt);
   const disabledEngine = player.immobilized || player.engineStall > 0;
   const gas = racing && held.has('gas') && !disabledEngine, brk = racing && held.has('brake'), drift = racing && held.has('drift');
@@ -1230,8 +1414,8 @@ function updatePlayer(dt) {
   if (!player.air) {
     if (gas || boost) player.speed += P.acc * (boost ? 1.9 : 1) * (1 - clamp(player.speed / max, 0, 1)) * dt;
     if (brk) player.speed -= (player.speed > 0 ? P.brk : 14) * dt;
-    if (drift) { player.speed -= Math.max(7, Math.abs(player.speed) * 0.20) * dt; player.skid = Math.min(1, (player.skid || 0) + 2.5 * dt); } else player.skid = Math.max(0, (player.skid || 0) - 3 * dt);
-    if (drift && Math.abs(player.steerS) > 0.15 && Math.abs(player.speed) > 18) { player.h -= player.steerS * 0.42 * dt; player.slip = Math.max(0, player.slip - dt); }
+    if (drift) { player.speed -= Math.max(3, Math.abs(player.speed) * 0.10) * dt; player.skid = Math.min(1, (player.skid || 0) + 2.5 * dt); } else player.skid = Math.max(0, (player.skid || 0) - 3 * dt);
+    if (drift && Math.abs(player.steerS) > 0.15 && Math.abs(player.speed) > 18) { player.h -= player.steerS * 0.75 * dt; player.slip = Math.max(0, player.slip - dt); }
     if (!gas && !brk && !boost) player.speed -= player.speed * 0.35 * dt;
     if (player.speed > max) player.speed -= Math.max(25, (player.speed - max) * 2) * dt;
     if (off) player.speed -= player.speed * 0.12 * dt;
@@ -1304,7 +1488,8 @@ function updatePlayer(dt) {
   player.mesh.rotation.z = -player.steerS * Math.min(sp / 60, 1) * 0.05;
   player.mesh.rotation.x = player.air ? -clamp(player.vy / 40, -0.4, 0.4) : 0;
   const ud = player.mesh.userData;
-  ud.wheels.forEach(w => w.rotation.x += player.speed * dt / 0.4); (ud.externalWheels||[]).forEach(w => w.rotation.x += player.speed * dt / 0.4);
+  ud.wheels.forEach(w => spinWheel(w, player.speed * dt / 0.4)); (ud.externalWheels||[]).forEach(w => spinWheel(w, player.speed * dt / 0.4));
+  { const target = -player.steerS * 0.5 * clamp(Math.abs(sp) / 25, 0, 1); ud.steerAng = (ud.steerAng || 0) + (target - (ud.steerAng || 0)) * Math.min(1, dt * 10); setWheelSteer(ud, ud.steerAng); }
   ud.tailMat.color.setHex(brk ? 0xff5050 : 0xaa1010);
   ud.flame.visible = boost; if (boost) ud.flame.scale.set(1, 1, 0.7 + Math.random() * 0.6);
 
@@ -1359,7 +1544,7 @@ function updateAI(a, dt) {
 
   const s = sampleAt(a.p, a.lat);
   a.mesh.position.set(s.x, a.y, s.z); a.mesh.rotation.set(0, s.h + (a.slipT > 0 ? Math.sin(a.slipT * 10) * 0.5 : 0), 0);
-  const u = a.mesh.userData; u.wheels.forEach(w => w.rotation.x += a.speed * dt / 0.4); (u.externalWheels||[]).forEach(w => w.rotation.x += a.speed * dt / 0.4); u.flame.visible = (a.nOn > 0 || a.rampT > 0) && racing;
+  const u = a.mesh.userData; u.wheels.forEach(w => spinWheel(w, a.speed * dt / 0.4)); (u.externalWheels||[]).forEach(w => spinWheel(w, a.speed * dt / 0.4)); u.flame.visible = (a.nOn > 0 || a.rampT > 0) && racing;
 }
 
 function updateRemotes(dt) {
@@ -1367,12 +1552,13 @@ function updateRemotes(dt) {
     const k = 1 - Math.exp(-11.5 * dt);
     if (Math.hypot(r.tx - r.x, r.tz - r.z) > 100) { r.x = r.tx; r.z = r.tz; }
     r.x += (r.tx - r.x) * k; r.z += (r.tz - r.z) * k; r.y += (r.ty - r.y) * k; r.h += angDiff(r.th, r.h) * Math.min(1, 1 - Math.exp(-9.5 * dt));
-    r.mesh.position.set(r.x, r.y, r.z); r.mesh.rotation.y = r.h; r.mesh.userData.wheels.forEach(w => w.rotation.x += r.speed * dt / 0.4); (r.mesh.userData.externalWheels||[]).forEach(w => w.rotation.x += r.speed * dt / 0.4);
+    r.mesh.position.set(r.x, r.y, r.z); r.mesh.rotation.y = r.h; r.mesh.userData.wheels.forEach(w => spinWheel(w, r.speed * dt / 0.4)); (r.mesh.userData.externalWheels||[]).forEach(w => spinWheel(w, r.speed * dt / 0.4));
   }
 }
 
 let collisionCooldown = 0, impactBursts = [];
 function spawnSparks(x,y,z,count=12,color=0xffb348) {
+  if(/^(verylow|low)$/.test(resolvedGfx()))count=Math.ceil(count*0.5);
   const gfx = resolvedGfx();
   if (gfx==='verylow' || gfx==='low') count=Math.min(count,10);
   else if (gfx==='med') count=Math.min(count,24);
@@ -1408,8 +1594,38 @@ function carFootprintOverlap(a, b) {
   }
   return {overlap:minOverlap,nx,nz};
 }
+// AI cars share the road: when two bots overlap they push apart sideways, and the car behind
+// gives way (speed and grip drop), so bots no longer drive through each other.
+function collideAIPairs(dt) {
+  const list = ais;
+  for (const x of list) x.aiHitCD = Math.max(0, (x.aiHitCD || 0) - dt);
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const a = list[i], b = list[j];
+    if (Math.abs(a.mesh.position.y - b.mesh.position.y) >= 1.8) continue;
+    const c = carFootprintOverlap(a, b);           // normal points from b toward a
+    if (!c) continue;
+    const o = Math.min(0.5, Math.max(0, c.overlap - 0.02));
+    if (o <= 0) continue;
+    const ha = Number.isFinite(a.h) ? a.h : 0;
+    const latN = c.nx * Math.cos(ha) - c.nz * Math.sin(ha);   // normal along a's right side
+    const side = Math.abs(latN) > 0.2 ? Math.sign(latN) : ((a.lat || 0) >= (b.lat || 0) ? 1 : -1);
+    const push = o * 0.5;
+    a.lat = clamp((a.lat || 0) + side * push, -ROAD_W + 2.0, ROAD_W - 2.0);
+    b.lat = clamp((b.lat || 0) - side * push, -ROAD_W + 2.0, ROAD_W - 2.0);
+    // The car behind (smaller track progress) gives way.
+    const d = sdiff(a.p, b.p);
+    const rear = d >= 0 ? b : a, front = d >= 0 ? a : b;
+    rear.collisionSlow = Math.max(rear.collisionSlow || 0, 0.45);
+    rear.speed = Math.min(rear.speed || 0, Math.max(0, front.speed || 0));
+    if (o > 0.12 && a.aiHitCD <= 0 && b.aiHitCD <= 0) {
+      a.aiHitCD = b.aiHitCD = 0.35;
+      spawnSparks((a.mesh.position.x + b.mesh.position.x) / 2, 0.45, (a.mesh.position.z + b.mesh.position.z) / 2, clamp(Math.floor(o * 40) + 4, 5, 14));
+    }
+  }
+}
 function collide(dt) {
   collisionCooldown = Math.max(0, collisionCooldown - dt);
+  collideAIPairs(dt);
   const pm = player.mesh.position;
   const opponents = [...ais, ...Object.values(remotes)];
   for (const a of opponents) {
@@ -1604,7 +1820,8 @@ function updateHUD() {
   const rank = all().sort((a, b) => b.p - a.p).indexOf(player) + 1;
   $('pos').textContent = rank + '/' + all().length;
   $('lap').textContent = clamp(Math.floor(player.p / N) + 1, 1, curLaps) + '/' + curLaps;
-  $('spd').textContent = Math.round(Math.abs(player.speed) * 3.6); $('rc').textContent = raceCoins;
+  $('spd').textContent = Math.round(Math.abs(player.speed) * 3.6);
+  $('rc').textContent = raceCoins;
   const n = $('nitro'); n.style.width = (nitro / phys.nCap * 100) + '%'; n.classList.toggle('lock', player.nLock);
   $('fx').style.opacity = player.boosting ? 1 : 0;
   if(state==='race'&&player.immobilized){criticalRespawnReady=performance.now()-criticalRespawnAt>=3000;$('fixBtn').hidden=!criticalRespawnReady;$('fixBtn').textContent=criticalRespawnReady?'↻ Эвакуатор · R':'⏳ Эвакуатор: 3 с';}
@@ -1613,9 +1830,20 @@ function updateHUD() {
 
 function updateRaceCameraLabel(){const labels=['Камера: 1-е лицо','Камера: с плеча','Камера: 3-е лицо'];const b=$('raceCamBtn');if(b)b.textContent=labels[raceCamMode];}
 function cycleRaceCamera(){raceCamMode=(raceCamMode+1)%3;updateRaceCameraLabel();toast(['Камера от первого лица','Камера с плеча','Камера от третьего лица'][raceCamMode]);}
+let introCamT = 0; const introTotal = 3.2;
 function updateCamera(dt) {
   if (state === 'world') { updateWorldCamera(dt); return; }
   if (state === 'touchsetup') return;
+  if (state === 'count' && introCamT > 0) {
+    // Pre-race flyaround: the camera circles the car while the grid is revealed.
+    introCamT = Math.max(0, introCamT - dt);
+    const k = 1 - introCamT / introTotal, mp = player.mesh.position;
+    const a = 0.35 + k * 2.1, r = 9.5 - k * 2.2;
+    cam.position.set(mp.x + Math.cos(a) * r, 2.2 + k * 1.4, mp.z + Math.sin(a) * r);
+    cam.lookAt(mp.x, 1.1, mp.z);
+    cam.fov = 60; cam.updateProjectionMatrix();
+    return;
+  }
   if (IDLE.has(state)) {
     menuT += dt * (state === 'garage' ? 0.16 : 0.3);
     const ch = state === 'char' && charMesh, m = ch ? charMesh.position : player.mesh.position, r = ch ? 4.2 : 8;
@@ -1637,7 +1865,7 @@ function updateCamera(dt) {
     const side=0.9;wanted=new THREE.Vector3(m.x-Math.sin(camH)*5.4+Math.cos(camH)*side,2.55+player.y*0.6,m.z-Math.cos(camH)*5.4-Math.sin(camH)*side);
     look=new THREE.Vector3(m.x+Math.sin(camH)*7,1.35+player.y*0.45,m.z+Math.cos(camH)*7);fov=72+clamp(Math.abs(player.speed)/90,0,1)*7;
   }else{
-    wanted=new THREE.Vector3(m.x-Math.sin(camH)*9+(Math.random()-0.5)*sh*4,4.6+player.y*0.6+(Math.random()-0.5)*sh*4,m.z-Math.cos(camH)*9);
+    wanted=new THREE.Vector3(m.x-Math.sin(camH)*6.4+(Math.random()-0.5)*sh*4,3.5+player.y*0.6+(Math.random()-0.5)*sh*4,m.z-Math.cos(camH)*6.4);
     look=new THREE.Vector3(m.x+Math.sin(camH)*6,1.4+player.y*0.5,m.z+Math.cos(camH)*6);fov=68+clamp(Math.abs(player.speed)/70,0,1)*14+(player.boosting?8:0);
   }
   const follow=raceCamMode===0?14:5.5;cam.position.lerp(wanted,Math.min(1,follow*dt));cam.lookAt(look);
@@ -1677,6 +1905,8 @@ function loop(now) {
     const firstWorld=state==='world'&&worldCamMode===0&&!worldInterior;
     const context=(state==='world'&&worldDriving)||state==='race'?'drive':state==='world'?'world':'race';
     window.TRModels.setFirstPerson(firstRace||firstWorld,context,player.mesh);
+    // Cockpit speedometer: the same speed as the HUD, in race and while driving in the open world.
+    if(typeof window.TRModels.updateCockpit==='function')window.TRModels.updateCockpit(Math.abs(player.speed)*3.6, Math.abs(player.speed)/70);
     if(typeof window.TRModels.setSteer==='function')window.TRModels.setSteer(state==='world'&&worldDriving?((held.has('right')?1:0)-(held.has('left')?1:0)):player.steerS||0);
     window.TRModels.update(dt);
   }
@@ -1710,7 +1940,7 @@ let devUnlocked = false, devPassword = '', devPickMode = false, devSelected = nu
 let worldGhostMode=false,worldFlyMode=false,worldEnteringCar=false,worldEnterCarTimer=0,worldMapSelectedPoint=null,radioStationIndex=0;
 const WORLD_RADIO_LABELS=['Neon Highway','Vice Night','Sunset Drive'];
 let devGlobalEdits = {}, devLocalEdits = {}, devGlobalRevision = 0, devLastPollAt = 0;
-let worldCamOrbitYaw = 0, worldCamOrbitPitch = 0, worldLookDrag = null;
+let worldCamOrbitYaw = 0, worldCamOrbitPitch = 0, worldLookDrag = null, worldLastLookT = 0;
 let pendingTutorialRegion='newyork',tutorialPermitStart=false;
 const WORLD_RANGE = 650;
 // Drag the scene to look around in the open world. Desktop uses right-drag; touchscreens use a one-finger drag on empty scene space.
@@ -1732,7 +1962,7 @@ worldCanvas.addEventListener('pointermove', e => {
   if (document.pointerLockElement === worldCanvas) return;
   if (!worldLookDrag || worldLookDrag.id !== e.pointerId || state !== 'world') return;
   const dx=e.clientX-worldLookDrag.x, dy=e.clientY-worldLookDrag.y; worldLookDrag.x=e.clientX; worldLookDrag.y=e.clientY;
-  worldCamOrbitYaw -= dx*0.006; worldCamOrbitPitch=clamp(worldCamOrbitPitch-dy*0.004,-0.36,0.38); e.preventDefault();
+  worldCamOrbitYaw -= dx*0.006; worldCamOrbitPitch=clamp(worldCamOrbitPitch-dy*0.004,-0.36,0.38); worldLastLookT=performance.now(); e.preventDefault();
 });
 ['pointerup','pointercancel','lostpointercapture'].forEach(type => worldCanvas.addEventListener(type, e => { if(worldLookDrag&&worldLookDrag.id===e.pointerId)worldLookDrag=null; }));
 // Desktop mouse capture: a click on the open world locks the pointer; mouse movement then turns the camera. Esc releases it.
@@ -1743,7 +1973,7 @@ worldCanvas.addEventListener('click', e => {
 });
 document.addEventListener('mousemove', e => {
   if (document.pointerLockElement !== worldCanvas || state !== 'world') return;
-  worldCamOrbitYaw -= e.movementX * 0.0028;
+  worldCamOrbitYaw -= e.movementX * 0.0028; worldLastLookT = performance.now();
   worldCamOrbitPitch = clamp(worldCamOrbitPitch - e.movementY * 0.002, -0.36, 0.38);
 });
 function isTouchDevice(){ return matchMedia('(hover:none)').matches || navigator.maxTouchPoints > 0; }
@@ -2426,6 +2656,15 @@ function renderWorldMinimap(){
     ctx.strokeStyle='#ffd75e';ctx.lineWidth=3;ctx.lineCap='round';ctx.setLineDash([5,3]);ctx.beginPath();ctx.moveTo(mapX(px),mapY(pz));ctx.lineTo(mapX(tx),mapY(pz));ctx.lineTo(mapX(tx),mapY(tz));ctx.stroke();ctx.setLineDash([]);
     const dx=mapX(tx),dy=mapY(tz);ctx.fillStyle='#ffd75e';ctx.beginPath();ctx.arc(dx,dy,5,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#17202b';ctx.lineWidth=2;ctx.stroke();
   }
+  // Map markers for the home, the market and the other special places.
+  const MARK_COL={apartment:'#7fd1ff',market:'#7dffb0',garage:'#ffd75e',school:'#ffb36b',airport:'#9fb8ff'};
+  const MARK_TXT={apartment:'ДОМ',market:'МАГАЗИН',garage:'АВТО',school:'ШКОЛА',airport:'АЭРОПОРТ'};
+  for(const it of worldInteractables){
+    const col=MARK_COL[it.type];if(!col)continue;
+    const ix=mapX(it.x),iz=mapY(it.z);if(ix<-12||iz<-12||ix>w+12||iz>h+12)continue;
+    ctx.fillStyle=col;ctx.strokeStyle='#06121c';ctx.lineWidth=2;ctx.beginPath();ctx.arc(ix,iz,6,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#fff';ctx.font='bold 10px Arial';ctx.textAlign='center';ctx.fillText(MARK_TXT[it.type],ix,iz-9);ctx.textAlign='left';
+  }
   ctx.save();ctx.translate(cx,cy);ctx.rotate(-(worldDriving?player.h:worldYaw));ctx.fillStyle='#65e4ff';ctx.strokeStyle='#06121c';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,-8);ctx.lineTo(6,7);ctx.lineTo(0,4);ctx.lineTo(-6,7);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
   ctx.fillStyle='#fff';ctx.font='bold 10px Arial';ctx.textAlign='left';ctx.fillText('NYC · МАРШРУТ',7,13);
 }
@@ -2749,7 +2988,7 @@ function closeWorldPhone(){$('worldPhone').hidden=true;}
 function renderWorldPhone(tab='home'){
   const el=$('worldPhoneContent'),p=worldPos(),loc=worldInterior?'Квартира':Math.hypot(p.x,p.z)<100?'Центр города':p.x<0?'Западный район':'Восточный район';
   if(tab==='map')el.innerHTML=`<h2>Карта · ${(WORLD_REGIONS[worldRegionId]||WORLD_REGIONS.tashkent).name}</h2><p>Ты находишься: <b>${loc}</b></p><div class="card"><b>🏠 Апартаменты</b><div class="muted">${worldRegionId==='tashkent'?'Катта Чиланзар 1, дом 11А, подъезд 4 · X −126 / Z −40':'Запад, около X −50 / Z −25'}</div></div><div class="card"><b>🛠 AUTO LAB</b><div class="muted">Восток, около X 150 / Z 20</div></div><div class="card"><b>🏁 Городской клуб</b><div class="muted">Рядом с центральным перекрёстком</div></div><p>В городе можно свободно ходить, садиться в свою машину, посещать магазины и запускать заезды.</p>`;
-  else if(tab==='services')el.innerHTML=`<h2>Сервисы</h2><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>монет на счету</span></div><div><b>${Math.round(player.dmg)}%</b><span>повреждение машины</span></div></div><div class="card"><b>Эвакуатор и механик</b><p>Вызвать сервис, сбросить критическую поломку или заказать ремонт.</p><button class="btn" data-phone-action="tow">Вызвать эвакуатор · 600</button></div><div class="card"><b>Автосервис</b><p>Отремонтируй машину или выбери другую готовую модель.</p><button class="btn" data-phone-action="garage">Магазин машин</button></div><div class="card"><b>🚕 Городское такси</b><p>Вызови такси, чтобы быстро добраться к городской точке.</p><button class="btn" data-phone-action="taxi">Вызвать такси · 150</button></div>`;
+  else if(tab==='services')el.innerHTML=`<h2>Сервисы</h2><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>монет на счету</span></div><div><b>${Math.round(player.dmg)}%</b><span>повреждение машины</span></div></div><div class="card"><b>Эвакуатор и механик</b><p>Вызвать сервис, сбросить критическую поломку или заказать ремонт.</p><button class="btn" data-phone-action="tow">Вызвать эвакуатор · 600</button></div><div class="card"><b>Автосервис</b><p>Отремонтируй машину или выбери другую готовую модель.</p><button class="btn" data-phone-action="garage">Магазин машин</button></div><div class="card"><b>Журнал ремонта</b>${repairLogHtml()}</div><div class=\"card\"><b>🚕 Городское такси</b><p>Вызови такси, чтобы быстро добраться к городской точке.</p><button class="btn" data-phone-action="taxi">Вызвать такси · 150</button></div>`;
   else if(tab==='social'){renderSocialFeed();void refreshSocialFeed();return;}
   else if(tab==='events')el.innerHTML=`<h2>События</h2><div class="card"><b>🏁 Уличный спринт</b><p>Короткий заезд против соперников, которые ускоряются, используют нитро и пытаются объезжать ловушки.</p><button class="btn" data-phone-action="race">Начать заезд</button></div><div class="card"><b>🏆 Турниры</b><p>Открывай турниры в главном меню: дождевой кубок, дрифт, марафон и Hyper League.</p><button class="btn" data-phone-action="menu-tours">Список турниров</button></div>`;
   else el.innerHTML=`<h2>Добро пожаловать</h2><p>Город открыт для исследования. Жители гуляют, машут руками, прыгают от радости, читают телефон и реагируют на твою машину.</p><div class="phone-metric"><div><b>${Math.round(save.coins).toLocaleString('ru-RU')}</b><span>баланс · монеты</span></div><div><b>${Math.round(player.dmg)}%</b><span>состояние авто</span></div></div><div class="card"><b>Подсказки</b><p>WASD — ходить/ехать · E — взаимодействие · V — смена камеры · P — телефон · Esc — в меню.</p></div><button class="btn" data-phone-action="tow">Эвакуатор / ремонт</button><button class="btn" data-phone-action="race">Быстрый уличный заезд</button>`;
@@ -2758,7 +2997,7 @@ $('worldPhoneContent').addEventListener('click',e=>{const b=e.target.closest('[d
 $('worldPhoneBtn').onclick=()=>openWorldPhone('home');$('worldPhoneClose').onclick=closeWorldPhone;
 $('worldRadioBtn')?.addEventListener('click',()=>{if(state!=='world')return;if(!worldDriving){toast('Сначала садись в машину, чтобы слушать радио');return;}Snd.init();let info=Snd.radioInfo();if(info.on&&info.index>=2){Snd.toggleRadio();radioStationIndex=-1;$('worldRadioBtn').textContent='📻 Включить радио';toast('Радио выключено');}else if(!info.on){if(info.index!==0){while(Snd.radioInfo().index!==0)Snd.nextRadio();}const r=Snd.toggleRadio();radioStationIndex=0;$('worldRadioBtn').textContent='📻 '+r.name;toast('Радио: '+r.name);}else{const name=Snd.nextRadio();radioStationIndex=Snd.radioInfo().index;$('worldRadioBtn').textContent='📻 '+name;toast('Радио: '+name);}});
 $('worldPhoneContent').addEventListener('click',e=>{const publish=e.target.closest('[data-social-publish]');if(publish){publishWorldPhoto();return;}const like=e.target.closest('[data-social-like]');if(like){void likeSocialPost(Number(like.dataset.socialLike));return;}const comment=e.target.closest('[data-social-comment]');if(comment){const id=Number(comment.dataset.socialComment),field=document.querySelector(`[data-social-comment-input="${id}"]`),txt=(field?.value||'').trim();if(txt)void commentSocialPost(id,txt);return;}});
-$('worldPhoneContent').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[data-social-comment-input]')){const id=e.target.getAttribute('data-social-comment-input'),btn=document.querySelector(`[data-social-comment="${id}"]`);if(btn)btn.click();}});$('worldCamBtn').onclick=cycleWorldCamera;$('worldExitBtn').onclick=toMenu;$('worldInteractBtn').onclick=interactWorld;$('worldPhone').addEventListener('click',e=>{const t=e.target.closest('[data-phone-tab]');if(t){renderWorldPhone(t.dataset.phoneTab);return;}const a=e.target.closest('[data-phone-action]');if(!a)return;const act=a.dataset.phoneAction;if(act==='taxi'){if(save.coins<150){toast('Не хватает 150 монет на такси');return;}save.coins-=150;store();closeWorldPhone();toast('🚕 Такси едет к тебе…');setTimeout(()=>{if(state!=='world')return;const dest=worldRouteTarget||{x:0,z:0,name:'центр города'};const tx=clamp(dest.x,worldBounds.minX+8,worldBounds.maxX-8),tz=clamp(dest.z,worldBounds.minZ+8,worldBounds.maxZ-8);player.mesh.position.set(tx,worldGroundY,tz);player.speed=0;worldFallState.car={vy:0,grounded:true};if(charMesh){charMesh.position.set(tx-2,worldGroundY,tz-2);charMesh.visible=!worldDriving;worldFallState.character={vy:0,grounded:true};}worldRouteTarget={x:0,z:0,name:'Центр города'};toast('🚕 Такси доставило к '+(dest.name||'месту назначения'));},1200);return;}else if(act==='tow'){if(save.coins<600){toast('Не хватает 600 монет на выезд механика');return;}save.coins-=600;setDamage(Math.max(0,player.dmg-45));player.immobilized=false;player.engineStall=0;player.speed=0;player.mesh.position.set(9,worldGroundY,8);worldFallState.car={vy:0,grounded:true};store();renderWorldPhone('services');toast('Механик прибыл: восстановлено 45% прочности');}else if(act==='garage'){closeWorldPhone();openWorldShop('garage');}else if(act==='race'){closeWorldPhone();toMenu();setTimeout(startCareer,20);}else if(act==='menu-tours'){closeWorldPhone();toMenu();setTimeout(()=>openScreen('tour'),20);}});
+$('worldPhoneContent').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('[data-social-comment-input]')){const id=e.target.getAttribute('data-social-comment-input'),btn=document.querySelector(`[data-social-comment="${id}"]`);if(btn)btn.click();}});$('worldCamBtn').onclick=cycleWorldCamera;$('worldExitBtn').onclick=toMenu;$('worldInteractBtn').onclick=interactWorld;$('worldPhone').addEventListener('click',e=>{const t=e.target.closest('[data-phone-tab]');if(t){renderWorldPhone(t.dataset.phoneTab);return;}const a=e.target.closest('[data-phone-action]');if(!a)return;const act=a.dataset.phoneAction;if(act==='taxi'){if(save.coins<150){toast('Не хватает 150 монет на такси');return;}save.coins-=150;store();closeWorldPhone();toast('🚕 Такси едет к тебе…');setTimeout(()=>{if(state!=='world')return;const dest=worldRouteTarget||{x:0,z:0,name:'центр города'};const tx=clamp(dest.x,worldBounds.minX+8,worldBounds.maxX-8),tz=clamp(dest.z,worldBounds.minZ+8,worldBounds.maxZ-8);player.mesh.position.set(tx,worldGroundY,tz);player.speed=0;worldFallState.car={vy:0,grounded:true};if(charMesh){charMesh.position.set(tx-2,worldGroundY,tz-2);charMesh.visible=!worldDriving;worldFallState.character={vy:0,grounded:true};}worldRouteTarget={x:0,z:0,name:'Центр города'};toast('🚕 Такси доставило к '+(dest.name||'месту назначения'));},1200);return;}else if(act==='tow'){if(save.coins<600){toast('Не хватает 600 монет на ремонт');return;}save.coins-=600;pendingRepairCost=600;store();closeWorldPhone();playRepairCutscene(()=>{setDamage(0);player.immobilized=false;player.engineStall=0;player.speed=0;player.mesh.position.set(9,worldGroundY,8);worldFallState.car={vy:0,grounded:true};store();recordRepair();});}else if(act==='garage'){closeWorldPhone();openWorldShop('garage');}else if(act==='race'){closeWorldPhone();toMenu();setTimeout(startCareer,20);}else if(act==='menu-tours'){closeWorldPhone();toMenu();setTimeout(()=>openScreen('tour'),20);}});
 document.querySelectorAll('[data-phone-tab]').forEach(()=>{});
 function openWorldShop(kind){
   const title=kind==='market'?'MARKET 24/7':kind==='fashion'?'CITY MODA':'AUTO LAB';$('worldShopTitle').textContent=title;$('worldShopDesc').textContent=kind==='market'?'Городской магазин и полезные вещи':kind==='fashion'?'Одежда и внешний вид персонажа':'Ремонт машины и выбор готовой модели';
@@ -2770,7 +3009,7 @@ function openWorldShop(kind){
   $('worldShopItems').innerHTML=items.map(([id,name,desc,enabled])=>`<div class="card"><b>${name}</b><div class="muted">${desc}</div><button class="btn" data-shop-action="${id}" ${enabled?'':'disabled'}>Купить / использовать</button></div>`).join('');$('worldShop').hidden=false;
   $('worldShopItems').onclick=e=>{const b=e.target.closest('[data-shop-action]');if(!b)return;const act=b.dataset.shopAction;let cost=0;
     if(act==='cars'){ $('worldShop').hidden=true; closeWorldPhone(); toMenu(); setTimeout(()=>openScreen('garage'),20); return; }
-    if(act==='repair'){cost=repairCost;if(own.dmg<=0){toast('Машина уже в отличном состоянии');return;}if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;setDamage(0);player.immobilized=false;player.engineStall=0;}
+    if(act==='repair'){cost=repairCost;if(own.dmg<=0){toast('Машина уже в отличном состоянии');return;}if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;pendingRepairCost=cost;store();$('worldShop').hidden=true;closeWorldPhone();playRepairCutscene(()=>{setDamage(0);player.immobilized=false;player.engineStall=0;store();recordRepair();});return;}
     else if(act==='outfit'){cost=850;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;save.char.col=(save.char.col+1+Math.floor(Math.random()*5))%OUTFITS.length;replaceWorldPlayer();}
     else if(act==='repair-kit'){cost=500;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;setDamage(Math.max(0,player.dmg-20));player.immobilized=player.dmg>=100;}
     else if(act==='snack'){cost=150;if(save.coins<cost){toast('Недостаточно монет');return;}save.coins-=cost;toast('Вкусный перерыв!');}
@@ -2788,6 +3027,7 @@ function enterApartment(){
   $('worldLocation').textContent='МОЯ КВАРТИРА · ГОСТИНАЯ';toast('Ты дома. Нажми E у двери, чтобы выйти.');
 }
 function leaveApartment(){
+  if(window.Snd&&Snd.music)Snd.music('background');
   worldInterior=false;worldJumpRemaining=0;worldJumpWasHeld=held.has('drift');if(charMesh)charMesh.position.y=0;(activeInteriorG||apartmentG).visible=false;activeInteriorG=null;worldG.visible=true;
   charMesh.position.set(interiorExit.x,0,interiorExit.z);charMesh.rotation.y=Math.PI;worldYaw=Math.PI;
   // Restore the parked car's previous visibility; otherwise entering/leaving home made the car disappear.
@@ -2802,13 +3042,20 @@ function worldInteractablesAt(){const p=worldPos();let best=null,dist=Infinity;
   return best;
 }
 function interactWorld(){
-  if(state!=='world')return;if(worldInterior){leaveApartment();return;}
+  if(state!=='world')return;
+  if(worldInterior){
+    const counter=activeInteriorG===shopG?{x:0,z:-6,kind:'market'}:activeInteriorG===garageG?{x:0,z:-7,kind:'garage'}:null;
+    if(counter&&Math.hypot(charMesh.position.x-counter.x,charMesh.position.z-counter.z)<3.2){openWorldShop(counter.kind);return;}
+    leaveApartment();return;
+  }
   const target=worldInteractablesAt();if(!target){toast('Поблизости нет объектов для взаимодействия');return;}worldNear=target;
   if(worldDriving && target.type!=='car'){toast('Сначала выйди из машины, чтобы взаимодействовать');return;}
   if(target.type==='apartment'){enterApartment();if(target.exit)interiorExit=target.exit;return;}
   if(target.type==='airport'){openAirportMenu();return;}
   if(target.type==='school'){enterSchool(target);return;}
-  if(target.type==='market'||target.type==='garage'||target.type==='fashion'){openWorldShop(target.type);return;}
+  if(target.type==='market'){enterShop(target);return;}
+  if(target.type==='garage'){enterGarage(target);return;}
+  if(target.type==='fashion'){openWorldShop(target.type);return;}
   if(target.type==='car'){
     if(!worldDriving){if(worldEnteringCar)return;worldEnteringCar=true;worldEnterCarTimer=0.72;if(window.TRModels&&window.TRModels.playCharacterAction)window.TRModels.playCharacterAction('EnterCar',0.72,charMesh);toast('Садишься в машину…');}
     else{worldDriving=false;charMesh.visible=true;charMesh.position.set(player.mesh.position.x-Math.cos(player.h)*3,worldGroundY,player.mesh.position.z+Math.sin(player.h)*3);worldFallState.character={vy:0,grounded:true};worldYaw=player.h;player.mesh.visible=true;player.speed=0;applyTouchSettings();toast('Ты вышел из машины. E — снова сесть.');}
@@ -2850,6 +3097,30 @@ function resolveCityMotion(oldX,oldZ,newX,newZ,radius,isCar){
   if(xFree&&zFree){const dx=Math.abs(newX-oldX),dz=Math.abs(newZ-oldZ);return dx>dz?{x:newX,z:oldZ,hit:true,weight:hitWeight}:{x:oldX,z:newZ,hit:true,weight:hitWeight};}
   return{x:oldX,z:oldZ,hit:true,weight:hitWeight};
 }
+// Traffic cars in the open world can overlap in their lanes. The car behind gives way to the one
+// ahead; cars meeting head-on both brake hard, and they are nudged apart sideways.
+function collideTrafficPairs(dt) {
+  const list = worldTraffic;
+  for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+    const a = list[i], b = list[j];
+    if (!a.mesh.visible || !b.mesh.visible) continue;
+    if (Math.abs(a.mesh.position.y - b.mesh.position.y) >= 1.8) continue;
+    const c = carFootprintOverlap(a, b);           // normal points from b toward a
+    if (!c) continue;
+    const o = Math.min(0.4, Math.max(0, c.overlap - 0.02));
+    if (o <= 0) continue;
+    const side = (a.z || 0) >= (b.z || 0) ? 1 : -1;
+    a.z = (a.z || 0) + side * o * 0.5;
+    b.z = (b.z || 0) - side * o * 0.5;
+    if (a.dir === b.dir) {
+      const ahead = (a.x - b.x) * a.dir >= 0 ? a : b;
+      const rear = ahead === a ? b : a;
+      rear.speed = Math.min(rear.speed || 0, Math.max(0, ahead.speed || 0));
+    } else {
+      a.speed = (a.speed || 0) * 0.55; b.speed = (b.speed || 0) * 0.55;
+    }
+  }
+}
 function updateOpenWorld(dt){
   if($('worldPhone').hidden===false||$('worldShop').hidden===false)return;
   // While New York is loading, keep the actor responsive. Collision queries are
@@ -2858,6 +3129,7 @@ function updateOpenWorld(dt){
   if(worldEnteringCar){worldEnterCarTimer-=dt;if(worldEnterCarTimer<=0){worldEnteringCar=false;worldDriving=true;worldYaw=player.h;player.mesh.visible=true;if(charMesh)charMesh.visible=false;applyTouchSettings();toast('Ты за рулём. WASD — управление, E — выйти.');}}
   if(!worldInterior&&!worldFlyMode){stepWorldFall(charMesh,'character',dt);stepWorldFall(player.mesh,'car',dt);}
   worldJumpCooldown=Math.max(0,worldJumpCooldown-dt);
+  if(worldDriving&&!worldInterior&&performance.now()-worldLastLookT>1200){const k=Math.max(0,1-2.2*dt);worldCamOrbitYaw*=k;worldCamOrbitPitch*=k;}
   const jumpHeld=held.has('drift');
   if(!worldDriving&&!worldInterior&&!worldFlyMode&&jumpHeld&&!worldJumpWasHeld&&worldJumpCooldown<=0){worldJumpRemaining=0.62;worldJumpCooldown=0.88;if(window.TRModels&&window.TRModels.playCharacterAction)window.TRModels.playCharacterAction('Jump',0.62,charMesh);}
   worldJumpWasHeld=jumpHeld;
@@ -2868,12 +3140,9 @@ function updateOpenWorld(dt){
   if(!worldInterior){
     for(const rec of worldPedestrians){
       const p=rec.mesh,near=worldDriving?Math.hypot(player.mesh.position.x-p.position.x,player.mesh.position.z-p.position.z):charMesh?Math.hypot(charMesh.position.x-p.position.x,charMesh.position.z-p.position.z):999;
-      rec.phase+=dt*rec.walk;
       rec.nextCheer-=dt;if(near<20&&rec.nextCheer<=0){rec.waveT=1.8+Math.random()*1.8;rec.jumpT=Math.random()<0.58?0.55:0;rec.nextCheer=3+Math.random()*6;if(Math.random()<0.58 && Snd.crowd) Snd.crowd();}
       rec.waveT=Math.max(0,rec.waveT-dt);rec.jumpT=Math.max(0,rec.jumpT-dt);
-      p.position.x=rec.centerX+(rec.axis==='x'?Math.sin(rec.phase)*rec.amp:Math.sin(rec.phase*.42)*1.2);
-      p.position.z=rec.centerZ+(rec.axis==='z'?Math.cos(rec.phase)*rec.amp:Math.cos(rec.phase*.42)*1.2);
-      if(rec.axis==='x')p.rotation.y=Math.cos(rec.phase)>=0?Math.PI/2:-Math.PI/2;else p.rotation.y=Math.sin(rec.phase)>=0?0:Math.PI;
+      updatePedestrianWalk(rec,dt);
       const u=p.userData;u.legs[0].rotation.x=Math.sin(rec.phase*2)*0.5;u.legs[1].rotation.x=-Math.sin(rec.phase*2)*0.5;u.arms[0].rotation.x=-Math.sin(rec.phase*2)*0.38;u.arms[1].rotation.x=Math.sin(rec.phase*2)*0.38;
       const cheering=near<22||rec.waveT>0;u.arms[0].rotation.z=cheering?1.9+Math.sin(worldAnimT*8+rec.phase)*0.28:Math.sin(rec.phase*2)*0.18;u.arms[1].rotation.z=rec.waveT>0?-1.8+Math.sin(worldAnimT*9+rec.phase)*0.2:-Math.sin(rec.phase*2)*0.18;
       p.position.y=rec.jumpT>0?Math.sin((1-rec.jumpT/.7)*Math.PI)*0.85:0;
@@ -2885,7 +3154,7 @@ function updateOpenWorld(dt){
         if(car.x>=car.maxX){car.x=car.maxX;car.dir=-1;car.mesh.rotation.y=-Math.PI/2;}
         if(car.x<=car.minX){car.x=car.minX;car.dir=1;car.mesh.rotation.y=Math.PI/2;}
       }else{if(car.x>WORLD_RANGE)car.x=-WORLD_RANGE;if(car.x< -WORLD_RANGE)car.x=WORLD_RANGE;}
-      car.mesh.position.set(car.x,0,car.z);car.mesh.userData.wheels.forEach(w=>w.rotation.x+=car.speed*dt/0.4);(car.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=car.speed*dt/0.4);
+      car.mesh.position.set(car.x,0,car.z);car.mesh.userData.wheels.forEach(w => spinWheel(w, car.speed*dt/0.4));(car.mesh.userData.externalWheels||[]).forEach(w => spinWheel(w, car.speed*dt/0.4));
     }
   }
   const actor=worldDriving?player.mesh:charMesh;if(!actor)return;
@@ -2897,8 +3166,9 @@ function updateOpenWorld(dt){
   if(worldDriving){
     const gas=held.has('gas')&&!player.immobilized&&player.engineStall<=0,brake=held.has('brake'),steer=(held.has('right')?1:0)-(held.has('left')?1:0);player.engineStall=Math.max(0,player.engineStall-dt);
     const max=player.immobilized?0:Math.max(18,phys.max*0.92);if(gas)player.speed+=phys.acc*0.82*dt;if(brake)player.speed-=phys.brk*dt;if(!gas&&!brake)player.speed-=player.speed*0.48*dt;player.speed=player.immobilized?0:clamp(player.speed,-8,max);
+    setWheelSteer(player.mesh.userData, -steer*0.5);
     player.h-=steer*(0.4+Math.min(Math.abs(player.speed)/45,1)*0.85)*(player.mesh.userData.trWheelLost?0.56:1)*dt*Math.sign(player.speed||1);player.mesh.rotation.y=player.h;
-    const oldX=player.mesh.position.x,oldZ=player.mesh.position.z;player.mesh.position.x+=Math.sin(player.h)*player.speed*dt;player.mesh.position.z+=Math.cos(player.h)*player.speed*dt;player.mesh.userData.wheels.forEach(w=>w.rotation.x+=player.speed*dt/0.4);(player.mesh.userData.externalWheels||[]).forEach(w=>w.rotation.x+=player.speed*dt/0.4);
+    const oldX=player.mesh.position.x,oldZ=player.mesh.position.z;player.mesh.position.x+=Math.sin(player.h)*player.speed*dt;player.mesh.position.z+=Math.cos(player.h)*player.speed*dt;player.mesh.userData.wheels.forEach(w => spinWheel(w, player.speed*dt/0.4));(player.mesh.userData.externalWheels||[]).forEach(w => spinWheel(w, player.speed*dt/0.4));
     if(worldFlyMode){if(held.has('nitro'))player.mesh.position.y+=12*dt;if(held.has('drift'))player.mesh.position.y-=12*dt;player.mesh.position.y=clamp(player.mesh.position.y,worldGroundY+0.65,worldGroundY+100);worldFallState.car={vy:0,grounded:true};}
     const cityActive=!!(worldG&&worldG.userData&&worldG.userData.importedCityActive);let struck=false,struckWeight=1;
     if(cityActive){if(worldGhostMode||worldFlyMode){struck=false;}else{const r=resolveCityMotion(oldX,oldZ,player.mesh.position.x,player.mesh.position.z,2.1,true);player.mesh.position.x=r.x;player.mesh.position.z=r.z;struck=r.hit;struckWeight=r.weight||1;}
@@ -2907,6 +3177,7 @@ function updateOpenWorld(dt){
     if(struck&&worldCollisionTimer<=0){worldCollisionTimer=0.34;const impact=Math.abs(player.speed);player.speed*=0.22;player.vx*=0.24;player.vz*=0.24;if(impact>9)addDmg(clamp(impact*0.065*struckWeight,0.25,7));if(impact>12)spawnSparks(player.mesh.position.x,0.7,player.mesh.position.z,clamp(Math.floor(impact*.28),5,15));Snd.bump();if(impact>5)toast('Столкновение · машина затормозила у препятствия');}
     // Городской транспорт сталкивается по повёрнутым прямоугольным хитбоксам,
     // без старого телепорта машины на 4.65 м и без автоматического разворота трафика.
+    collideTrafficPairs(dt);
     for(const tr of worldTraffic){
       if(worldCollisionTimer>0)break;
       const hit=carFootprintOverlap(player,tr);if(!hit)continue;
@@ -2942,7 +3213,7 @@ function updateOpenWorld(dt){
     let forward=(held.has('gas')?1:0)-(held.has('brake')?1:0);
     let strafe=(held.has('right')?1:0)-(held.has('left')?1:0);
     if(isTouch&&worldStickInput.active){forward=clamp(forward-worldStickInput.y,-1,1);strafe=clamp(strafe+worldStickInput.x,-1,1);}
-    const walkSpeed=held.has('nitro')?14:8.3;
+    const walkSpeed=held.has('nitro')?3.5:2.0; // matched to the walk/run animation pace
     const viewYaw=worldYaw+worldCamOrbitYaw;
     // Камера смотрит вдоль (sin, cos); её «право» = (-cos, sin). Раньше знак был обратным, и стик/D шли влево.
     let moveX=Math.sin(viewYaw)*forward-Math.cos(viewYaw)*strafe;
@@ -2962,6 +3233,7 @@ function updateOpenWorld(dt){
       // Apartment interior has its own walkable bounds; don't let the character pass through the room's walls.
       charMesh.position.x=clamp(charMesh.position.x,-11.55,11.55);
       charMesh.position.z=clamp(charMesh.position.z,-11.55,11.55);
+      pushOutOfInterior(charMesh.position);
     } else {
       const cityActive=!!(worldG&&worldG.userData&&worldG.userData.importedCityActive);
       if(cityActive){if(!(worldGhostMode||worldFlyMode)){const r=resolveCityMotion(oldX,oldZ,charMesh.position.x,charMesh.position.z,0.42,false);charMesh.position.x=r.x;charMesh.position.z=r.z;}
@@ -3001,7 +3273,7 @@ function updateWorldCamera(dt){
     fov=worldDriving?77:73;
   } else {
     a.visible=true;
-    let dist=worldCamMode===1?2.9:7.8,height=worldCamMode===1?2.65:4.25;
+    let dist=worldCamMode===1?2.9:(worldDriving?5.9:6.4),height=worldCamMode===1?2.65:(worldDriving?3.3:3.8);
     if(worldInterior){dist=worldCamMode===1?2.2:5.8;height=worldCamMode===1?2.55:3.6;}
     const focus=new THREE.Vector3(p.x,worldDriving?1.15:1.25,p.z);
     const horizontal=dist*Math.cos(worldCamOrbitPitch), vertical=Math.sin(worldCamOrbitPitch)*dist;

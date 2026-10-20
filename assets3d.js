@@ -22,6 +22,8 @@
   let personClips = [];
   const characterAnimations = new Map();
   let carPackTemplates = [], personTemplate = null, cityTemplate = null;
+  let personTemplates = {}, personClipsByGender = {}, personHasOwnHair = false;
+  const GEN_CAR_NAMES = ['gen_sedan', 'gen_muscle', 'gen_wedge', 'gen_hyper', 'gen_suv', 'gen_retro'];
   let armsRoot = null, armsMixer = null, armsActions = {}, armsCurrent = null, armsOverlay = null, cockpitOverlay = null, steeringWheel = null, gameCamera = null;
   let firstPersonWanted = false, firstPersonContext = 'race', characterMotion = 'idle', characterMotionClock = 0;
 
@@ -205,6 +207,66 @@
     return result.clone();
   }
 
+  // Finds the wheel nodes (Tires/Rims) of an imported car and groups each wheel into a
+  // steer pivot (front wheels turn with the steering) containing a spin group (wheel rolls).
+  // Works in the car's own frame, so it must run after the nose-forward orientation is applied.
+  function setupWheelRigs(carFrame) {
+    try {
+      carFrame.updateMatrixWorld(true);
+      const inv = carFrame.matrixWorld.clone().invert();
+      const nodes = [];
+      carFrame.traverse(o => {
+        const isWheelName = /^(tires?|rims?|wheels?)(\.\d+)?$/i.test(o.name);
+        // Take the outermost matching node only, so a wheel group is not collected twice.
+        let nested = false; for (let p = o.parent; p && p !== carFrame; p = p.parent) if (/^(tires?|rims?|wheels?)(\.\d+)?$/i.test(p.name)) nested = true;
+        if (isWheelName && !nested && !o.userData.trWheelRig) nodes.push(o);
+      });
+      if (!nodes.length) return [];
+      const bodyBox = new THREE.Box3().setFromObject(carFrame);
+      const bodyCenter = bodyBox.getCenter(new THREE.Vector3());
+      const bodyLen = Math.max(bodyBox.max.x - bodyBox.min.x, bodyBox.max.z - bodyBox.min.z) || 1;
+      const items = nodes.map(o => {
+        const b = new THREE.Box3().setFromObject(o);
+        const c = b.getCenter(new THREE.Vector3()).applyMatrix4(inv);
+        return { o, c };
+      });
+      const clusters = [];
+      for (const it of items) {
+        const hit = clusters.find(cl => cl.c.distanceTo(it.c) < bodyLen * 0.22);
+        if (hit) { hit.items.push(it); hit.c.multiplyScalar(0); hit.items.forEach(x => hit.c.add(x.c)); hit.c.multiplyScalar(1 / hit.items.length); }
+        else clusters.push({ c: it.c.clone(), items: [it] });
+      }
+      const rigs = [];
+      for (const cl of clusters) {
+        const box = new THREE.Box3();
+        cl.items.forEach(x => box.expandByObject(x.o));
+        const size = box.getSize(new THREE.Vector3()).applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(carFrame.quaternion.clone().invert()));
+        const dims = [Math.abs(size.x), Math.abs(size.y), Math.abs(size.z)];
+        const diameter = Math.max(...dims.filter((_, i) => i !== dims.indexOf(Math.min(...dims))));
+        // A wheel is small relative to the car; skip clusters that cover the whole body (merged geometry).
+        if (diameter > bodyLen * 0.45 || diameter < bodyLen * 0.05) continue;
+        const axisIdx = dims.indexOf(Math.min(...dims));
+        const axis = ['x', 'y', 'z'][axisIdx];
+        const pivot = new THREE.Group(); pivot.name = 'TR wheel steer';
+        pivot.rotation.order = 'YXZ';
+        const spin = new THREE.Group(); spin.name = 'TR wheel spin';
+        pivot.add(spin);
+        pivot.position.copy(cl.c);
+        carFrame.add(pivot);
+        pivot.updateMatrixWorld(true);
+        cl.items.forEach(x => { x.o.userData.trWheelRig = true; spin.attach(x.o); });
+        pivot.userData.front = cl.c.z > bodyCenter.z;
+        pivot.userData.spin = spin;
+        pivot.userData.spinAxis = axis;
+        rigs.push(pivot);
+      }
+      return rigs;
+    } catch (err) {
+      console.warn('Wheel rig setup skipped', err);
+      return [];
+    }
+  }
+
   function buildCarVisual(record) {
     const root = record.root;
     if (!root || !root.userData || root.userData.externalCarRoot) return;
@@ -218,6 +280,17 @@
 
     const model = cloneModel(source);
     removeCollisionMeshes(model);
+    // Give each car its own colour: the body panels get a per-instance material copy,
+    // so cars that share a body model still look different and the template stays untouched.
+    if (Number.isFinite(root.userData.col)) {
+      const tint = new THREE.Color(root.userData.col);
+      model.traverse(o => {
+        if (!o.isMesh || !o.material || !/^(paint|body|front|rear|bonnet|boot|door)/i.test(o.name || '')) return;
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        const copies = mats.map(m => { if (!m || !m.color || /glass|window|tire|rim|light|carbon|seam|grille|trim|chrome|handle|arch|vent/i.test(m.name || '')) return m; const c = m.clone(); c.color.copy(tint); return c; });
+        o.material = Array.isArray(o.material) ? copies : copies[0];
+      });
+    }
     const pivots = [];
     const external = new THREE.Group();
     external.name = 'Ultimate pack — external visual';
@@ -229,6 +302,7 @@
     orient.quaternion.copy(getCarOrientation(source, orient));
     external.add(orient);
     external.visible = !(firstPersonWanted && (firstPersonContext === 'drive' || firstPersonContext === 'race'));
+    const wheelRigs = setupWheelRigs(orient);
     external.updateMatrixWorld(true);
     const box = new THREE.Box3().setFromObject(external);
     const size = box.getSize(new THREE.Vector3());
@@ -248,7 +322,7 @@
 
     const u = root.userData;
     u.externalCarRoot = external;
-    u.externalWheels = pivots;
+    u.externalWheels = wheelRigs;
     const retain = new Set([u.flame, u.damageSmoke]);
     (u.damageMarks || []).forEach(item => retain.add(item.mesh));
     (u.baseParts || []).forEach(part => { if (part && !retain.has(part)) part.visible = false; });
@@ -264,8 +338,9 @@
     if (carAssetsPromise) return carAssetsPromise;
     carAssetsPromise = Promise.all([
       loadGLB('ultimate_car_pack.glb'),
-      loadGLB('ford_gt_2006.glb')
-    ]).then(([packGltf, fordGltf]) => {
+      loadGLB('ford_gt_2006.glb'),
+      ...GEN_CAR_NAMES.map(n => loadGLB('car_' + n + '.glb').catch(() => null))
+    ]).then(([packGltf, fordGltf, ...genGltfs]) => {
       // Объединяем обе коллекции: модели Ultimate + Ford GT 2006.
       // Каждая модель выбирается по индексу автомобиля в гараже/трафике.
       const packRoot = packGltf.scene.getObjectByName('RootNode');
@@ -273,8 +348,18 @@
         .map(name => packRoot && packRoot.children.find(child => child.name === name))
         .filter(Boolean);
       // От самой простой к самой красивой. В паке Ultimate модели с суффиксом .001 — копии, их не берём.
-      const rankOrder = ['Urus', 'Mercedes', 'Mustang', 'M8', 'Porsche', 'GTR', 'P1GTR'];
-      const ranked = rankOrder.map(n => ultimateModels.find(m => m.name === n)).filter(Boolean);
+      // Generated bodies (car_gen_*.glb) are wrapped in a group so they behave like pack templates.
+      const genTemplates = {};
+      GEN_CAR_NAMES.forEach((n, i) => {
+        const g = genGltfs[i];
+        if (!g || !g.scene) return;
+        const grp = new THREE.Group(); grp.name = 'gen_' + n;
+        [...g.scene.children].forEach(c => grp.add(c));
+        genTemplates[n] = grp;
+      });
+      // Weakest class first, strongest last. Ultimate bodies and generated bodies are interleaved by looks.
+      const rankOrder = ['Urus', 'gen_suv', 'Mercedes', 'gen_sedan', 'gen_retro', 'Mustang', 'M8', 'gen_muscle', 'Porsche', 'gen_wedge', 'GTR', 'gen_hyper', 'P1GTR'];
+      const ranked = rankOrder.map(n => (n.startsWith('gen_') ? genTemplates[n] : ultimateModels.find(m => m.name === n))).filter(Boolean);
       ultimateModels.forEach(m => { if (!/\.001$/.test(m.name) && !ranked.includes(m)) ranked.push(m); });
       carPackTemplates = [...ranked, fordGltf.scene];
       carPackTemplates.forEach(optimizeCarTemplate);
@@ -288,15 +373,36 @@
     return carAssetsPromise;
   }
 
-  function makePersonInstance() {
-    if (!personTemplate) return null;
-    return makeNormalisedInstance(personTemplate, { height: 1.78, name: 'New Person — rigged character model' });
+  function makePersonInstance(gender='boy') {
+    const tpl = personTemplates[gender] || personTemplates.boy || personTemplate;
+    if (!tpl) return null;
+    return makeNormalisedInstance(tpl, { height: 1.78, name: 'Person — rigged character model (' + gender + ')' });
   }
-  function bindCharacterAnimations(root, model) {
-    if(!root||!model||!personClips.length)return;
+  // A copy of a clip played faster: the same motion at a higher pace (used for running).
+  function retimeClip(clip, factor, name) {
+    const tracks = clip.tracks.map(t => new t.constructor(t.name, t.times.map(x => x / factor), t.values.slice()));
+    return new THREE.AnimationClip(name, clip.duration / factor, tracks);
+  }
+  function bindCharacterAnimations(root, model, clips) {
+    clips = clips || personClips;
+    if(!root||!model||!clips||!clips.length)return;
     try{
       const mixer=new THREE.AnimationMixer(model),actions={};
-      for(const clip of personClips){actions[clip.name]=mixer.clipAction(clip);}
+      for(const clip of clips){actions[clip.name]=mixer.clipAction(clip);}
+      // Fill in the clip names the game uses but this model does not have: a single-frame
+      // Idle pose from the walk cycle, and Walk/Run/Jump/EnterCar falling back to what exists.
+      const walkClip = clips.find(c => c.name === 'Walk') || clips[0];
+      if (!actions.Idle && walkClip) actions.Idle = mixer.clipAction(THREE.AnimationUtils.subclip(walkClip, 'Idle', 0, 1, 30));
+      if (!actions.Walk && walkClip) actions.Walk = mixer.clipAction(walkClip);
+      if (!actions.Run && walkClip) actions.Run = mixer.clipAction(retimeClip(walkClip, 1.75, 'Run'));
+      if (!actions.Jump && actions.Walk) actions.Jump = actions.Walk;
+      if (!actions.EnterCar && actions.Idle) actions.EnterCar = actions.Idle;
+      // Pace: the game moves the person at 2.0 m/s walking and 3.5 m/s sprinting. The Mixamo clips
+      // were made for 0.89 and 1.57 m/s, so play them faster to keep the feet on the ground.
+      if (clips.paced) {
+        if (actions.Walk) actions.Walk.timeScale = 2.0 / 0.893;
+        if (actions.Run) actions.Run.timeScale = 3.5 / 1.565;
+      }
       characterAnimations.set(root,{mixer,actions,current:'',forcedUntil:0,forcedName:''});
       playCharacterAnimation(root,'Idle');
     }catch(error){console.warn('[Turbo Rivals] Не удалось активировать риг персонажа:',error);}
@@ -346,14 +452,15 @@
     if (!root || !root.userData || root.userData.trNewPersonAttached || !personTemplate) return;
     const model = makePersonInstance();
     if (!model) return;
-    if ((root.userData.trGender || root.userData.gender) === 'girl') addFemaleStyling(model);
+    const gender = (root.userData.trGender || root.userData.gender) === 'girl' ? 'girl' : 'boy';
+    if (gender === 'girl' && !personHasOwnHair) addFemaleStyling(model);
     model.name = 'TR visible player character';
     model.visible = true;
     model.traverse(o => { if (o.isMesh) { o.visible = true; o.frustumCulled = false; } });
     // Keep the imported model directly under the actor root. Parenting it under the
     // merged procedural body caused bad inherited transforms on some Three.js clones.
     root.add(model);
-    bindCharacterAnimations(root, model);
+    bindCharacterAnimations(root, model, personClipsByGender[gender]);
     // Only hide the fallback body AFTER the imported model has been attached.
     // If new_person.glb fails to load, the player remains visible and controllable.
     const u = root.userData;
@@ -368,9 +475,10 @@
   }
   function attachDriverCharacter(root) {
     if (!root || !root.userData || root.userData.trNewPersonAttached || !personTemplate) return;
-    const model = makePersonInstance();
+    const gender = (root.userData.trGender || root.userData.gender) === 'girl' ? 'girl' : 'boy';
+    const model = makePersonInstance(gender);
     if (!model) return;
-    if ((root.userData.trGender || root.userData.gender) === 'girl') addFemaleStyling(model);
+    if (gender === 'girl' && !personHasOwnHair) addFemaleStyling(model);
     // Attach the supplied model first; only then hide the old driver meshes.
     model.rotation.x = -0.08;
     model.scale.y *= 0.94;
@@ -378,20 +486,39 @@
     root.add(model);
     model.visible = true;
     root.children.forEach(child => { if (child !== model) child.visible = false; });
-    bindCharacterAnimations(root,model);
+    bindCharacterAnimations(root, model, personClipsByGender[gender]);
     root.userData.trNewPersonAttached = true;
     root.userData.trNewPersonModel = model;
   }
   function ensurePerson() {
     if (personPromise) return personPromise;
-    personPromise = loadGLB('new_person.glb').then(gltf => {
-      personTemplate = gltf.scene;
-      personClips = Array.isArray(gltf.animations) ? gltf.animations : [];
-      markSharedTree(personTemplate);
+    // Two rigged people: a man (person_man.glb) and a woman (person_woman.glb). Either falls back to new_person.glb.
+    personPromise = Promise.all([
+      loadGLB('person_man.glb').catch(() => loadGLB('new_person.glb')),
+      loadGLB('person_woman.glb').catch(() => null)
+    ]).then(([man, woman]) => {
+      const manClips = Array.isArray(man.animations) ? man.animations : [];
+      manClips.forEach((c, i) => { if (!c.name) c.name = i === 0 ? 'Walk' : 'Clip' + i; });
+      manClips.paced = true; // Mixamo clips: Walk ~0.89 m/s, Run ~1.57 m/s at their native pace
+      personTemplates.boy = man.scene;
+      personClipsByGender.boy = manClips;
+      if (woman) {
+        personTemplates.girl = woman.scene;
+        personClipsByGender.girl = Array.isArray(woman.animations) ? woman.animations : [];
+        personHasOwnHair = true;
+      } else {
+        personTemplates.girl = man.scene;
+        personClipsByGender.girl = manClips;
+        personHasOwnHair = false;
+      }
+      personTemplate = personTemplates.boy;
+      personClips = manClips;
+      markSharedTree(personTemplates.boy);
+      if (personTemplates.girl !== personTemplates.boy) markSharedTree(personTemplates.girl);
       worldCharacters.forEach(attachWorldCharacter);
       staticCharacters.forEach(attachWorldCharacter);
       driverCharacters.forEach(attachDriverCharacter);
-      console.info('[Turbo Rivals] Модель персонажа New Person загружена.');
+      console.info('[Turbo Rivals] Модели персонажей загружены: мужчина и женщина.');
     }).catch(error => {
       console.error('[Turbo Rivals] New Person не загрузился; остаётся видимый процедурный персонаж, проверьте файл new_person.glb.', error);
       personPromise = null;
@@ -516,7 +643,7 @@
   }
 
   function detachCrashParts(root, severity) {
-    if (!root || !root.userData || !root.userData.externalCarRoot || severity < 4.4) return [];
+    if (!root || !root.userData || !root.userData.externalCarRoot || severity < 3.2) return [];
     const external=root.userData.externalCarRoot,candidates=[],wheelCandidates=[],glassCandidates=[];
     const pattern=/^(front|rear|door|bonnet|boot|wind|window|glass|mirror|spoiler|wing|bumper|tire|tyre|wheel|rim|body|paint)/i;
     external.updateMatrixWorld(true);
@@ -543,17 +670,26 @@
     const valid=a=>a.filter(v=>!v._nested&&v.part.parent&&!v.part.userData.trDetachedPart);
     const wheels=valid(wheelCandidates),glass=valid(glassCandidates),panels=valid(candidates);
     const severityRatio=Math.max(0,Math.min(1,(severity-4.2)/3.1));
-    if(wheels.length&&severity>=5.7&&Math.random()<0.025+severityRatio*0.07){
-      const item=wheels[Math.floor(Math.random()*wheels.length)];item.part.userData.trDetachedPart=true;return [item];
+    // Wheels: the rig pivot (tyre + rim + spokes) tears off as one piece.
+    const rigs=(root.userData.externalWheels||[]).filter(w=>w&&w.parent&&!w.userData.trDetachedPart);
+    if(rigs.length&&severity>=4.0&&Math.random()<0.14+severityRatio*0.36){
+      const rig=rigs[Math.floor(Math.random()*rigs.length)];
+      rig.userData.trDetachedPart=true;
+      root.userData.externalWheels=(root.userData.externalWheels||[]).filter(w=>w!==rig);
+      return [{part:rig,object:rig,glass:false,wheel:true,score:0}];
     }
     let pool=(glass.length&&severity>=5.0&&Math.random()<0.34+severityRatio*0.28)?glass:panels;
     if(!pool.length)pool=glass;
-    if(!pool.length||Math.random()>Math.max(0.18,Math.min(0.9,(severity-3.5)*0.2)))return [];
-    pool.sort((a,b)=>a.score-b.score);
-    const best=pool[0].score,near=pool.filter(c=>c.score<=best+1),choice=near[Math.floor(Math.random()*near.length)];
-    if(!choice||!choice.part.parent)return [];
-    choice.part.userData.trDetachedPart=true;
-    return [choice];
+    if(!pool.length||Math.random()>Math.max(0.35,Math.min(0.95,(severity-2.8)*0.25)))return [];
+    const picked=[];
+    const picks=severity>=6&&pool.length>1&&Math.random()<0.5?2:1;
+    for(let k=0;k<picks;k++){
+      pool.sort((a,b)=>a.score-b.score);
+      const best=pool[0].score,near=pool.filter(c=>c.score<=best+1&&!c.part.userData.trDetachedPart&&c.part.parent),choice=near[Math.floor(Math.random()*near.length)];
+      if(!choice)break;
+      choice.part.userData.trDetachedPart=true;picked.push(choice);
+    }
+    return picked;
   }
   function dentCar(root,severity){
     if(!root||!root.userData||!root.userData.externalCarRoot||severity<1.8)return false;
@@ -564,32 +700,94 @@
     const attr=mesh.geometry.attributes.position;if(!attr||attr.count<8)return false;
     const box=mesh.geometry.boundingBox||new THREE.Box3().setFromBufferAttribute(attr);if(!mesh.geometry.boundingBox)mesh.geometry.computeBoundingBox();
     const cx=box.min.x+Math.random()*(box.max.x-box.min.x),cy=box.min.y+Math.random()*(box.max.y-box.min.y),cz=box.min.z+Math.random()*(box.max.z-box.min.z);
-    const radius=Math.min(0.55,0.12+severity*0.045),depth=Math.min(0.22,0.035+severity*0.027);
+    const radius=Math.min(0.85,0.16+severity*0.07),depth=Math.min(0.42,0.05+severity*0.05);
     for(let i=0;i<attr.count;i++){
       const dx=attr.getX(i)-cx,dy=attr.getY(i)-cy,dz=attr.getZ(i)-cz,d=Math.sqrt(dx*dx+dy*dy+dz*dz);
       if(d<radius){const k=(1-d/radius)*(0.35+Math.random()*0.2)*depth;const inv=1/(d+0.03);attr.setXYZ(i,attr.getX(i)-dx*inv*k,attr.getY(i)-dy*inv*k,attr.getZ(i)-dz*inv*k);}
     }
     attr.needsUpdate=true;mesh.geometry.computeVertexNormals();mesh.geometry.computeBoundingSphere();return true;
   }
+  // Interior view from the driver's seat: wide dashboard with violet ambient light, a touch screen
+  // with a map, a digital cluster behind the wheel, and the windscreen pillars.
+  let cockpitSpeedCanvas = null, cockpitSpeedTex = null, cockpitNavCanvas = null, cockpitNavTex = null, cockpitLastKmh = -1;
+  function drawCockpitNav(ctx, w, h) {
+    ctx.fillStyle = '#0b1220'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(120,150,190,0.35)'; ctx.lineWidth = 6;
+    for (let i = -2; i < 9; i++) { ctx.beginPath(); ctx.moveTo(i * 70, 0); ctx.lineTo(i * 70 + 180, h); ctx.stroke(); }
+    for (let j = 0; j < 5; j++) { ctx.beginPath(); ctx.moveTo(0, j * 60 + 20); ctx.lineTo(w, j * 60 - 10); ctx.stroke(); }
+    ctx.strokeStyle = '#3fb4ff'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(w * 0.5, h); ctx.lineTo(w * 0.5, h * 0.55); ctx.lineTo(w * 0.78, h * 0.45); ctx.lineTo(w * 0.78, 0); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.moveTo(w * 0.5, h * 0.8); ctx.lineTo(w * 0.47, h * 0.9); ctx.lineTo(w * 0.53, h * 0.9); ctx.closePath(); ctx.fill();
+  }
+  function drawCockpitSpeed(ctx, w, h, kmh, rpm) {
+    ctx.fillStyle = '#05070b'; ctx.fillRect(0, 0, w, h);
+    ctx.strokeStyle = 'rgba(120,180,255,0.25)'; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.arc(w / 2, h * 1.05, h * 0.9, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+    ctx.strokeStyle = '#8a5bff'; ctx.lineWidth = 10;
+    ctx.beginPath(); ctx.arc(w / 2, h * 1.05, h * 0.9, Math.PI * 1.1, Math.PI * 1.1 + Math.PI * 0.8 * Math.min(1, rpm)); ctx.stroke();
+    ctx.fillStyle = '#8aa3c4'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.font = Math.round(h * 0.13) + 'px system-ui, sans-serif'; ctx.fillText('gear ' + Math.min(6, Math.floor(rpm * 6) + 1), w * 0.07, h * 0.08);
+    ctx.fillStyle = '#e8f1ff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = 'bold ' + Math.round(h * 0.52) + 'px system-ui, sans-serif'; ctx.fillText(String(kmh), w / 2, h * 0.55);
+    ctx.font = Math.round(h * 0.16) + 'px system-ui, sans-serif'; ctx.fillStyle = '#8aa3c4'; ctx.fillText('km/h', w / 2, h * 0.88);
+  }
   function makeCockpit() {
     if(cockpitOverlay)return cockpitOverlay;
     cockpitOverlay=new THREE.Group();cockpitOverlay.name='TR first-person cockpit controls';
-    const dashMat=new THREE.MeshStandardMaterial({color:0x171b20,roughness:0.72,metalness:0.18});
-    const trimMat=new THREE.MeshStandardMaterial({color:0x555b64,roughness:0.45,metalness:0.65});
-    const screenMat=new THREE.MeshBasicMaterial({color:0x53dff5});
-    const wheelMat=new THREE.MeshStandardMaterial({color:0x0c0f12,roughness:0.5,metalness:0.15});
-    const dash=new THREE.Mesh(new THREE.BoxGeometry(1.42,0.22,0.34),dashMat);dash.position.set(0,-0.57,-0.98);cockpitOverlay.add(dash);
-    const trim=new THREE.Mesh(new THREE.BoxGeometry(1.18,0.035,0.025),trimMat);trim.position.set(0,-0.465,-1.155);cockpitOverlay.add(trim);
-    const display=new THREE.Mesh(new THREE.PlaneGeometry(0.25,0.075),screenMat);display.position.set(0,-0.525,-1.16);cockpitOverlay.add(display);
+    const dashMat=new THREE.MeshStandardMaterial({color:0x14181d,roughness:0.7,metalness:0.2});
+    const dashTop=new THREE.MeshStandardMaterial({color:0x1d2229,roughness:0.55,metalness:0.1});
+    const trimMat=new THREE.MeshStandardMaterial({color:0x4a505a,roughness:0.4,metalness:0.7});
+    const wheelMat=new THREE.MeshStandardMaterial({color:0x0b0d10,roughness:0.45,metalness:0.2});
+    const violet=new THREE.MeshBasicMaterial({color:0x9b4dff});
+    const blue=new THREE.MeshBasicMaterial({color:0x4fb8ff});
+    const pillarMat=new THREE.MeshStandardMaterial({color:0x0d0f12,roughness:0.6});
+    // dashboard: main slab, soft-touch top pad, centre console
+    const dash=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.26,0.38),dashMat);dash.position.set(0,-0.56,-0.98);cockpitOverlay.add(dash);
+    const pad=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.06,0.44),dashTop);pad.position.set(0,-0.42,-0.96);cockpitOverlay.add(pad);
+    const cons=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.34,0.3),dashMat);cons.position.set(0.56,-0.66,-0.9);cockpitOverlay.add(cons);
+    // violet ambient strip along the dash top, blue accent under the screen
+    const strip=new THREE.Mesh(new THREE.BoxGeometry(1.7,0.014,0.014),violet);strip.position.set(0,-0.385,-0.75);cockpitOverlay.add(strip);
+    const strip2=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.01,0.01),blue);strip2.position.set(0.56,-0.5,-0.76);cockpitOverlay.add(strip2);
+    // side door sills lit in violet
+    for(const x of [-0.92,0.92]){const sill=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.012,0.9),violet);sill.position.set(x,-0.7,-0.62);cockpitOverlay.add(sill);}
+    // centre touch screen with a map
+    cockpitNavCanvas=document.createElement('canvas');cockpitNavCanvas.width=512;cockpitNavCanvas.height=300;
+    drawCockpitNav(cockpitNavCanvas.getContext('2d'),512,300);
+    cockpitNavTex=new THREE.CanvasTexture(cockpitNavCanvas);
+    const nav=new THREE.Mesh(new THREE.PlaneGeometry(0.36,0.21),new THREE.MeshBasicMaterial({map:cockpitNavTex}));
+    nav.position.set(0.56,-0.5,-1.13);nav.rotation.x=-0.22;cockpitOverlay.add(nav);
+    // digital cluster behind the wheel
+    cockpitSpeedCanvas=document.createElement('canvas');cockpitSpeedCanvas.width=256;cockpitSpeedCanvas.height=140;
+    drawCockpitSpeed(cockpitSpeedCanvas.getContext('2d'),256,140,0,0);
+    cockpitSpeedTex=new THREE.CanvasTexture(cockpitSpeedCanvas);
+    const cluster=new THREE.Mesh(new THREE.PlaneGeometry(0.3,0.165),new THREE.MeshBasicMaterial({map:cockpitSpeedTex}));
+    cluster.position.set(-0.02,-0.2,-0.99);cluster.rotation.x=-0.25;cockpitOverlay.add(cluster);
+    // steering wheel with a violet accent ring
     steeringWheel=new THREE.Group();steeringWheel.name='TR steering wheel';
     const rim=new THREE.Mesh(new THREE.TorusGeometry(0.245,0.031,8,28),wheelMat);steeringWheel.add(rim);
+    const accent=new THREE.Mesh(new THREE.TorusGeometry(0.245,0.006,6,28),violet);steeringWheel.add(accent);
     const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.045,12),trimMat);hub.rotation.x=Math.PI/2;steeringWheel.add(hub);
-    const spokeGeo=new THREE.BoxGeometry(0.026,0.22,0.025);
-    const spoke=new THREE.Mesh(spokeGeo,trimMat);spoke.position.y=-0.095;steeringWheel.add(spoke);
+    const spoke=new THREE.Mesh(new THREE.BoxGeometry(0.026,0.22,0.025),trimMat);spoke.position.y=-0.095;steeringWheel.add(spoke);
     const leftSpoke=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.025,0.025),trimMat);leftSpoke.position.set(-0.07,0.015,0);leftSpoke.rotation.z=-0.35;steeringWheel.add(leftSpoke);
     const rightSpoke=leftSpoke.clone();rightSpoke.position.x=0.07;rightSpoke.rotation.z=0.35;steeringWheel.add(rightSpoke);
     steeringWheel.position.set(0,-0.36,-0.9);cockpitOverlay.add(steeringWheel);
-    // Two metallic pedals are visible near the lower edge of the cockpit.
+    // windscreen pillars on both sides and the rear-view mirror
+    for(const x of [-0.95,0.95]){const pil=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.9,0.05),pillarMat);pil.position.set(x,0.25,-0.75);pil.rotation.z=x<0?0.28:-0.28;cockpitOverlay.add(pil);}
+    const mirror=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.05,0.02),pillarMat);mirror.position.set(0,0.22,-0.82);cockpitOverlay.add(mirror);
+    const mirrorGlass=new THREE.Mesh(new THREE.PlaneGeometry(0.19,0.035),new THREE.MeshBasicMaterial({color:0x1a2a3a}));mirrorGlass.position.set(0,0.22,-0.809);cockpitOverlay.add(mirrorGlass);
+    // steering column and lower dash vents
+    const column=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.42,10),trimMat);column.rotation.x=Math.PI/2-0.45;column.position.set(0,-0.52,-0.9);cockpitOverlay.add(column);
+    for(const x of [-0.48,0.48]){const vent=new THREE.Mesh(new THREE.BoxGeometry(0.34,0.06,0.02),dashMat);vent.position.set(x,-0.66,-0.79);cockpitOverlay.add(vent);
+      for(let k=0;k<4;k++){const slat=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.008,0.01),trimMat);slat.position.set(x,-0.645+k*0.02,-0.775);cockpitOverlay.add(slat);}}
+    // bezel around the touch screen and the cluster
+    const bezel=new THREE.Mesh(new THREE.BoxGeometry(0.38,0.23,0.02),dashMat);bezel.position.set(0.56,-0.5,-1.14);bezel.rotation.x=-0.22;cockpitOverlay.add(bezel);
+    const cbezel=new THREE.Mesh(new THREE.BoxGeometry(0.31,0.18,0.02),dashMat);cbezel.position.set(-0.02,-0.2,-1.0);cbezel.rotation.x=-0.25;cockpitOverlay.add(cbezel);
+    // door panels with violet light lines on both sides
+    for(const sx of [-1,1]){
+      const panel=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.5,1.0),dashMat);panel.position.set(sx*1.0,-0.72,-0.8);cockpitOverlay.add(panel);
+      const dl=new THREE.Mesh(new THREE.BoxGeometry(0.012,0.012,0.9),violet);dl.position.set(sx*1.04,-0.52,-0.8);cockpitOverlay.add(dl);
+    }
+    // two metallic pedals near the lower edge
     for(const x of [-0.20,0.20]){
       const pedal=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.19,0.035),trimMat);pedal.position.set(x,-0.88,-0.58);pedal.rotation.x=-0.18;cockpitOverlay.add(pedal);
       for(let n=0;n<3;n++){const groove=new THREE.Mesh(new THREE.BoxGeometry(0.075,0.012,0.008),dashMat);groove.position.set(x,-0.83-n*0.045,-0.555);cockpitOverlay.add(groove);}
@@ -600,6 +798,15 @@
     if(gameCamera)gameCamera.add(cockpitOverlay);
     markSharedTree(cockpitOverlay);
     return cockpitOverlay;
+  }
+  // Called every frame from the race HUD with the current speed (km/h) and an rpm-like fraction.
+  function updateCockpit(kmh, rpm) {
+    if(!cockpitSpeedCanvas||!cockpitOverlay||!cockpitOverlay.visible)return;
+    const v = Math.round(kmh);
+    if(v===cockpitLastKmh)return;
+    cockpitLastKmh = v;
+    drawCockpitSpeed(cockpitSpeedCanvas.getContext('2d'),256,140,v,Math.max(0,Math.min(1,rpm)));
+    cockpitSpeedTex.needsUpdate = true;
   }
 
   function ensureArms() {
@@ -722,6 +929,7 @@
       if(playerCar&&playerCar.userData&&playerCar.userData.driver){playerCar.userData.driver.visible=!(firstPersonWanted&&driving);}
       if (armsOverlay) {
         armsOverlay.visible = firstPersonWanted;
+        armsOverlay.rotation.z = 0;
         if(firstPersonContext==='drive'){armsOverlay.position.set(0,-0.43,-0.67);armsOverlay.scale.setScalar(0.72);}
         else {armsOverlay.position.set(0,-0.43,-0.67);armsOverlay.scale.setScalar(0.78);}
         armsOverlay.renderOrder=995;
@@ -730,13 +938,24 @@
       }
       if(cockpitOverlay)cockpitOverlay.visible=firstPersonWanted&&driving;
     },
-    setSteer(value) { if(steeringWheel)steeringWheel.rotation.z=Math.max(-1,Math.min(1,Number(value)||0))*0.48; },
+    setSteer(value) {
+      const a = Math.max(-1, Math.min(1, Number(value) || 0)) * 0.48;
+      if (steeringWheel) steeringWheel.rotation.z = a;
+      // While driving, the FPS arms turn around the wheel centre, so the hands stay on the rim.
+      if (armsOverlay && firstPersonWanted && (firstPersonContext === 'drive' || firstPersonContext === 'race')) {
+        const wheelY = -0.36, wheelZ = -0.9, offY = -0.07, offZ = 0.23;   // arms rest point relative to the wheel centre
+        armsOverlay.rotation.z = a;
+        armsOverlay.position.set(-offY * Math.sin(a), wheelY + offY * Math.cos(a), wheelZ + offZ);
+      }
+    },
     isArmsReady() {
       if(!armsOverlay||!gameCamera||armsOverlay.parent!==gameCamera||!armsOverlay.visible)return false;
       let visibleMesh=false;armsOverlay.traverse(o=>{if(o.isMesh&&o.visible&&o.geometry&&o.geometry.attributes&&o.geometry.attributes.position&&o.geometry.attributes.position.count>20)visibleMesh=true;});
       return visibleMesh;
     },
     isPersonReady() { return !!personTemplate; },
+    loadProp(file) { return loadGLB(file).then(g => g.scene).catch(() => null); },
+    updateCockpit(kmh, rpm) { return updateCockpit(kmh, rpm); },
     detachCrashParts,
     dentCar,
     playCharacterAction(name,seconds=0.65,root=null){if(root)playCharacterAnimation(root,name,seconds);else{const playerRoot=[...worldCharacters,...staticCharacters].find(r=>r&&r.userData&&r.userData.playerPed);if(playerRoot)playCharacterAnimation(playerRoot,name,seconds);}},

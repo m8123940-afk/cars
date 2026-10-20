@@ -115,7 +115,7 @@ function makeCarModel(def, colOverride, options = {}) {
   [[-1, 1], [1, 1], [-1, -1], [1, -1]].forEach(([sx, sz]) => {
     const wz = sz * (h - 0.95), wx = sx * (S.w / 2 - 0.14);
     const arch = add(archG, _M.dark, sx * (S.w / 2 + 0.01), R, wz, false); arch.rotation.z = Math.PI / 2;
-    const piv = new THREE.Group(); piv.position.set(wx, R, wz);
+    const piv = new THREE.Group(); piv.position.set(wx, R, wz); piv.rotation.order = 'YXZ'; piv.userData.front = sz === 1;
     const t = new THREE.Mesh(tireG, _M.tire); t.rotation.z = Math.PI / 2; t.castShadow = true; piv.add(t);
     const r = new THREE.Mesh(rimG, rimMat); r.rotation.z = Math.PI / 2; piv.add(r);
     const hb = new THREE.Mesh(hubG, _M.dark); hb.rotation.z = Math.PI / 2; piv.add(hb);
@@ -242,11 +242,27 @@ function makeCarModel(def, colOverride, options = {}) {
 
   // пламя нитро
   const flame = new THREE.Group();
-  const fm = new THREE.MeshBasicMaterial({ color: 0xff8a20, transparent: true, opacity: 0.85 });
-  const fm2 = new THREE.MeshBasicMaterial({ color: 0xfff0a0, transparent: true, opacity: 0.9 });
+  // Soft glowing exhaust jets: additive gradient planes instead of hard cones.
+  const flameTex = (() => {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 256;
+    const x = c.getContext('2d');
+    x.save(); x.translate(32, 128); x.scale(0.34, 1);
+    const gr = x.createRadialGradient(0, 0, 0, 0, 0, 128);
+    gr.addColorStop(0, 'rgba(255,252,230,1)'); gr.addColorStop(0.25, 'rgba(255,190,90,0.95)');
+    gr.addColorStop(0.6, 'rgba(255,110,30,0.45)'); gr.addColorStop(1, 'rgba(255,60,10,0)');
+    x.fillStyle = gr; x.fillRect(-200, -200, 400, 400); x.restore();
+    const t = new THREE.CanvasTexture(c); t.needsUpdate = true; return t;
+  })();
+  const flameCore = new THREE.CanvasTexture(flameTex.image);
   [-0.45, 0.45].forEach(x => {
-    const c = new THREE.Mesh(new THREE.ConeGeometry(0.22, 2.4, 8), fm); c.rotation.x = -Math.PI / 2; c.position.set(x, y0 + 0.12, -h - 1.3); flame.add(c);
-    const c2 = new THREE.Mesh(new THREE.ConeGeometry(0.11, 1.4, 8), fm2); c2.rotation.x = -Math.PI / 2; c2.position.set(x, y0 + 0.12, -h - 0.8); flame.add(c2);
+    for (let k = 0; k < 2; k++) {
+      const mat = new THREE.MeshBasicMaterial({ map: k === 0 ? flameTex : flameCore, color: k === 0 ? 0xff9a3a : 0xfff4c8, transparent: true, opacity: k === 0 ? 0.8 : 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(k === 0 ? 0.7 : 0.32, k === 0 ? 2.6 : 1.7), mat);
+      plane.rotation.x = -Math.PI / 2;
+      plane.position.set(x, y0 + 0.12, -h - 1.25 - k * 0.1);
+      plane.renderOrder = 20;
+      flame.add(plane);
+    }
   });
   flame.visible = false; g.add(flame);
 
@@ -277,6 +293,7 @@ function makeCarModel(def, colOverride, options = {}) {
     wheels, tailMat, flame, len: S.l, S, driver: null, damageMarks,
     damageSmoke: smoke, damageBumper: bentBumper, damageChip: chip,
     carId: def.id, carIndex: Math.max(0, CARS.findIndex(c => c.id === def.id)),
+    col: Number.isFinite(colOverride) ? colOverride : def.col,
     // Индивидуальная условная масса нужна для более естественного импульса при столкновениях.
     mass: Math.max(0.82, Math.min(2.35, 0.88 + (Number(def.s && def.s[0]) || 8) * 0.045 + Math.log10(Math.max(10, Number(def.price) || 10)) * 0.08)),
     baseParts: g.children.slice(), externalCarRoot: null, externalWheels: []

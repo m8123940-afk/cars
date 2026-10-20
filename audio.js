@@ -147,6 +147,9 @@ const Snd = (() => {
       if(s%8===0)note(WORLD_BASS[s],t,0.45,'triangle',0.065);
       if(WORLD_LEAD[s])note(WORLD_LEAD[s],t,0.36,'sine',0.025);
       if(s%4===2)note(WORLD_LEAD[(s+3)%16]*0.5,t,0.48,'triangle',0.018);
+    } else if(mode==='shop'){ // MARKET 24/7: slow, soft pad, no percussion
+      if(s%8===0)note(WORLD_BASS[s],t,0.9,'sine',0.04);
+      if(s%4===0&&WORLD_LEAD[s])note(WORLD_LEAD[s],t,1.1,'sine',0.018);
     } else { // main menu: welcoming synthwave, restrained percussion
       if(s%8===0)kick(t);
       if(MENU_BASS[s])note(MENU_BASS[s],t,0.33,'triangle',0.075);
@@ -157,7 +160,7 @@ const Snd = (() => {
   }
   function music(m) {
     if(m===mode)return;mode=m;step=0;clearInterval(timer);timer=null;if(m==='off'||!ctx)return;
-    const tempo=m==='race'?142:m==='background'?76:m==='radio'?RADIO_TRACKS[radioIndex%RADIO_TRACKS.length].tempo:92;
+    const tempo=m==='race'?142:m==='background'?76:m==='shop'?64:m==='radio'?RADIO_TRACKS[radioIndex%RADIO_TRACKS.length].tempo:92;
     timer=setInterval(mtick,60000/tempo/4);
   }
   function toggleRadio(){if(mode==='radio'){const back=radioReturnMode;music(back);return{on:false,name:RADIO_TRACKS[radioIndex].name};}radioReturnMode=(mode==='race'||mode==='background')?mode:'menu';music('radio');return{on:true,name:RADIO_TRACKS[radioIndex].name};}
